@@ -22,16 +22,35 @@ public class GeneradorSopa : MonoBehaviour
 
     void CrearSopa()
     {
-        foreach (Transform hijo in contenedorSopa.transform)
-        {
-            Destroy(hijo.gameObject);
-        }
-
         todasLasCasillas.Clear();
 
+        // 🔥 limpiar SOLO casillas clonadas
+        List<GameObject> destruir = new List<GameObject>();
+
+        foreach (Transform hijo in contenedorSopa.transform)
+        {
+            if (hijo.name.Contains("(Clone)"))
+            {
+                destruir.Add(hijo.gameObject);
+            }
+        }
+
+        foreach (GameObject obj in destruir)
+        {
+            Destroy(obj);
+        }
+
+        // 🔥 crear nuevas casillas
         for (int i = 0; i < 100; i++)
         {
             GameObject nuevaCasilla = Instantiate(casillaPrefab, contenedorSopa.transform);
+
+            nuevaCasilla.name = "Casilla_" + i;
+
+            RectTransform rt = nuevaCasilla.GetComponent<RectTransform>();
+
+            rt.localScale = Vector3.one;
+            rt.sizeDelta = new Vector2(70, 70);
 
             var casilla = nuevaCasilla.GetComponent<CasillaController>();
 
@@ -47,7 +66,6 @@ public class GeneradorSopa : MonoBehaviour
             todasLasCasillas.Add(casilla);
         }
     }
-
     public void GenerarLetras(string palabra)
     {
         palabra = palabra.Trim().ToUpper();

@@ -21,7 +21,7 @@ public class CellWorld : MonoBehaviour
     {
         text.text = letter;
 
-        text.transform.localPosition = Vector3.zero;
+        Debug.Log("LETRA PUESTA: " + letter);
 
         controller.OnLetterChanged(x, y, letter);
     }

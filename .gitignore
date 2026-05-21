@@ -24,3 +24,11 @@ UserSettings/
 
 node_modules/
 .env
+*.apk
+*.aab
+*.keystore
+
+coverage/
+
+.DS_Store
+Thumbs.db
