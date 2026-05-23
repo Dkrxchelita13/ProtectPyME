@@ -4,6 +4,7 @@ using UnityEngine.SceneManagement;
 
 public class Escenario1Manager : MonoBehaviour
 {
+    public GameObject panelIntroduccion;
     public GameObject panelCorreo;
     public GameObject panelSospechoso;
     public GameObject panelDecision;
@@ -12,30 +13,34 @@ public class Escenario1Manager : MonoBehaviour
 
     public GameObject[] corazones;
     public Camera camara;
+
     private bool yaRespondio = false;
+    private bool bloquearClick = false;
 
     public AudioSource audioSource;
     public AudioClip sonidoDetalle;
-    public AudioClip sonidoCorreo; 
+    public AudioClip sonidoCorreo;
     public AudioClip sonidoBoton;
     public AudioClip sonidoError;
     public AudioClip sonidoCorrecto;
 
-    int panelActual = 0; 
+    int panelActual = -1;
 
     void Start()
     {
-        camara.orthographicSize = 3.6f;
-
         ActualizarCorazones();
 
-        panelActual = 0;
+        panelBueno.SetActive(false);
+        panelMalo.SetActive(false);
 
-        MostrarCorreo(); 
+        MostrarIntroduccion();
     }
 
     void Update()
     {
+        if (bloquearClick)
+            return;
+
         if (panelDecision.activeSelf || panelMalo.activeSelf || panelBueno.activeSelf)
             return;
 
@@ -44,14 +49,59 @@ public class Escenario1Manager : MonoBehaviour
             float mitad = Screen.width / 2;
 
             if (Input.mousePosition.x > mitad)
+            {
                 SiguientePanel();
+            }
             else
+            {
                 PanelAnterior();
+            }
         }
     }
 
-    void MostrarCorreo()
+    void MostrarIntroduccion()
     {
+        panelActual = -1;
+
+        panelIntroduccion.SetActive(true);
+        panelCorreo.SetActive(false);
+        panelSospechoso.SetActive(false);
+        panelDecision.SetActive(false);
+        panelBueno.SetActive(false);
+        panelMalo.SetActive(false);
+
+        if (audioSource != null && sonidoCorreo != null)
+        {
+            audioSource.Stop();
+            audioSource.PlayOneShot(sonidoCorreo);
+        }
+    }
+
+    public void SkipIntroduccion()
+    {
+        bloquearClick = true;
+
+        panelActual = 0;
+
+        panelIntroduccion.SetActive(false);
+        panelCorreo.SetActive(true);
+        panelSospechoso.SetActive(false);
+        panelDecision.SetActive(false);
+
+        if (audioSource != null && sonidoCorreo != null)
+        {
+            audioSource.Stop();
+            audioSource.PlayOneShot(sonidoCorreo);
+        }
+
+        StartCoroutine(DesbloquearClick());
+    }
+
+    public void MostrarCorreo()
+    {
+        panelActual = 0;
+
+        panelIntroduccion.SetActive(false);
         panelCorreo.SetActive(true);
         panelSospechoso.SetActive(false);
         panelDecision.SetActive(false);
@@ -63,9 +113,11 @@ public class Escenario1Manager : MonoBehaviour
         }
     }
 
-
     void MostrarSospechoso()
     {
+        panelActual = 1;
+
+        panelIntroduccion.SetActive(false);
         panelCorreo.SetActive(false);
         panelSospechoso.SetActive(true);
         panelDecision.SetActive(false);
@@ -77,9 +129,11 @@ public class Escenario1Manager : MonoBehaviour
         }
     }
 
-
     void MostrarDecision()
     {
+        panelActual = 2;
+
+        panelIntroduccion.SetActive(false);
         panelCorreo.SetActive(false);
         panelSospechoso.SetActive(false);
         panelDecision.SetActive(true);
@@ -93,32 +147,26 @@ public class Escenario1Manager : MonoBehaviour
         StartCoroutine(ZoomSuave(3.6f));
     }
 
-
     void SiguientePanel()
     {
         if (panelActual == 0)
         {
-            panelActual = 1;
             MostrarSospechoso();
         }
         else if (panelActual == 1)
         {
-            panelActual = 2;
             MostrarDecision();
         }
     }
-
 
     void PanelAnterior()
     {
         if (panelActual == 1)
         {
-            panelActual = 0;
             MostrarCorreo();
         }
         else if (panelActual == 2)
         {
-            panelActual = 1;
             MostrarSospechoso();
         }
     }
@@ -126,6 +174,7 @@ public class Escenario1Manager : MonoBehaviour
     public void OpcionCorrecta()
     {
         if (yaRespondio) return;
+
         yaRespondio = true;
 
         panelDecision.SetActive(false);
@@ -137,12 +186,13 @@ public class Escenario1Manager : MonoBehaviour
             audioSource.PlayOneShot(sonidoCorrecto);
         }
 
-        Invoke("IrAEscenario2", 2f);
+        Invoke(nameof(IrAEscenario2), 2f);
     }
 
     public void OpcionIncorrecta()
     {
         if (yaRespondio) return;
+
         yaRespondio = true;
 
         panelDecision.SetActive(false);
@@ -202,12 +252,23 @@ public class Escenario1Manager : MonoBehaviour
 
         while (tiempo < duracion)
         {
-            camara.orthographicSize = Mathf.Lerp(tamañoInicial, tamaño, tiempo / duracion);
+            camara.orthographicSize = Mathf.Lerp(
+                tamañoInicial,
+                tamaño,
+                tiempo / duracion
+            );
+
             tiempo += Time.deltaTime;
             yield return null;
         }
 
         camara.orthographicSize = tamaño;
+    }
+
+    IEnumerator DesbloquearClick()
+    {
+        yield return new WaitForSeconds(0.2f);
+        bloquearClick = false;
     }
 
     public void SonidoBoton()
