@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine.Tilemaps;
 
+
 public class CrosswordController : MonoBehaviour
 {
     public GameObject cellPrefab;
@@ -13,10 +14,18 @@ public class CrosswordController : MonoBehaviour
     public Tilemap tilemap;
     public TileBase tileBlanco;
 
+    public GameObject numeroPrefab;
+
     private CrosswordModel model;
+    public CrosswordModel GetModel()
+    {
+        return model;
+    }
     private CrosswordValidator validator = new CrosswordValidator();
     private CrosswordGenerator generator = new CrosswordGenerator();
 
+    [SerializeField]
+    private Vector2 gridOffset;
     void Start()
     {
         Debug.Log("🧹 LIMPIANDO OBJETOS EXTRA");
@@ -68,68 +77,131 @@ public class CrosswordController : MonoBehaviour
 
     void CreateGrid()
     {
-        Debug.Log("🚀 USANDO TILEMAP REAL");
+        Debug.Log("🚀 CREANDO GRID DESDE MODEL");
 
         foreach (Transform child in gridParent)
         {
             Destroy(child.gameObject);
         }
 
-        tilemap.CompressBounds();
-        BoundsInt bounds = tilemap.cellBounds;
+        int width = model.width;
+        int height = model.height;
 
-        int width = model.grid.GetLength(0);
-        int height = model.grid.GetLength(1);
-
-        
-
-        for (int y = bounds.yMax - 1; y >= bounds.yMin; y--) // 🔥 IMPORTANTE (orden visual)
+        for (int y = 0; y < height; y++)
         {
-            for (int x = bounds.xMin; x < bounds.xMax; x++)
+            for (int x = 0; x < width; x++)
             {
-                Vector3Int tilePos = new Vector3Int(x, y, 0);
+                CellData cellData = model.grid[x, y];
 
-                TileBase tile = tilemap.GetTile(tilePos);
-
-
-                Debug.Log("Tile en " + tilePos + ": " + tile);
-                Debug.Log("CREANDO CELDA en " + tilePos);
-
-                if (tile == null)
+                if (cellData == null)
                     continue;
 
-                int gridX = x - bounds.xMin;
-                int gridY = y - bounds.yMin;
-
-                if (gridY >= height)
+                if (cellData.correctLetter == '\0')
                     continue;
 
-                var cellData = model.grid[gridX, gridY];
+                // Posición del tilemap
+                Vector3Int tilePos = new Vector3Int(x, -y, 0);
+                Vector3 worldPos =
+                    tilemap.GetCellCenterWorld(tilePos);
 
-                if (cellData == null || cellData.correctLetter == '\0')
-                {
-                    continue;
-                }
+                worldPos += (Vector3)gridOffset;
 
+                // CREAR CELDA
                 GameObject cell = Instantiate(cellPrefab);
 
-                Vector3 worldPos = tilemap.GetCellCenterWorld(tilePos);
-
-                cell.transform.position = worldPos;
                 cell.transform.SetParent(gridParent, true);
 
-                var cellWorld = cell.GetComponent<CellWorld>();
+                cell.transform.position = worldPos;
+
+                CellWorld cellWorld =
+                    cell.GetComponent<CellWorld>();
+                
+                
+
                 if (cellWorld != null)
                 {
-                    cellWorld.Init(gridX, gridY, this);
+                    cellWorld.Init(x, y, this);
+
+                    Debug.Log($"✅ CELDA CREADA [{x},{y}]");
+                }
+                foreach (var word in model.words)
+                {
+                    for (int i = 0; i < word.answer.Length; i++)
+                    {
+                        int wx =
+                            word.startX +
+                            (word.isHorizontal ? i : 0);
+
+                        int wy =
+                            word.startY +
+                            (word.isHorizontal ? 0 : i);
+
+                        if (wx == x && wy == y)
+                        {
+                            if (word.isHorizontal)
+                            {
+                                cellWorld.SetDirection(1, 0);
+                            }
+                            else
+                            {
+                                cellWorld.SetDirection(0, 1);
+                            }
+                        }
+                    }
                 }
 
+                // CREAR NÚMERO SOLO SI ES INICIO DE PALABRA
+                foreach (var word in model.words)
+                {
+                    if (word.startX == x &&
+                        word.startY == y)
+                    {
+                        GameObject numero =
+                            Instantiate(numeroPrefab);
+
+                        numero.transform.SetParent(
+                            gridParent,
+                            true
+                        );
+
+                        numero.transform.position =
+                            worldPos +
+                            new Vector3(-0.42f, 0.42f, -2);
+
+                        TextMesh txt =
+                            numero.GetComponent<TextMesh>();
+
+                        txt.text =
+                            (model.words.IndexOf(word) + 1)
+                            .ToString();
+                    }
+                }
             }
         }
     }
+
     public void OnLetterChanged(int x, int y, string letter)
     {
         model.grid[x, y].currentLetter = letter;
+
+        CellWorld currentCell = GetCell(x, y);
+
+        if (currentCell != null)
+        {
+            if (string.IsNullOrEmpty(letter))
+            {
+                currentCell.SetNormal();
+            }
+            else if (letter[0] ==
+                model.grid[x, y].correctLetter)
+            {
+                currentCell.SetCorrect();
+            }
+            else
+            {
+                currentCell.SetWrong();
+            }
+        }
 
         foreach (var word in model.words)
         {
@@ -139,7 +211,6 @@ public class CrosswordController : MonoBehaviour
             }
         }
 
-        // 👇 AGREGA ESTO AL FINAL
         if (AllWordsCompleted())
         {
             Debug.Log("🎉 GANASTE");
@@ -200,5 +271,20 @@ public class CrosswordController : MonoBehaviour
             if (!word.isHorizontal)
                 cluesText.text += "- " + word.clue + "\n";
         }
+    }
+    public CellWorld GetCell(int x, int y)
+    {
+        foreach (Transform child in gridParent)
+        {
+            CellWorld cell = child.GetComponent<CellWorld>();
+
+            if (cell != null &&
+                cell.IsPosition(x, y))
+            {
+                return cell;
+            }
+        }
+
+        return null;
     }
 }

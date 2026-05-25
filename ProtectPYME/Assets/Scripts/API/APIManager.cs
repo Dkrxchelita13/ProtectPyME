@@ -182,7 +182,7 @@ public class APIManager : MonoBehaviour
             yield break;
         }
 
-        string url = baseUrl + "/minigames/words";
+        string url = baseUrl + "/minigames/wordsearch";
 
         UnityWebRequest request = UnityWebRequest.Get(url);
         request.SetRequestHeader("Authorization", "Bearer " + token);

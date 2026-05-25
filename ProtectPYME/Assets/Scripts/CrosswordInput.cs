@@ -13,7 +13,15 @@ public class CrosswordInput : MonoBehaviour
 
     public void SelectCell(CellWorld cell)
     {
+        if (selectedCell != null)
+        {
+            selectedCell.Deselect();
+        }
+
         selectedCell = cell;
+
+        selectedCell.Select();
+
         Debug.Log("CELDA SELECCIONADA");
     }
 
@@ -60,12 +68,63 @@ public class CrosswordInput : MonoBehaviour
     {
         if (selectedCell == null) return;
 
+        if (Input.GetKeyDown(KeyCode.Backspace))
+        {
+            selectedCell.ClearLetter();
+
+            int prevX = selectedCell.GetX();
+            int prevY = selectedCell.GetY();
+
+            bool horizontal =
+                selectedCell.GetDirX() == 1;
+
+            if (horizontal)
+            {
+                prevX--;
+            }
+            else
+            {
+                prevY--;
+            }
+
+            CrosswordController controller =
+                FindObjectOfType<CrosswordController>();
+
+            CellWorld prevCell =
+                controller.GetCell(prevX, prevY);
+
+            if (prevCell != null)
+            {
+                selectedCell = prevCell;
+            }
+
+            return;
+        }
+
         string input = Input.inputString.ToUpper();
 
         if (!string.IsNullOrEmpty(input) && char.IsLetter(input[0]))
         {
             Debug.Log("TECLA: " + input);
             selectedCell.SetLetter(input[0].ToString());
+
+            CrosswordController controller =
+                FindObjectOfType<CrosswordController>();
+
+            int nextX =
+                selectedCell.GetX() +
+                selectedCell.GetDirX();
+
+            int nextY =
+                selectedCell.GetY() +
+                selectedCell.GetDirY();
+            CellWorld nextCell =
+                controller.GetCell(nextX, nextY);
+
+            if (nextCell != null)
+            {
+                selectedCell = nextCell;
+            }
         }
     }
 }

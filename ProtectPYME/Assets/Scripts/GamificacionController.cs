@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.SceneManagement;
+
 public class GamificacionController : MonoBehaviour
 {
     [Header("UI")]
@@ -12,34 +14,30 @@ public class GamificacionController : MonoBehaviour
 
     [Header("Ajustes")]
     public float tiempoLimite = 15f;
-    private float tiempoActual;
-    private int puntaje = 0;
-    private int vidas = 3;
-    private int fallosPorTiempoSeguidos = 0;
-    private bool juegoActivo = true;
+    public float tiempoActual;
+    public static int puntaje = 0;
+    public static int vidas = 3;
 
     private PreguntasController pController;
 
-    void Start() {
+    void Start()
+    {
         pController = GetComponent<PreguntasController>();
+
         tiempoActual = tiempoLimite;
+
+        puntaje = 0;
+        vidas = 3;
+
+        txtPuntaje.text = puntaje.ToString();
+
         ActualizarUI();
     }
 
-    void Update() {
-        if (!juegoActivo) return;
 
-        if (tiempoActual > 0) {
-            tiempoActual -= Time.deltaTime;
-            fillCronometro.fillAmount = tiempoActual / tiempoLimite;
-        } else {
-            ProcesarFalloTiempo();
-        }
-    }
 
     public void SumarPuntos(int cantidad) {
         puntaje += cantidad;
-        fallosPorTiempoSeguidos = 0; // Si responde, se limpia el contador de fallos de tiempo
         ActualizarUI();
     }
 
@@ -48,18 +46,7 @@ public class GamificacionController : MonoBehaviour
         ActualizarUI();
     }
 
-    public void ProcesarFalloTiempo() {
-        RestarPuntos(25);
-        fallosPorTiempoSeguidos++;
 
-        if (fallosPorTiempoSeguidos >= 2) {
-            QuitarVida();
-            fallosPorTiempoSeguidos = 0;
-        }
-
-        ReiniciarCronometro();
-        pController.PasarSiguientePregunta(); // Saltamos de pregunta porque se acabó el tiempo
-    }
 
     public void QuitarVida() {
         vidas--;
@@ -67,14 +54,14 @@ public class GamificacionController : MonoBehaviour
         if (vidas <= 0) FinalizarJuego();
     }
 
-    public void ReiniciarCronometro() => tiempoActual = tiempoLimite;
-
+    public void ReiniciarCronometro()
+    {
+    }
     void ActualizarUI() => txtPuntaje.text = puntaje.ToString();
 
-    void FinalizarJuego() {
-        juegoActivo = false;
+    void FinalizarJuego()
+    {
         Debug.Log("GAME OVER");
-        // Aquí activarías tu panel de perder
     }
 }
 

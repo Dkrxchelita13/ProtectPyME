@@ -29,10 +29,7 @@ public class GeneradorSopa : MonoBehaviour
 
         foreach (Transform hijo in contenedorSopa.transform)
         {
-            if (hijo.name.Contains("(Clone)"))
-            {
-                destruir.Add(hijo.gameObject);
-            }
+            destruir.Add(hijo.gameObject);
         }
 
         foreach (GameObject obj in destruir)

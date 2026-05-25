@@ -2553,7 +2553,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1124049746
 Transform:
   m_ObjectHideFlags: 0
@@ -3232,6 +3232,8 @@ MonoBehaviour:
   cluesText: {fileID: 803304017}
   tilemap: {fileID: 1316491914}
   tileBlanco: {fileID: 11400000, guid: cd12d43c3469e08418ea988542d8dbc2, type: 2}
+  numeroPrefab: {fileID: 2673182938108150817, guid: 291de0c84252af14d9af3ff347b5026e, type: 3}
+  gridOffset: {x: -10, y: 5}
 --- !u!1 &1263002521
 GameObject:
   m_ObjectHideFlags: 0
@@ -3381,7 +3383,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1316491912
 Transform:
   m_ObjectHideFlags: 0

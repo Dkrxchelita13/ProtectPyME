@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.UI;
 
+
 [System.Serializable]
 public class Pregunta
 {
@@ -26,6 +27,11 @@ public class CrosswordList
 
 public class PreguntasController : MonoBehaviour
 {
+    [Header("Panel Ganador")]
+    public TextMeshProUGUI txtPuntosFinal;
+    public TextMeshProUGUI txtVidasFinal;
+    public TextMeshProUGUI txtSeguridadFinal;
+    public GameObject canvasGanador;
     public TextMeshProUGUI txtPreguntaDisplay;
     public Pregunta[] bancoDePreguntas;
 
@@ -33,8 +39,11 @@ public class PreguntasController : MonoBehaviour
 
     private List<CasillaController> casillasSeleccionadas = new List<CasillaController>();
 
+    private GamificacionController gamificacion;
+
     void Start()
     {
+        gamificacion = GetComponent<GamificacionController>();
         // 🔥 RESET TOTAL
         indicePreguntaActual = 0;
         bloqueado = false;
@@ -108,6 +117,10 @@ public class PreguntasController : MonoBehaviour
 
             if (barraTiempo != null)
                 barraTiempo.fillAmount = 0f;
+            if (canvasGanador != null)
+            {
+                canvasGanador.SetActive(true);
+            }
         }
     }
 
@@ -182,7 +195,13 @@ public class PreguntasController : MonoBehaviour
 
         if (formada == correcta || invertida == correcta)
         {
+            if (cambiandoPregunta) return;
+
+            cambiandoPregunta = true;
+
             bloqueado = true;
+
+            gamificacion.SumarPuntos(10);
 
             foreach (var c in casillasSeleccionadas)
                 c.MarcarCorrecta();
@@ -219,23 +238,39 @@ public class PreguntasController : MonoBehaviour
 
         if (indicePreguntaActual < bancoDePreguntas.Length)
         {
+            FindObjectOfType<GamificacionController>().ReiniciarCronometro();
             MostrarPregunta();
         }
         else
         {
             Debug.Log("Juego terminado");
 
-            txtPreguntaDisplay.text = "¡Completaste el juego! ";
+            if (canvasGanador != null)
+            {
+                canvasGanador.SetActive(true);
 
-            bloqueado = true; // 🔒 bloquear interacción
-            corriendoTiempo = false; // ⏹ detener tiempo
+                txtPuntosFinal.text = GamificacionController.puntaje.ToString();
+
+                txtVidasFinal.text = GamificacionController.vidas.ToString();
+
+                txtSeguridadFinal.text = gamificacion.tiempoActual.ToString("0");
+
+                Time.timeScale = 0f;
+            }
+
+            txtPreguntaDisplay.text = "¡Completaste el juego!";
+
+            bloqueado = true;
+            corriendoTiempo = false;
         }
     }
 
     private bool bloqueado = false;
+    private bool cambiandoPregunta = false;
 
     public IEnumerator SiguientePreguntaConDelay()
     {
+        corriendoTiempo = false;
         yield return new WaitForSeconds(1f);
 
         Debug.Log("➡️ CAMBIANDO PREGUNTA");
@@ -247,11 +282,20 @@ public class PreguntasController : MonoBehaviour
 
         indicePreguntaActual++;
 
-        // 🔥 reiniciar tiempo aquí
+        bloqueado = false;
+
+        cambiandoPregunta = false;
+
+        // 🔥 SI YA TERMINÓ NO REACTIVAR TIMER
+        if (indicePreguntaActual >= bancoDePreguntas.Length)
+        {
+            PasarSiguientePregunta();
+            yield break;
+        }
+
+        // 🔥 SOLO SI HAY MÁS PREGUNTAS
         tiempoRestante = TIEMPO_MAX;
         corriendoTiempo = true;
-
-        bloqueado = false;
 
         MostrarPregunta();
     }

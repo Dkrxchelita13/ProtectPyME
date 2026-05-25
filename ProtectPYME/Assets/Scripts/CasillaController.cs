@@ -28,18 +28,22 @@ public class CasillaController : MonoBehaviour
 
         seleccionada = !seleccionada;
 
-        GetComponent<Image>().color = seleccionada ? Color.yellow : Color.white;
-
+        GetComponent<Image>().color =
+            seleccionada ? new Color(1f, 1f, 0f, 1f) : Color.white;
         controlador.AgregarLetra(letraDeEsteBoton, this, seleccionada);
     }
     public void MarcarCorrecta()
     {
-        GetComponent<Image>().color = Color.green;
+        GetComponent<Image>().color = new Color(0f, 1f, 0f, 1f);
+        GetComponent<Button>().interactable = false;
     }
 
     public void Resetear()
     {
         seleccionada = false;
+
         GetComponent<Image>().color = Color.white;
+
+        GetComponent<Button>().interactable = true;
     }
 }

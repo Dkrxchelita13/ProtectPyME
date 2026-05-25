@@ -14,6 +14,7 @@ public class CambioEscena : MonoBehaviour
         //Guardamos el nombre de la escena actual antes de irnos
         escenaAnterior = SceneManager.GetActiveScene().name;
         //Cargamos la nueva
+        Time.timeScale = 1f;
         SceneManager.LoadScene(nombreEscena);
     }
 
@@ -37,6 +38,7 @@ public class CambioEscena : MonoBehaviour
 
     public void JugarDeNuevo()
     {
+
         //Desactivamos el Canvas
         if (CanvasJuegoTerminado != null)
         {
@@ -44,7 +46,7 @@ public class CambioEscena : MonoBehaviour
         }
 
         //Correr el tiempo si se pausa el juego cuando pierde
-        //Time.timeScale = 1f;
+        Time.timeScale = 1f;
 
         //Reiniciamos la escena
         string nombreEscena = SceneManager.GetActiveScene().name;
