@@ -31,10 +31,15 @@ public class CellWorld : MonoBehaviour
         dirY = dy;
     }
 
+
+    public bool IsLocked()
+    {
+        return locked;
+    }
     public void SetLetter(string letter)
     {
-        if (locked)
-            return;
+
+        if (locked) return;
 
         text.text = letter;
 

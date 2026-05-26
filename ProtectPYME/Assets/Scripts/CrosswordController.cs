@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine.Tilemaps;
-
+using UnityEngine.UI;
 
 public class CrosswordController : MonoBehaviour
 {
@@ -24,8 +24,24 @@ public class CrosswordController : MonoBehaviour
     private CrosswordValidator validator = new CrosswordValidator();
     private CrosswordGenerator generator = new CrosswordGenerator();
 
+    private List<CellWorld> spawnedCells =
+    new List<CellWorld>();
+
     [SerializeField]
     private Vector2 gridOffset;
+    public List<CellWorld> GetAllCells()
+    {
+        return spawnedCells;
+    }
+    [Header("Timer")]
+    public float tiempoRestante = 120f;
+
+    public TextMeshProUGUI txtTimer;
+    public Image barraTiempo;
+
+    private bool juegoTerminado = false;
+    public GameObject canvasGanador;
+    public GameObject canvasFinJuego;
     void Start()
     {
         Debug.Log("🧹 LIMPIANDO OBJETOS EXTRA");
@@ -42,6 +58,30 @@ public class CrosswordController : MonoBehaviour
         StartCoroutine(APIManager.Instance.GetCrossword(OnData));
 
 
+    }
+    void Update()
+    {
+        if (juegoTerminado)
+            return;
+
+        tiempoRestante -= Time.deltaTime;
+
+        if (txtTimer != null)
+        {
+            txtTimer.text =
+                Mathf.Ceil(tiempoRestante).ToString();
+        }
+
+        if (barraTiempo != null)
+        {
+            barraTiempo.fillAmount =
+                tiempoRestante / 120f;
+        }
+
+        if (tiempoRestante <= 0)
+        {
+            Perder();
+        }
     }
 
     void OnData(string json)
@@ -109,12 +149,16 @@ public class CrosswordController : MonoBehaviour
                 // CREAR CELDA
                 GameObject cell = Instantiate(cellPrefab);
 
+                CellWorld cellWorld =
+                    cell.GetComponent<CellWorld>();
+
+                spawnedCells.Add(cellWorld);
+
                 cell.transform.SetParent(gridParent, true);
 
                 cell.transform.position = worldPos;
 
-                CellWorld cellWorld =
-                    cell.GetComponent<CellWorld>();
+
                 
                 
 
@@ -196,6 +240,7 @@ public class CrosswordController : MonoBehaviour
                 model.grid[x, y].correctLetter)
             {
                 currentCell.SetCorrect();
+                currentCell.LockCell();
             }
             else
             {
@@ -214,6 +259,18 @@ public class CrosswordController : MonoBehaviour
         if (AllWordsCompleted())
         {
             Debug.Log("🎉 GANASTE");
+
+            juegoTerminado = true;
+
+            canvasGanador.SetActive(true);
+
+            CrosswordInput input =
+                FindObjectOfType<CrosswordInput>();
+
+            if (input != null)
+            {
+                input.enabled = false;
+            }
         }
     }
 
@@ -253,7 +310,22 @@ public class CrosswordController : MonoBehaviour
             new CrosswordWordData { clue="Malware", answer="MALWARE"}
         };
     }
+    void Perder()
+    {
+        juegoTerminado = true;
 
+        Debug.Log("💀 GAME OVER");
+
+        canvasFinJuego.SetActive(true);
+
+        CrosswordInput input =
+            FindObjectOfType<CrosswordInput>();
+
+        if (input != null)
+        {
+            input.enabled = false;
+        }
+    }
     void ShowClues()
     {
         cluesText.text = "HORIZONTALES:\n";

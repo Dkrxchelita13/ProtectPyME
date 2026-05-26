@@ -2,6 +2,11 @@
 
 public class CrosswordInput : MonoBehaviour
 {
+    public AudioSource fuenteAudio;
+
+    public AudioClip sonidoSeleccion;
+    public AudioClip sonidoEscribir;
+
     public static CrosswordInput Instance;
 
     private CellWorld selectedCell;
@@ -13,16 +18,45 @@ public class CrosswordInput : MonoBehaviour
 
     public void SelectCell(CellWorld cell)
     {
-        if (selectedCell != null)
+        CrosswordController controller =
+            FindObjectOfType<CrosswordController>();
+
+        foreach (CellWorld c in controller.GetAllCells())
         {
-            selectedCell.Deselect();
+            c.Deselect();
         }
 
         selectedCell = cell;
+        //fuenteAudio.PlayOneShot(sonidoSeleccion);
 
-        selectedCell.Select();
+        HighlightWord(cell);
 
         Debug.Log("CELDA SELECCIONADA");
+    }
+    void HighlightWord(CellWorld startCell)
+    {
+        CrosswordController controller =
+            FindObjectOfType<CrosswordController>();
+
+        int dx = startCell.GetDirX();
+        int dy = startCell.GetDirY();
+
+        int x = startCell.GetX();
+        int y = startCell.GetY();
+
+        while (true)
+        {
+            CellWorld cell =
+                controller.GetCell(x, y);
+
+            if (cell == null)
+                break;
+
+            cell.Select();
+
+            x += dx;
+            y += dy;
+        }
     }
 
     void Update()
@@ -107,6 +141,7 @@ public class CrosswordInput : MonoBehaviour
         {
             Debug.Log("TECLA: " + input);
             selectedCell.SetLetter(input[0].ToString());
+            //fuenteAudio.PlayOneShot(sonidoEscribir);
 
             CrosswordController controller =
                 FindObjectOfType<CrosswordController>();

@@ -10,6 +10,7 @@ public class AudioManager : MonoBehaviour
     public AudioClip pregunta;
     public AudioClip error;
     public AudioClip correcto;
+    public AudioClip victoria;
 
     void Awake()
     {
@@ -41,5 +42,9 @@ public class AudioManager : MonoBehaviour
     public void ReproducirCorrecto()
     {
         source.PlayOneShot(correcto);
+    }
+    public void ReproducirVictoria()
+    {
+        source.PlayOneShot(victoria);
     }
 }

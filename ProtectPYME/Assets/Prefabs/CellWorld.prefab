@@ -86,18 +86,18 @@ TextMesh:
   m_GameObject: {fileID: 3645102996133704346}
   m_Text: 
   m_OffsetZ: -1
-  m_CharacterSize: 0.08
+  m_CharacterSize: 0.1
   m_LineSpacing: 1
   m_Anchor: 4
   m_Alignment: 1
   m_TabSize: 4
-  m_FontSize: 40
-  m_FontStyle: 0
+  m_FontSize: 45
+  m_FontStyle: 1
   m_RichText: 1
   m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
   m_Color:
     serializedVersion: 2
-    rgba: 4278190080
+    rgba: 4278196238
 --- !u!210 &6710324009884622373
 SortingGroup:
   m_ObjectHideFlags: 0
@@ -230,7 +230,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 10
+  m_SortingOrder: 0
   m_Sprite: {fileID: 1684547497, guid: c83126a27136e0f45a01505fefe1299d, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 0}
   m_FlipX: 0
