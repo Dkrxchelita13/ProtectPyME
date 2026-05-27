@@ -109,7 +109,11 @@ public class PreguntasController : MonoBehaviour
         else
         {
             Debug.Log("🎉 Juego terminado");
-
+            StartCoroutine(
+                APIManager.Instance.SendScore(
+                    GamificacionController.puntaje
+                )
+            );
             txtPreguntaDisplay.text = "¡Completaste el juego!";
 
             bloqueado = true;

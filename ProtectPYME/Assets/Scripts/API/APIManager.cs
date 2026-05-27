@@ -281,13 +281,20 @@ public class QuizList
 }
 
 [System.Serializable]
-public class WordData
+public class WordsearchData
 {
-    public string word;
+    public string clue;
+    public string answer;
+}
+
+[System.Serializable]
+public class WordsearchList
+{
+    public WordsearchData[] items;
 }
 
 [System.Serializable]
 public class WordList
 {
-    public WordData[] items;
+    public WordsearchData[] items;
 }

@@ -263,7 +263,9 @@ public class CrosswordController : MonoBehaviour
             juegoTerminado = true;
 
             canvasGanador.SetActive(true);
-
+            StartCoroutine(
+                APIManager.Instance.SendScore(100)
+            );
             CrosswordInput input =
                 FindObjectOfType<CrosswordInput>();
 
