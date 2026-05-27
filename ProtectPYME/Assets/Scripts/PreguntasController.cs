@@ -58,7 +58,7 @@ public class PreguntasController : MonoBehaviour
             return;
         }
 
-        StartCoroutine(APIManager.Instance.GetCrossword(OnCrosswordLoaded));
+        StartCoroutine(APIManager.Instance.GetWords(OnCrosswordLoaded));
     }
     void OnCrosswordLoaded(string json)
     {
