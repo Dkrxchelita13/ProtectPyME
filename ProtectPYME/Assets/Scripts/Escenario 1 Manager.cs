@@ -4,6 +4,7 @@ using UnityEngine.SceneManagement;
 
 public class Escenario1Manager : MonoBehaviour
 {
+    private float tiempoInicio;
     public GameObject panelIntroduccion;
     public GameObject panelCorreo;
     public GameObject panelSospechoso;
@@ -28,6 +29,7 @@ public class Escenario1Manager : MonoBehaviour
 
     void Start()
     {
+        tiempoInicio = Time.time;
         ActualizarCorazones();
 
         panelBueno.SetActive(false);
@@ -176,6 +178,16 @@ public class Escenario1Manager : MonoBehaviour
         if (yaRespondio) return;
 
         yaRespondio = true;
+        int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
+        // 🔥 ENVIAR DECISION AL BACKEND
+        StartCoroutine(
+            APIManager.Instance.SendDecision(
+                1,
+                "reportar",
+                 tiempoRespuesta
+
+            )
+        );
 
         panelDecision.SetActive(false);
         panelBueno.SetActive(true);
@@ -194,6 +206,15 @@ public class Escenario1Manager : MonoBehaviour
         if (yaRespondio) return;
 
         yaRespondio = true;
+        int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
+        // 🔥 RESPUESTA INCORRECTA
+        StartCoroutine(
+            APIManager.Instance.SendDecision(
+                1,
+                "dar_contraseña",
+                tiempoRespuesta
+            )
+        );
 
         panelDecision.SetActive(false);
         panelMalo.SetActive(true);

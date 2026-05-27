@@ -146,12 +146,14 @@ public class APIManager : MonoBehaviour
         }
     }
     // 🔥 SEND DECISION (AQUÍ VA DENTRO)
-    public IEnumerator SendDecision(int scenarioId, string choice)
+    public IEnumerator SendDecision(int scenarioId, string choice, int responseTime)
     {
         string url = baseUrl + "/decisions/";
 
-        string json = JsonUtility.ToJson(new DecisionData(scenarioId, choice));
-
+        string json = JsonUtility.ToJson(
+            new DecisionData(scenarioId, choice, responseTime)
+        );
+        Debug.Log("📤 JSON decision: " + json);
         UnityWebRequest request = new UnityWebRequest(url, "POST");
         byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
 
@@ -255,11 +257,13 @@ public class DecisionData
 {
     public int scenario_id;
     public string choice;
+    public int response_time;
 
-    public DecisionData(int id, string c)
+    public DecisionData(int id, string c, int time)
     {
         scenario_id = id;
         choice = c;
+        response_time = time;
     }
 }
 [System.Serializable]

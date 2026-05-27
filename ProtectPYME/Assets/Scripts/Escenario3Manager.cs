@@ -4,6 +4,8 @@ using UnityEngine.SceneManagement;
 
 public class Escenario3Manager : MonoBehaviour
 {
+    private float tiempoInicio;
+    private bool yaRespondio = false;
     public GameObject panelUSB;
     public GameObject panelDecision;
     public GameObject panelMalo;
@@ -23,6 +25,7 @@ public class Escenario3Manager : MonoBehaviour
 
     void Start()
     {
+        tiempoInicio = Time.time;
 
         if (GameManagerGlobal.instancia == null)
         {
@@ -103,6 +106,18 @@ public class Escenario3Manager : MonoBehaviour
 
     public void OpcionMala()
     {
+        if (yaRespondio) return;
+
+        yaRespondio = true;
+        int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
+        StartCoroutine(
+            APIManager.Instance.SendDecision(
+                2,
+                "conectar_usb",
+                tiempoRespuesta
+            )
+        );
+
         panelDecision.SetActive(false);
         panelMalo.SetActive(true);
 
@@ -118,6 +133,18 @@ public class Escenario3Manager : MonoBehaviour
 
     public void OpcionBuena()
     {
+        if (yaRespondio) return;
+
+        yaRespondio = true;
+        int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
+        StartCoroutine(
+            APIManager.Instance.SendDecision(
+                2,
+                "no_conectar",
+                tiempoRespuesta
+            )
+        );
+
         panelDecision.SetActive(false);
         panelBueno.SetActive(true);
 
@@ -163,6 +190,8 @@ public class Escenario3Manager : MonoBehaviour
 
     public void OtroIntento()
     {
+        yaRespondio = false;
+
         panelMalo.SetActive(false);
         panelDecision.SetActive(true);
     }

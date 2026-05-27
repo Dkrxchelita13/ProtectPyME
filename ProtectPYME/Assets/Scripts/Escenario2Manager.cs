@@ -4,6 +4,8 @@ using UnityEngine.SceneManagement;
 
 public class Escenario2Manager : MonoBehaviour
 {
+    private float tiempoInicio;
+    private bool yaRespondio = false;
     public GameObject panelAlerta;
     public GameObject panelDetalle;
     public GameObject panelDecision;
@@ -24,6 +26,7 @@ public class Escenario2Manager : MonoBehaviour
 
     void Start()
     {
+        tiempoInicio = Time.time;
         camara.orthographicSize = 3.6f;
 
         ActualizarCorazones();
@@ -123,6 +126,19 @@ public class Escenario2Manager : MonoBehaviour
 
     public void OpcionMala()
     {
+        if (yaRespondio) return;
+
+        yaRespondio = true;
+        int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
+
+        StartCoroutine(
+            APIManager.Instance.SendDecision(
+                3,
+                "usar_password",
+                tiempoRespuesta
+            )
+        );
+
         panelDecision.SetActive(false);
         panelMalo.SetActive(true);
 
@@ -137,6 +153,19 @@ public class Escenario2Manager : MonoBehaviour
 
     public void OpcionMedia()
     {
+        if (yaRespondio) return;
+
+        yaRespondio = true;
+        int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
+
+        StartCoroutine(
+            APIManager.Instance.SendDecision(
+                3,
+                "usar_123456",
+                tiempoRespuesta
+            )
+        );
+
         panelDecision.SetActive(false);
         panelMalo.SetActive(true);
 
@@ -151,6 +180,19 @@ public class Escenario2Manager : MonoBehaviour
 
     public void OpcionBuena()
     {
+        if (yaRespondio) return;
+
+        yaRespondio = true;
+        int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
+
+        StartCoroutine(
+            APIManager.Instance.SendDecision(
+                3,
+                "no_usar",
+                tiempoRespuesta
+            )
+        );
+
         panelDecision.SetActive(false);
         panelBueno.SetActive(true);
 
@@ -194,6 +236,8 @@ public class Escenario2Manager : MonoBehaviour
 
     public void OtroIntento()
     {
+        yaRespondio = false;
+
         panelMalo.SetActive(false);
         panelDecision.SetActive(true);
     }
