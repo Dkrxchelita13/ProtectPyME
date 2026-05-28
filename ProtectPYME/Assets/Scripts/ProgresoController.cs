@@ -18,42 +18,53 @@ public class ProgresoController : MonoBehaviour
 
     public void CargarYMostrarProgreso()
     {
-        // 1. Recuperamos los datos acumulados de PlayerPrefs
-        // El segundo parámetro (0) es el valor por defecto si no hay nada guardado
-        int puntosTotales = PlayerPrefs.GetInt("PuntajeTotal", 0);
-        int totalPartidas = PlayerPrefs.GetInt("PartidasJugadas", 0);
-        float sumaSeguridades = PlayerPrefs.GetFloat("SumaSeguridades", 0f);
-        int recordVidas = PlayerPrefs.GetInt("RecordVidas", 0);
-
-        // 2. Calculamos el promedio de seguridad
-        float promedioSeguridad = 0f;
-        if (totalPartidas > 0)
+        StartCoroutine(
+            APIManager.Instance.GetAnalytics(
+                ProcesarAnalytics
+            )
+        );
+        void ProcesarAnalytics(string json)
         {
-            promedioSeguridad = sumaSeguridades / totalPartidas;
+            if (json == "ERROR" || json == "NO_TOKEN")
+            {
+                Debug.LogError("❌ No se pudo cargar analytics");
+                return;
+            }
+
+            AnalyticsData data =
+                JsonUtility.FromJson<AnalyticsData>(json);
+
+            // Awareness Score
+            if (txtPuntajeTotal != null)
+            {
+                txtPuntajeTotal.text =
+                    data.awareness_score.ToString("F0");
+            }
+
+            // Accuracy
+            if (txtSeguridadPromedio != null)
+            {
+                txtSeguridadPromedio.text =
+                    data.accuracy.ToString("F0") + "%";
+            }
+
+            // Decisiones últimos 7 días
+            if (txtPartidasJugadas != null)
+            {
+                txtPartidasJugadas.text =
+                    "Decisiones: " +
+                    data.decisions_last_7_days;
+            }
+
+            // Risk Index
+            if (txtVidasMax != null)
+            {
+                txtVidasMax.text =
+                    data.risk_index.ToString("F0");
+            }
+
+            Debug.Log("✅ Analytics mostrados");
         }
 
-        // 3. Mostramos en los textos con formato
-        if (txtPuntajeTotal != null)
-        {
-            // "D6" para mostrar los ceros (ej: 000030)
-            txtPuntajeTotal.text = puntosTotales.ToString("D6");
-        }
-
-        if (txtSeguridadPromedio != null)
-        {
-            // "F0" para que no muestre decimales (ej: 85%)
-            txtSeguridadPromedio.text = promedioSeguridad.ToString("F0");
-        }
-
-        if (txtPartidasJugadas != null)
-        {
-            txtPartidasJugadas.text = "Partidas Jugadas: " + totalPartidas;
-        }
-
-        if (txtVidasMax != null)
-        {
-            txtVidasMax.text = recordVidas.ToString();
-        }
-        
     }
 }

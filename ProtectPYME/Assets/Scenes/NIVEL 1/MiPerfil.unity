@@ -1217,6 +1217,7 @@ GameObject:
   - component: {fileID: 1037952756}
   - component: {fileID: 1037952758}
   - component: {fileID: 1037952759}
+  - component: {fileID: 1037952760}
   m_Layer: 0
   m_Name: GameController
   m_TagString: Untagged
@@ -1285,6 +1286,20 @@ MonoBehaviour:
   txtSeguridadPromedio: {fileID: 1371879925}
   txtPartidasJugadas: {fileID: 0}
   txtVidasMax: {fileID: 438238850}
+--- !u!114 &1037952760
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1037952755}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f7166e7705e1f148a01a187bbbb1bff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  contenido: {fileID: 0}
+  filaPrefab: {fileID: 7301265472609231394, guid: cbbb42296345214418aae84861afa9ec, type: 3}
 --- !u!1 &1044313544
 GameObject:
   m_ObjectHideFlags: 0
@@ -3049,8 +3064,8 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 658447503}
   m_HandleRect: {fileID: 658447502}
   m_Direction: 0
-  m_Value: 0
-  m_Size: 0.86325306
+  m_Value: 0.0000002688772
+  m_Size: 0.86325294
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -3175,7 +3190,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 290023717}
   m_HandleRect: {fileID: 290023716}
   m_Direction: 2
-  m_Value: 0
+  m_Value: 1
   m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:

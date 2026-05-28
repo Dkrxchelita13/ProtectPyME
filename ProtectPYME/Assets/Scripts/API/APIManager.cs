@@ -231,6 +231,87 @@ public class APIManager : MonoBehaviour
             callback?.Invoke("ERROR");
         }
     }
+    // 🔥 GET ANALYTICS
+    public IEnumerator GetAnalytics(System.Action<string> callback)
+    {
+        if (string.IsNullOrEmpty(token))
+        {
+            Debug.LogError("❌ No hay token");
+            callback?.Invoke("NO_TOKEN");
+            yield break;
+        }
+
+        string url = baseUrl + "/users/me/analytics";
+
+        UnityWebRequest request = UnityWebRequest.Get(url);
+
+        request.SetRequestHeader(
+            "Authorization",
+            "Bearer " + token
+        );
+
+        yield return request.SendWebRequest();
+
+        if (request.result == UnityWebRequest.Result.Success)
+        {
+            Debug.Log("✅ Analytics recibidos");
+            Debug.Log(request.downloadHandler.text);
+
+            callback?.Invoke(request.downloadHandler.text);
+        }
+        else
+        {
+            Debug.LogError(
+                "❌ Error analytics: " + request.error
+            );
+
+            callback?.Invoke("ERROR");
+        }
+    }
+    // 🔥 GET LEADERBOARD
+    public IEnumerator GetLeaderboard(
+        System.Action<string> callback
+    )
+    {
+        if (string.IsNullOrEmpty(token))
+        {
+            Debug.LogError("❌ No hay token");
+
+            callback?.Invoke("NO_TOKEN");
+            yield break;
+        }
+
+        string url = baseUrl + "/leaderboard/";
+
+        UnityWebRequest request =
+            UnityWebRequest.Get(url);
+
+        request.SetRequestHeader(
+            "Authorization",
+            "Bearer " + token
+        );
+
+        yield return request.SendWebRequest();
+
+        if (request.result ==
+            UnityWebRequest.Result.Success)
+        {
+            Debug.Log("✅ Leaderboard recibido");
+
+            callback?.Invoke(
+                request.downloadHandler.text
+            );
+        }
+        else
+        {
+            Debug.LogError(
+                "❌ Error leaderboard: " +
+                request.error
+            );
+
+            callback?.Invoke("ERROR");
+        }
+    }
 }
 [System.Serializable]
 public class LoginData
@@ -297,4 +378,29 @@ public class WordsearchList
 public class WordList
 {
     public WordsearchData[] items;
+}
+[System.Serializable]
+public class AnalyticsData
+{
+    public string level;
+    public float accuracy;
+    public float risk_index;
+    public float awareness_score;
+    public bool high_risk_user;
+    public string most_failed_category;
+    public int decisions_last_7_days;
+}
+[System.Serializable]
+public class LeaderboardUser
+{
+    public int rank;
+    public int id;
+    public string name;
+    public int total_points;
+}
+
+[System.Serializable]
+public class LeaderboardList
+{
+    public LeaderboardUser[] items;
 }
