@@ -5,35 +5,54 @@ using UnityEngine.SceneManagement;
 public class Escenario2Manager : MonoBehaviour
 {
     private float tiempoInicio;
-    private bool yaRespondio = false;
+
+    [Header("Paneles")]
+    public GameObject panelIntroduccion;
     public GameObject panelAlerta;
     public GameObject panelDetalle;
     public GameObject panelDecision;
     public GameObject panelMalo;
     public GameObject panelBueno;
+    public GameObject panelRetroCorrecto;
+    public GameObject panelRetroIncorrecto;
 
+    [Header("Corazones")]
     public GameObject[] corazones;
+
+    [Header("Cámara")]
     public Camera camara;
 
+    [Header("Audio")]
     public AudioSource audioSource;
     public AudioClip sonidoDetalle;
-    public AudioClip sonidoCorreo; 
+    public AudioClip sonidoCorreo;
     public AudioClip sonidoBoton;
     public AudioClip sonidoError;
     public AudioClip sonidoCorrecto;
 
-    int panelActual = 0; 
+    private bool yaRespondio = false;
+
+    /*
+        0 = Introducción
+        1 = Alerta
+        2 = Detalle
+        3 = Decisión
+        4 = Retro Correcta
+        5 = Retro Incorrecta
+    */
+
+    int panelActual = 0;
 
     void Start()
     {
         tiempoInicio = Time.time;
-        camara.orthographicSize = 3.6f;
 
         ActualizarCorazones();
 
-        panelActual = 0;
+        panelBueno.SetActive(false);
+        panelMalo.SetActive(false);
 
-        MostrarAlerta(); 
+        MostrarIntroduccion();
     }
 
     void Update()
@@ -45,83 +64,179 @@ public class Escenario2Manager : MonoBehaviour
         {
             float mitad = Screen.width / 2;
 
+            // CLICK DERECHA = SIGUIENTE
             if (Input.mousePosition.x > mitad)
+            {
                 SiguientePanel();
+            }
+            // CLICK IZQUIERDA = ANTERIOR
             else
+            {
                 PanelAnterior();
+            }
         }
     }
 
- 
+    // =========================
+    // PANELES
+    // =========================
+
+    void MostrarIntroduccion()
+    {
+        panelActual = 0;
+
+        panelIntroduccion.SetActive(true);
+        panelAlerta.SetActive(false);
+        panelDetalle.SetActive(false);
+        panelDecision.SetActive(false);
+        panelBueno.SetActive(false);
+        panelMalo.SetActive(false);
+        panelRetroCorrecto.SetActive(false);
+        panelRetroIncorrecto.SetActive(false);
+
+        ReproducirSonido(sonidoCorreo);
+    }
+
     void MostrarAlerta()
     {
+        panelActual = 1;
+
+        panelIntroduccion.SetActive(false);
         panelAlerta.SetActive(true);
         panelDetalle.SetActive(false);
         panelDecision.SetActive(false);
+        panelBueno.SetActive(false);
+        panelMalo.SetActive(false);
+        panelRetroCorrecto.SetActive(false);
+        panelRetroIncorrecto.SetActive(false);
 
-        if (audioSource != null && sonidoCorreo != null)
-        {
-            audioSource.Stop();
-            audioSource.PlayOneShot(sonidoCorreo);
-        }
+        ReproducirSonido(sonidoCorreo);
     }
 
     void MostrarDetalle()
     {
+        panelActual = 2;
+
+        panelIntroduccion.SetActive(false);
         panelAlerta.SetActive(false);
         panelDetalle.SetActive(true);
         panelDecision.SetActive(false);
+        panelBueno.SetActive(false);
+        panelMalo.SetActive(false);
+        panelRetroCorrecto.SetActive(false);
+        panelRetroIncorrecto.SetActive(false);
 
-        if (audioSource != null && sonidoCorreo != null)
-        {
-            audioSource.Stop();
-            audioSource.PlayOneShot(sonidoCorreo);
-        }
+        ReproducirSonido(sonidoCorreo);
     }
-
 
     void MostrarDecision()
     {
+        panelActual = 3;
+
+        panelIntroduccion.SetActive(false);
         panelAlerta.SetActive(false);
         panelDetalle.SetActive(false);
         panelDecision.SetActive(true);
+        panelBueno.SetActive(false);
+        panelMalo.SetActive(false);
+        panelRetroCorrecto.SetActive(false);
+        panelRetroIncorrecto.SetActive(false);
 
-        if (audioSource != null && sonidoDetalle != null)
-        {
-            audioSource.Stop();
-            audioSource.PlayOneShot(sonidoDetalle);
-        }
+        ReproducirSonido(sonidoDetalle);
 
         StartCoroutine(ZoomSuave(3.6f));
     }
+
+    void MostrarRetroCorrecta()
+    {
+        panelActual = 4;
+
+        panelIntroduccion.SetActive(false);
+        panelAlerta.SetActive(false);
+        panelDetalle.SetActive(false);
+        panelDecision.SetActive(false);
+        panelBueno.SetActive(false);
+        panelMalo.SetActive(false);
+        panelRetroCorrecto.SetActive(true);
+        panelRetroIncorrecto.SetActive(false);
+
+        ReproducirSonido(sonidoDetalle);
+
+        StartCoroutine(ZoomSuave(3.6f));
+    }
+
+    void MostrarRetroIncorrecta()
+    {
+        panelActual = 5;
+
+        panelIntroduccion.SetActive(false);
+        panelAlerta.SetActive(false);
+        panelDetalle.SetActive(false);
+        panelDecision.SetActive(false);
+        panelBueno.SetActive(false);
+        panelMalo.SetActive(false);
+        panelRetroCorrecto.SetActive(false);
+        panelRetroIncorrecto.SetActive(true);
+
+        ReproducirSonido(sonidoDetalle);
+
+        StartCoroutine(ZoomSuave(3.6f));
+    }
+
+    // =========================
+    // NAVEGACIÓN
+    // =========================
 
     void SiguientePanel()
     {
         if (panelActual == 0)
         {
-            panelActual = 1;
-            MostrarDetalle();
+            MostrarAlerta();
         }
         else if (panelActual == 1)
         {
-            panelActual = 2;
+            MostrarDetalle();
+        }
+        else if (panelActual == 2)
+        {
             MostrarDecision();
         }
     }
-
 
     void PanelAnterior()
     {
         if (panelActual == 1)
         {
-            panelActual = 0;
-            MostrarAlerta();
+            MostrarIntroduccion();
         }
         else if (panelActual == 2)
         {
-            panelActual = 1;
+            MostrarAlerta();
+        }
+        else if (panelActual == 3)
+        {
             MostrarDetalle();
         }
+    }
+
+    // =========================
+    // RESPUESTAS
+    // =========================
+
+    public void OpcionBuena()
+    {
+        if (yaRespondio) return;
+
+        yaRespondio = true;
+
+        int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
+
+        panelDecision.SetActive(false);
+        panelBueno.SetActive(true);
+
+        ReproducirSonido(sonidoCorrecto);
+
+        Invoke(nameof(MostrarRetroCorrecta), 2f);
     }
 
     public void OpcionMala()
@@ -129,24 +244,15 @@ public class Escenario2Manager : MonoBehaviour
         if (yaRespondio) return;
 
         yaRespondio = true;
-        int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
 
-        StartCoroutine(
-            APIManager.Instance.SendDecision(
-                3,
-                "usar_password",
-                tiempoRespuesta
-            )
-        );
+        int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
 
         panelDecision.SetActive(false);
         panelMalo.SetActive(true);
 
-        if (audioSource != null && sonidoError != null)
-        {
-            audioSource.Stop();
-            audioSource.PlayOneShot(sonidoError);
-        }
+        ReproducirSonido(sonidoError);
+
+        Invoke(nameof(MostrarRetroIncorrecta), 2f);
 
         PerderVida();
     }
@@ -156,59 +262,42 @@ public class Escenario2Manager : MonoBehaviour
         if (yaRespondio) return;
 
         yaRespondio = true;
-        int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
 
-        StartCoroutine(
-            APIManager.Instance.SendDecision(
-                3,
-                "usar_123456",
-                tiempoRespuesta
-            )
-        );
+        int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
 
         panelDecision.SetActive(false);
         panelMalo.SetActive(true);
 
-        if (audioSource != null && sonidoError != null)
-        {
-            audioSource.Stop();
-            audioSource.PlayOneShot(sonidoError);
-        }
+        ReproducirSonido(sonidoError);
+
+        Invoke(nameof(MostrarRetroIncorrecta), 2f);
 
         PerderVida();
     }
 
-    public void OpcionBuena()
+    public void OtroIntento()
     {
-        if (yaRespondio) return;
+        panelBueno.SetActive(false);
+        panelMalo.SetActive(false);
+        panelDecision.SetActive(true);
+        panelRetroCorrecto.SetActive(false);
+        panelRetroIncorrecto.SetActive(false);
 
-        yaRespondio = true;
-        int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
-
-        StartCoroutine(
-            APIManager.Instance.SendDecision(
-                3,
-                "no_usar",
-                tiempoRespuesta
-            )
-        );
-
-        panelDecision.SetActive(false);
-        panelBueno.SetActive(true);
-
-        if (audioSource != null && sonidoCorrecto != null)
-        {
-            audioSource.Stop();
-            audioSource.PlayOneShot(sonidoCorrecto);
-        }
-
-        Invoke("IrAEscenario3", 2f);
+        yaRespondio = false;
     }
 
-    void IrAEscenario3()
+    // =========================
+    // ESCENAS
+    // =========================
+
+    public void IrAEscenario3()
     {
         SceneManager.LoadScene("MenuNivelInicial");
     }
+
+    // =========================
+    // VIDAS
+    // =========================
 
     void PerderVida()
     {
@@ -216,6 +305,7 @@ public class Escenario2Manager : MonoBehaviour
         {
             GameManagerGlobal.instancia.PerderVida();
         }
+
         ActualizarCorazones();
     }
 
@@ -234,35 +324,48 @@ public class Escenario2Manager : MonoBehaviour
         }
     }
 
-    public void OtroIntento()
-    {
-        yaRespondio = false;
+    // =========================
+    // AUDIO
+    // =========================
 
-        panelMalo.SetActive(false);
-        panelDecision.SetActive(true);
+    public void SonidoBoton()
+    {
+        ReproducirSonido(sonidoBoton);
     }
+
+    void ReproducirSonido(AudioClip clip)
+    {
+        if (audioSource != null && clip != null)
+        {
+            audioSource.Stop();
+            audioSource.PlayOneShot(clip);
+        }
+    }
+
+    // =========================
+    // EFECTOS
+    // =========================
 
     IEnumerator ZoomSuave(float tamaño)
     {
         float tiempo = 0f;
         float duracion = 1f;
+
         float tamañoInicial = camara.orthographicSize;
 
         while (tiempo < duracion)
         {
-            camara.orthographicSize = Mathf.Lerp(tamañoInicial, tamaño, tiempo / duracion);
+            camara.orthographicSize = Mathf.Lerp(
+                tamañoInicial,
+                tamaño,
+                tiempo / duracion
+            );
+
             tiempo += Time.deltaTime;
+
             yield return null;
         }
 
         camara.orthographicSize = tamaño;
-    }
-
-    public void SonidoBoton()
-    {
-        if (audioSource != null && sonidoBoton != null)
-        {
-            audioSource.PlayOneShot(sonidoBoton);
-        }
     }
 }
