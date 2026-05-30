@@ -3086,7 +3086,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 6448213085602687927, guid: b9e555c447e21b94c9e7cc806a05f450, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 5a9073548d21ca04eb7e649e7b202e4f, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -3557,7 +3557,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &937706589
 RectTransform:
   m_ObjectHideFlags: 0
@@ -3630,7 +3630,7 @@ MonoBehaviour:
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
-          m_StringArgument: Kahoot
+          m_StringArgument: MenuMinijuegos
           m_BoolArgument: 0
         m_CallState: 2
 --- !u!114 &937706591
@@ -4371,7 +4371,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 
+  m_text: 1
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 868c1bcd90868a047ab55aac3d5a4d98, type: 2}
   m_sharedMaterial: {fileID: -4344068156354698006, guid: 868c1bcd90868a047ab55aac3d5a4d98, type: 2}
@@ -6394,7 +6394,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 
+  m_text: 1
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 868c1bcd90868a047ab55aac3d5a4d98, type: 2}
   m_sharedMaterial: {fileID: -4344068156354698006, guid: 868c1bcd90868a047ab55aac3d5a4d98, type: 2}
@@ -6805,7 +6805,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 
+  m_text: 123
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 868c1bcd90868a047ab55aac3d5a4d98, type: 2}
   m_sharedMaterial: {fileID: -4344068156354698006, guid: 868c1bcd90868a047ab55aac3d5a4d98, type: 2}
