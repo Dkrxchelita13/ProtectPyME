@@ -1,70 +1,132 @@
 using UnityEngine;
 using TMPro;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class ProgresoController : MonoBehaviour
 {
-    [Header("Referencias de UI")]
+    [Header("Referencias de UI (Estadísticas/Progreso)")]
     public TextMeshProUGUI txtPuntajeTotal;
     public TextMeshProUGUI txtSeguridadPromedio;
     public TextMeshProUGUI txtPartidasJugadas;
     public TextMeshProUGUI txtVidasMax;
 
+    [Header("Lista Maestra de Niveles (Menú Selección)")]
+    public Button[] botonesNiveles; 
+
     void Start()
     {
-        // Al iniciar la escena, cargamos y mostramos los datos
+        // Al iniciar cualquiera de las dos escenas, solicita los datos al servidor
         CargarYMostrarProgreso();
     }
 
     public void CargarYMostrarProgreso()
     {
-        StartCoroutine(
-            APIManager.Instance.GetAnalytics(
-                ProcesarAnalytics
-            )
-        );
+        StartCoroutine(APIManager.Instance.GetAnalytics(ProcesarAnalytics));
+
         void ProcesarAnalytics(string json)
         {
             if (json == "ERROR" || json == "NO_TOKEN")
             {
                 Debug.LogError("❌ No se pudo cargar analytics");
+                BloquearNivelesPorDefecto();
                 return;
             }
 
-            AnalyticsData data =
-                JsonUtility.FromJson<AnalyticsData>(json);
+            AnalyticsData data = JsonUtility.FromJson<AnalyticsData>(json);
 
-            // Awareness Score
-            if (txtPuntajeTotal != null)
+            // 1. ASIGNACIÓN DE TEXTOS (Solo si existen en la escena actual)
+            if (txtPuntajeTotal != null) txtPuntajeTotal.text = data.awareness_score.ToString("F0");
+            if (txtSeguridadPromedio != null) txtSeguridadPromedio.text = data.accuracy.ToString("F0") + "%";
+            if (txtPartidasJugadas != null) txtPartidasJugadas.text = "Decisiones: " + data.decisions_last_7_days;
+            if (txtVidasMax != null) txtVidasMax.text = data.risk_index.ToString("F0");
+
+            Debug.Log("✅ Analytics cargados con éxito");
+
+            // 2. CONTROL DE BOTONES (Solo si fueron asignados en la escena actual)
+            if (botonesNiveles != null && botonesNiveles.Length > 0)
             {
-                txtPuntajeTotal.text =
-                    data.awareness_score.ToString("F0");
+                ControlarDesbloqueoDeNiveles(data);
             }
+        }
+    }
 
-            // Accuracy
-            if (txtSeguridadPromedio != null)
-            {
-                txtSeguridadPromedio.text =
-                    data.accuracy.ToString("F0") + "%";
-            }
+    void ControlarDesbloqueoDeNiveles(AnalyticsData data)
+    {
+        // El Nivel 1 (Índice 0) siempre está abierto
+        botonesNiveles[0].interactable = true;
+        SetBotonVisual(botonesNiveles[0], true);
 
-            // Decisiones últimos 7 días
-            if (txtPartidasJugadas != null)
-            {
-                txtPartidasJugadas.text =
-                    "Decisiones: " +
-                    data.decisions_last_7_days;
-            }
+        // Condición para abrir Nivel 2: awareness_score mayor o igual a 80
+        bool desbloquearNivel2 = (data.awareness_score >= 80f); 
 
-            // Risk Index
-            if (txtVidasMax != null)
-            {
-                txtVidasMax.text =
-                    data.risk_index.ToString("F0");
-            }
-
-            Debug.Log("✅ Analytics mostrados");
+        if (botonesNiveles.Length > 1)
+        {
+            botonesNiveles[1].interactable = desbloquearNivel2;
+            SetBotonVisual(botonesNiveles[1], desbloquearNivel2);
         }
 
+        // Condición para abrir Nivel 3: precisión mayor o igual a 70% (Ejemplo)
+        if (botonesNiveles.Length > 2)
+        {
+            bool desbloquearNivel3 = (data.accuracy >= 70f); 
+            botonesNiveles[2].interactable = desbloquearNivel3;
+            SetBotonVisual(botonesNiveles[2], desbloquearNivel3);
+        }
+        
+        // Bloquear el resto de niveles por si acaso
+        for (int i = 3; i < botonesNiveles.Length; i++)
+        {
+            botonesNiveles[i].interactable = false;
+            SetBotonVisual(botonesNiveles[i], false);
+        }
+    }
+
+    void SetBotonVisual(Button boton, bool estaDesbloqueado)
+    {
+        // Buscamos los componentes decorativos por su nombre dentro de este botón específico
+        Transform capaOpacidad = boton.transform.Find("Opacidad");
+        Transform iconoCandado = boton.transform.Find("Candado");   
+
+        if (estaDesbloqueado)
+        {
+            boton.GetComponent<Image>().color = Color.white;
+            if (capaOpacidad != null) capaOpacidad.gameObject.SetActive(false); // Quita la sombra
+            if (iconoCandado != null) iconoCandado.gameObject.SetActive(false); // Quita el candado
+
+            // Forzar a que los textos hijos (como el número) recuperen brillo completo
+            foreach (Transform hijo in boton.transform)
+            {
+                var txt = hijo.GetComponent<TextMeshProUGUI>();
+                if (txt != null) txt.alpha = 1.0f;
+            }
+        }
+        else
+        {
+            boton.GetComponent<Image>().color = Color.white;
+            if (capaOpacidad != null) capaOpacidad.gameObject.SetActive(true); // Pone la sombra
+            if (iconoCandado != null) iconoCandado.gameObject.SetActive(true); // Pone el candado
+
+            // Opacar el texto del número
+            foreach (Transform hijo in boton.transform)
+            {
+                var txt = hijo.GetComponent<TextMeshProUGUI>();
+                if (txt != null) txt.alpha = 0.3f;
+            }
+        }
+    }
+
+    void BloquearNivelesPorDefecto()
+    {
+        if (botonesNiveles == null || botonesNiveles.Length == 0) return;
+        
+        botonesNiveles[0].interactable = true;
+        SetBotonVisual(botonesNiveles[0], true);
+
+        for (int i = 1; i < botonesNiveles.Length; i++)
+        {
+            botonesNiveles[i].interactable = false;
+            SetBotonVisual(botonesNiveles[i], false);
+        }
     }
 }

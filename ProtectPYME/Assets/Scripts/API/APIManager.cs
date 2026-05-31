@@ -7,7 +7,7 @@ public class APIManager : MonoBehaviour
 {
     public static APIManager Instance;
 
-    private string baseUrl = "http://172.20.32.1:8000";
+    private string baseUrl = "http://192.168.56.1:8000";
     private string token;
 
     void Awake()

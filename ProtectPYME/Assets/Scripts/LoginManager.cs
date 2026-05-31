@@ -24,7 +24,7 @@ public class LoginManager : MonoBehaviour
     public TMP_InputField inputPassword;
     public TMP_Text txtStatus;
 
-    private string apiUrl = "http://172.20.32.1:8000/login"; // dchttp://192.168.1.72:8000
+    private string apiUrl = "http://192.168.56.1:8000/login"; //IP Erandi // dchttp://192.168.1.72:8000   //http://172.20.32.1:8000 IP Luz
 
     public void OnLoginClicked()
     {

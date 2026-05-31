@@ -119,8 +119,9 @@ public class PreguntasController : MonoBehaviour
             bloqueado = true;
             corriendoTiempo = false;
 
-            if (barraTiempo != null)
+            if (barraTiempo != null && barraTiempo2 != null)
                 barraTiempo.fillAmount = 0f;
+                barraTiempo2.fillAmount = 0f;
             if (canvasGanador != null)
             {
                 canvasGanador.SetActive(true);
@@ -313,6 +314,10 @@ public class PreguntasController : MonoBehaviour
 
     public Image barraTiempo;
     public TextMeshProUGUI txtTiempo;
+
+    public Image barraTiempo2;
+    public TextMeshProUGUI txtTiempo2;
+
     void Update()
     {
         if (!corriendoTiempo) return;
@@ -323,15 +328,17 @@ public class PreguntasController : MonoBehaviour
             tiempoRestante = 0f;
 
         // 🔥 barra
-        if (barraTiempo != null)
+        if (barraTiempo != null && barraTiempo2 != null)
         {
             barraTiempo.fillAmount = tiempoRestante / TIEMPO_MAX;
+            barraTiempo2.fillAmount = tiempoRestante / TIEMPO_MAX;
         }
 
         // 🔥 texto del reloj
-        if (txtTiempo != null)
+        if (txtTiempo != null && txtTiempo2 != null)
         {
             txtTiempo.text = Mathf.CeilToInt(tiempoRestante).ToString();
+            txtTiempo2.text = Mathf.CeilToInt(tiempoRestante).ToString();
         }
 
         // 🔥 tiempo terminado

@@ -1136,8 +1136,8 @@ Transform:
   m_GameObject: {fileID: 393098580}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalPosition: {x: -11.5, y: 4.5, z: 0}
+  m_LocalScale: {x: 0.5, y: 0.5, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -2072,7 +2072,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -465.3414, y: 0}
+  m_AnchoredPosition: {x: -457, y: 0}
   m_SizeDelta: {x: 591.2872, y: -396}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &803304017
@@ -2095,7 +2095,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "PRUEBA DE TEXTO \n"
+  m_text: jsuuwhsdhhehdehdehduehduehduheudhuhduhduehduehuehduehduedhudhuedhuduedhuehduedhuehduduedhuedhududhudhud
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 37f9a49cdb0421a4d9578ff286c9336e, type: 2}
   m_sharedMaterial: {fileID: -5021077410540963070, guid: 37f9a49cdb0421a4d9578ff286c9336e, type: 2}
@@ -2158,7 +2158,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: -22.369835, y: 0, z: 0, w: 0}
+  m_margin: {x: -102.79577, y: 0, z: -64.340485, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -2863,9 +2863,9 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1145677111}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -11.5, y: 4.5, z: 0}
+  m_LocalScale: {x: 0.5, y: 0.5, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -3112,8 +3112,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
-  m_AnchoredPosition: {x: 480.5241, y: 41.59671}
-  m_SizeDelta: {x: 697.9258, y: 680.9392}
+  m_AnchoredPosition: {x: 476, y: 24}
+  m_SizeDelta: {x: 650, y: 650}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1205803003
 MonoBehaviour:
@@ -3128,7 +3128,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 0, b: 0, a: 0}
+  m_Color: {r: 1, g: 0, b: 0, a: 0.9490196}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -3352,10 +3352,12 @@ MonoBehaviour:
   tilemap: {fileID: 1316491914}
   tileBlanco: {fileID: 11400000, guid: cd12d43c3469e08418ea988542d8dbc2, type: 2}
   numeroPrefab: {fileID: 2673182938108150817, guid: 291de0c84252af14d9af3ff347b5026e, type: 3}
-  gridOffset: {x: -13, y: 9}
-  tiempoRestante: 120
+  gridOffset: {x: -12, y: 4}
+  tiempoRestante: 90
   txtTimer: {fileID: 139291823}
-  barraTiempo: {fileID: 183796754}
+  barraTiempo: {fileID: 1092593560}
+  txtTimer2: {fileID: 196416774}
+  barraTiempo2: {fileID: 183796754}
   canvasGanador: {fileID: 742454042}
   canvasFinJuego: {fileID: 701124249}
 --- !u!1 &1263002521
@@ -11364,7 +11366,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 123456
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 868c1bcd90868a047ab55aac3d5a4d98, type: 2}
   m_sharedMaterial: {fileID: -4344068156354698006, guid: 868c1bcd90868a047ab55aac3d5a4d98, type: 2}
