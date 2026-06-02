@@ -36,7 +36,10 @@ public class CrosswordController : MonoBehaviour
     [Header("Timer")]
     public float tiempoRestante = 90f;
 
-    public TextMeshProUGUI txtTimer;
+    [Header("Sistema de Vidas")]
+    public int vidas = 3;
+
+    public TextMeshProUGUI txtTimer;
     public Image barraTiempo;
 
     public TextMeshProUGUI txtTimer2;
@@ -45,7 +48,13 @@ public class CrosswordController : MonoBehaviour
     private bool juegoTerminado = false;
     public GameObject canvasGanador;
     public GameObject canvasFinJuego;
-    void Start()
+
+    [Header("Pantalla Ganador")]
+
+    public TextMeshProUGUI txtPuntos;
+    public TextMeshProUGUI txtVidas;
+    public TextMeshProUGUI txtSeguridad;
+    void Start()
     {
         Debug.Log("🧹 LIMPIANDO OBJETOS EXTRA");
 
@@ -266,10 +275,39 @@ public class CrosswordController : MonoBehaviour
             juegoTerminado = true;
 
             canvasGanador.SetActive(true);
-            StartCoroutine(
-                APIManager.Instance.SendScore(100)
-            );
-            CrosswordInput input =
+            int score =
+                Mathf.RoundToInt(
+                    tiempoRestante * 2
+                );
+
+
+            txtVidas.text =
+                vidas.ToString();
+            float seguridad =
+                (tiempoRestante / 90f) * 100f;
+
+            if (txtPuntos != null)
+            {
+                txtPuntos.text =
+                    score.ToString();
+            }
+
+            if (txtVidas != null)
+            {
+                txtVidas.text =
+                    vidas.ToString();
+            }
+
+            if (txtSeguridad != null)
+            {
+                txtSeguridad.text =
+                    seguridad.ToString("F0");
+            }
+
+            StartCoroutine(
+                APIManager.Instance.SendScore(score)
+            );
+            CrosswordInput input =
                 FindObjectOfType<CrosswordInput>();
 
             if (input != null)

@@ -3360,6 +3360,9 @@ MonoBehaviour:
   barraTiempo2: {fileID: 183796754}
   canvasGanador: {fileID: 742454042}
   canvasFinJuego: {fileID: 701124249}
+  txtPuntos: {fileID: 291242635}
+  txtVidas: {fileID: 1710456455}
+  txtSeguridad: {fileID: 1851461466}
 --- !u!1 &1263002521
 GameObject:
   m_ObjectHideFlags: 0

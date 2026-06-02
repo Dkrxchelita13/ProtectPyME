@@ -240,6 +240,14 @@ public class Escenario1Manager : MonoBehaviour
 
         int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
 
+        StartCoroutine(
+            APIManager.Instance.SendDecision(
+                1,
+                "reportar_phishing",
+                tiempoRespuesta
+            )
+        );
+
         panelDecision.SetActive(false);
         panelBueno.SetActive(true);
 
@@ -256,6 +264,13 @@ public class Escenario1Manager : MonoBehaviour
 
         int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
 
+        StartCoroutine(
+            APIManager.Instance.SendDecision(
+                1,
+                "abrir_correo",
+                tiempoRespuesta
+            )
+        );
         panelDecision.SetActive(false);
         panelMalo.SetActive(true);
 

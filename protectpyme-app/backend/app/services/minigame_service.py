@@ -1,7 +1,22 @@
-def get_words():
+def get_crossword():
     return [
-        {"word": "PHISHING"},
-        {"word": "MALWARE"}
+        {
+            "clue": "Programa que protege contra virus",
+            "answer": "ANTIVIRUS"
+        },
+        {
+            "clue": "Red privada usada para navegar seguro",
+            "answer": "VPN"
+        },
+        {
+            "clue": "Clave secreta para acceder a una cuenta",
+            "answer": "PASSWORD"
+        },
+        {
+            "clue": "Ataque que bloquea un sistema",
+            "answer": "RANSOMWARE"
+        }
+
     ]
 
 def get_quiz():
@@ -22,13 +37,13 @@ def get_quiz():
             "answer": 0
         },
         {
-            "question": "Cómo es una contraseña segura?",
+            "question": "¿Cómo es una contraseña segura?",
             "options": ["123456", "abc", "Larga y compleja", "Cumpleaños"],
             "answer": 2
         }
     ]
 
-def get_crossword():
+def get_wordsearch():    
     return [
         {
             "clue": "Ataque para robar datos",

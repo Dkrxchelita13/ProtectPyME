@@ -254,11 +254,22 @@ public class PreguntasController : MonoBehaviour
             {
                 canvasGanador.SetActive(true);
 
-                txtPuntosFinal.text = GamificacionController.puntaje.ToString();
+                txtPuntosFinal.text =
+                    GamificacionController.puntaje.ToString();
 
-                txtVidasFinal.text = GamificacionController.vidas.ToString();
+                txtVidasFinal.text =
+                    GamificacionController.vidas.ToString();
 
-                txtSeguridadFinal.text = gamificacion.tiempoActual.ToString("0");
+                int seguridad =
+                    Mathf.RoundToInt(
+                        (
+                            (float)bancoDePreguntas.Length /
+                            bancoDePreguntas.Length
+                        ) * 100f
+                    );
+
+                txtSeguridadFinal.text =
+                    seguridad.ToString();
 
                 Time.timeScale = 0f;
             }

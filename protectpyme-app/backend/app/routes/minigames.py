@@ -5,9 +5,9 @@ from app.routes.auth import get_current_user
 router = APIRouter(prefix="/minigames", tags=["Minigames"])
 
 
-@router.get("/words")
+@router.get("/crossword")
 def get_words(current_user = Depends(get_current_user)):
-    return minigame_service.get_words()
+    return minigame_service.get_crossword()
 
 
 @router.get("/quiz")
@@ -15,6 +15,6 @@ def get_quiz(current_user = Depends(get_current_user)):
     return minigame_service.get_quiz()
 
 
-@router.get("/crossword")
+@router.get("/wordsearch")
 def get_crossword(current_user = Depends(get_current_user)):
-    return minigame_service.get_crossword()
+    return minigame_service.get_wordsearch()

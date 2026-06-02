@@ -79,7 +79,7 @@ public class QuizController : MonoBehaviour
 
         if (textoPuntaje != null)
         {
-            textoPuntaje.text = puntajeActual.ToString("D6");
+            textoPuntaje.text = puntajeActual.ToString();
         }
 
         if (imagenesBotones.Length > 0)
@@ -246,7 +246,7 @@ public void Responder(int indiceSeleccionado) {
     puntajeActual += cantidad; 
     if (textoPuntaje != null) {
         // "D6" rellena con ceros a la izquierda hasta completar 6 dígitos
-        textoPuntaje.text = puntajeActual.ToString("D6"); 
+        textoPuntaje.text = puntajeActual.ToString(); 
     }
     }
 
@@ -308,7 +308,7 @@ void BajarSeguridad(float porcentaje) {
 
         // Llenamos los datos finales
         if (textoPuntosFinal != null) 
-            textoPuntosFinal.text = puntajeActual.ToString("D6");
+            textoPuntosFinal.text = puntajeActual.ToString();
 
         if (textoVidasFinal != null) 
             textoVidasFinal.text = vidasRestantes.ToString();

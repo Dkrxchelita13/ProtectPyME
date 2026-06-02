@@ -217,13 +217,13 @@ public class Escenario3Manager : MonoBehaviour
 
         ReproducirSonido(sonidoCorrecto);
 
-        //StartCoroutine(
-            //APIManager.Instance.SendDecision(
-            //    2,
-             //   "no_conectar",
-             //   tiempoRespuesta
-            //)
-        //);
+        StartCoroutine(
+            APIManager.Instance.SendDecision(
+                3,
+                "no_conectar",
+                tiempoRespuesta
+            )
+        );
 
         Invoke(nameof(MostrarRetroCorrecta), 2f);
     }
@@ -241,13 +241,13 @@ public class Escenario3Manager : MonoBehaviour
 
         ReproducirSonido(sonidoError);
 
-       // StartCoroutine(
-            //APIManager.Instance.SendDecision(
-            //    2,
-              //  "conectar_usb",
-              //  tiempoRespuesta
-           // )
-       // );
+        StartCoroutine(
+            APIManager.Instance.SendDecision(
+                3,
+                "conectar_usb",
+                tiempoRespuesta
+            )
+        );
 
         Invoke(nameof(MostrarRetroIncorrecta), 2f);
 

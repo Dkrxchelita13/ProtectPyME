@@ -7,8 +7,12 @@ public class LeaderboardController : MonoBehaviour
     public Transform contenido;
     public GameObject filaPrefab;
 
+
+
     void Start()
     {
+        Debug.Log("LeaderboardController iniciado en: " + gameObject.name);
+
         StartCoroutine(
             APIManager.Instance.GetLeaderboard(
                 ProcesarLeaderboard

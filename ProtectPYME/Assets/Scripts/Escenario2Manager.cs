@@ -231,6 +231,13 @@ public class Escenario2Manager : MonoBehaviour
 
         int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
 
+        StartCoroutine(
+            APIManager.Instance.SendDecision(
+                2,
+                "cambiar_password",
+                tiempoRespuesta
+            )
+        );
         panelDecision.SetActive(false);
         panelBueno.SetActive(true);
 
@@ -246,6 +253,14 @@ public class Escenario2Manager : MonoBehaviour
         yaRespondio = true;
 
         int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
+
+        StartCoroutine(
+            APIManager.Instance.SendDecision(
+                2,
+                "ignorar_alerta",
+                tiempoRespuesta
+            )
+        );
 
         panelDecision.SetActive(false);
         panelMalo.SetActive(true);
@@ -264,6 +279,14 @@ public class Escenario2Manager : MonoBehaviour
         yaRespondio = true;
 
         int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
+
+        StartCoroutine(
+            APIManager.Instance.SendDecision(
+                2,
+                "posponer_cambio",
+                tiempoRespuesta
+            )
+        );
 
         panelDecision.SetActive(false);
         panelMalo.SetActive(true);
