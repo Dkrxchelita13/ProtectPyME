@@ -2,6 +2,7 @@
 using UnityEngine.Networking;
 using System.Collections;
 using System.Text;
+using TMPro;
 
 public class APIManager : MonoBehaviour
 {
@@ -10,6 +11,66 @@ public class APIManager : MonoBehaviour
     private string baseUrl = "http://192.168.56.1:8000";
     private string token;
 
+
+
+    public IEnumerator Register(
+        string nombre,
+        string email,
+        string password,
+        TMP_Text mensajeUI
+    )
+    {
+        RegisterRequest req = new RegisterRequest();
+
+        req.name = nombre;
+        req.email = email;
+        req.password = password;
+
+        string json = JsonUtility.ToJson(req);
+
+        UnityWebRequest request =
+            new UnityWebRequest(
+                baseUrl + "/users/",
+                "POST"
+            );
+
+        byte[] bodyRaw =
+            Encoding.UTF8.GetBytes(json);
+
+        request.uploadHandler =
+            new UploadHandlerRaw(bodyRaw);
+
+        request.downloadHandler =
+            new DownloadHandlerBuffer();
+
+        request.SetRequestHeader(
+            "Content-Type",
+            "application/json"
+        );
+
+        yield return request.SendWebRequest();
+
+        if (request.result ==
+            UnityWebRequest.Result.Success)
+        {
+            mensajeUI.text =
+                "Usuario registrado correctamente";
+
+            Debug.Log(
+                "Registro exitoso: "
+                + request.downloadHandler.text
+            );
+        }
+        else
+        {
+            mensajeUI.text =
+                "Error al registrar usuario";
+
+            Debug.LogError(
+                request.downloadHandler.text
+            );
+        }
+    }
     void Awake()
     {
         if (Instance == null)
@@ -403,4 +464,20 @@ public class LeaderboardUser
 public class LeaderboardList
 {
     public LeaderboardUser[] items;
+}
+
+[System.Serializable]
+public class RegisterRequest
+{
+    public string name;
+    public string email;
+    public string password;
+}
+
+[System.Serializable]
+public class RegisterResponse
+{
+    public int id;
+    public string name;
+    public string email;
 }

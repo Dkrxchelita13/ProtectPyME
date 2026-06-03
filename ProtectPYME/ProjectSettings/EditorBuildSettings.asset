@@ -38,7 +38,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/NIVEL 1/Kahoot.unity
     guid: f08b456f21b4a854eacde938b2130ba7
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/NIVEL 1/Escenario1_Pishing.unity
     guid: 89da8ef77b97c4273b8794c1e83a10f7
   - enabled: 1
@@ -47,4 +47,10 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/NIVEL 1/Escenario 3 (USB sospechoso).unity
     guid: dc2d070750c95484aaff55e84598fa68
+  - enabled: 1
+    path: Assets/Scenes/NIVEL 1/Register.unity
+    guid: a3ee7570b73c9d04c9d2f15827d643b4
+  - enabled: 1
+    path: Assets/Scenes/NIVEL 1/Login.unity
+    guid: c7c79bfa29464d8458e0f131622bba47
   m_configObjects: {}
