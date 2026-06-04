@@ -2072,7 +2072,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -457, y: 0}
+  m_AnchoredPosition: {x: -457, y: 37}
   m_SizeDelta: {x: 591.2872, y: -396}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &803304017
@@ -2122,8 +2122,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 70
-  m_fontSizeBase: 70
+  m_fontSize: 65
+  m_fontSizeBase: 65
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -3354,6 +3354,7 @@ MonoBehaviour:
   numeroPrefab: {fileID: 2673182938108150817, guid: 291de0c84252af14d9af3ff347b5026e, type: 3}
   gridOffset: {x: -12, y: 4}
   tiempoRestante: 90
+  vidas: 3
   txtTimer: {fileID: 139291823}
   barraTiempo: {fileID: 1092593560}
   txtTimer2: {fileID: 196416774}

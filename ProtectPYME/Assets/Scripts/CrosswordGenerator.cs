@@ -7,7 +7,7 @@ public class CrosswordGenerator
     {
         CrosswordModel model = new CrosswordModel();
 
-        int size = 11;
+        int size = 20;
 
         model.width = size;
         model.height = size;
