@@ -95,7 +95,17 @@ def seed_scenarios():
                     description="Recibes un correo del 'banco' pidiendo tu contraseña",
                     difficulty="easy",
                     category="phishing",
-                    correct_choice="reportar",
+                    correct_choice="reportar_phishing",
+                    points_correct=10,
+                    points_incorrect=0
+                ),
+                
+                Scenario(
+                    title="Contraseña débil",
+                    description="Usar '123456' como contraseña en sistemas de la empresa",
+                    difficulty="easy",
+                    category="passwords",
+                    correct_choice="cambiar_password",
                     points_correct=10,
                     points_incorrect=0
                 ),
@@ -110,15 +120,6 @@ def seed_scenarios():
                     points_incorrect=0
                 ),
 
-                Scenario(
-                    title="Contraseña débil",
-                    description="Usar '123456' como contraseña en sistemas de la empresa",
-                    difficulty="easy",
-                    category="passwords",
-                    correct_choice="no_usar",
-                    points_correct=10,
-                    points_incorrect=0
-                ),
 
                 Scenario(
                     title="WiFi público",
