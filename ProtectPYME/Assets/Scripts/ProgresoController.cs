@@ -6,6 +6,7 @@ using UnityEngine.UI;
 public class ProgresoController : MonoBehaviour
 {
     [Header("Referencias de UI (Estadísticas/Progreso)")]
+    public TextMeshProUGUI txtInsignias;
     public TextMeshProUGUI txtPuntajeTotal;
     public TextMeshProUGUI txtSeguridadPromedio;
     public TextMeshProUGUI txtPartidasJugadas;
@@ -36,10 +37,19 @@ public class ProgresoController : MonoBehaviour
             AnalyticsData data = JsonUtility.FromJson<AnalyticsData>(json);
 
             // 1. ASIGNACIÓN DE TEXTOS (Solo si existen en la escena actual)
-            if (txtPuntajeTotal != null) txtPuntajeTotal.text = data.awareness_score.ToString("F0");
-            if (txtSeguridadPromedio != null) txtSeguridadPromedio.text = data.accuracy.ToString("F0") + "%";
-            if (txtPartidasJugadas != null) txtPartidasJugadas.text = "Decisiones: " + data.decisions_last_7_days;
-            if (txtVidasMax != null) txtVidasMax.text = data.risk_index.ToString("F0");
+
+            if (txtPuntajeTotal != null)
+                txtPuntajeTotal.text = data.total_points.ToString();
+
+            if (txtSeguridadPromedio != null)
+                txtSeguridadPromedio.text = data.accuracy.ToString("F0") + "%";
+
+            if (txtPartidasJugadas != null)
+                txtPartidasJugadas.text =
+                    Mathf.RoundToInt(data.awareness_score).ToString();
+
+            //if (txtVidasMax != null)
+               // txtVidasMax.text = "0";
 
             Debug.Log("✅ Analytics cargados con éxito");
 
@@ -49,6 +59,17 @@ public class ProgresoController : MonoBehaviour
                 ControlarDesbloqueoDeNiveles(data);
             }
         }
+
+        StartCoroutine(
+            APIManager.Instance.GetBadges(
+                cantidad =>
+                {
+                    if (txtInsignias != null)
+                        txtInsignias.text = cantidad.ToString();
+                }
+            )
+        );
+
     }
 
     void ControlarDesbloqueoDeNiveles(AnalyticsData data)

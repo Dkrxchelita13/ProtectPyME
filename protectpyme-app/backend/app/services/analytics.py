@@ -111,9 +111,10 @@ def get_user_analytics(db: Session, user_id: int):
     most_failed_category = most_failed[0] if most_failed else None
 
     logger.info(f"Analytics generated for user {user_id}")
-
+    
     return {
         "level": user.level,
+        "total_points": user.total_points,
         "accuracy": accuracy,
         "risk_index": risk_index,
         "awareness_score": awareness_score,
@@ -121,3 +122,20 @@ def get_user_analytics(db: Session, user_id: int):
         "most_failed_category": most_failed_category,
         "decisions_last_7_days": decisions_last_7_days
     }
+
+"""     return {
+        "level": user.level,
+        "accuracy": accuracy,
+        "risk_index": risk_index,
+        "awareness_score": awareness_score,
+        "high_risk_user": high_risk_user,
+        "most_failed_category": most_failed_category,
+        "decisions_last_7_days": decisions_last_7_days
+    } """
+    
+
+    
+    
+    
+    
+    

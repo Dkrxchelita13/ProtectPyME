@@ -373,8 +373,42 @@ public class APIManager : MonoBehaviour
             callback?.Invoke("ERROR");
         }
     }
+
+    public IEnumerator GetBadges(System.Action<int> callback)
+    {
+        string url = baseUrl + "/users/me/badges";
+
+        UnityWebRequest request =
+            UnityWebRequest.Get(url);
+
+        request.SetRequestHeader(
+            "Authorization",
+            "Bearer " + token
+        );
+
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogError(request.error);
+            callback(0);
+        }
+        else
+        {
+            string json =
+                request.downloadHandler.text;
+
+            json = "{\"badges\":" + json + "}";
+
+            BadgeList badgeList =
+                JsonUtility.FromJson<BadgeList>(json);
+
+            callback(badgeList.badges.Length);
+        }
+    }
 }
-[System.Serializable]
+    
+    [System.Serializable]
 public class LoginData
 {
     public string email;
@@ -444,12 +478,28 @@ public class WordList
 public class AnalyticsData
 {
     public string level;
+
+    public int total_points;
+
     public float accuracy;
     public float risk_index;
     public float awareness_score;
     public bool high_risk_user;
     public string most_failed_category;
     public int decisions_last_7_days;
+}
+[System.Serializable]
+public class BadgeData
+{
+    public int id;
+    public string name;
+    public string description;
+    public string icon;
+}
+[System.Serializable]
+public class BadgeList
+{
+    public BadgeData[] badges;
 }
 [System.Serializable]
 public class LeaderboardUser

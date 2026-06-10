@@ -4649,8 +4649,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7297b214bac1b49de939a99ceb5e7e88, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  panelActual: {fileID: 1311194151}
-  panelSiguiente: {fileID: 1822700968}
+  panelActual: {fileID: 0}
+  panelSiguiente: {fileID: 0}
 --- !u!114 &820585175
 MonoBehaviour:
   m_ObjectHideFlags: 0

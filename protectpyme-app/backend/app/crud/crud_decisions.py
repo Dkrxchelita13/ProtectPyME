@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
+from app.models import Badge, UserBadge
 from app import models, schemas
 from app.ai.rules import evaluate_decision
 from datetime import datetime, timedelta
@@ -88,6 +89,35 @@ def create_decision(db: Session, decision: schemas.DecisionCreate, user: models.
 
         #  Nivel automático
         user.level = calculate_level(user.total_points)
+        
+            # ===== BADGE: Primeros pasos =====
+
+        if user.total_decisions >= 1:
+
+            badge = (
+                db.query(Badge)
+                .filter(Badge.name == "Primeros pasos")
+                .first()
+            )
+
+            if badge:
+
+                already_has = (
+                    db.query(UserBadge)
+                    .filter(
+                        UserBadge.user_id == user.id,
+                        UserBadge.badge_id == badge.id
+                    )
+                    .first()
+                )
+
+                if not already_has:
+                    db.add(
+                        UserBadge(
+                            user_id=user.id,
+                            badge_id=badge.id
+                        )
+                    )
 
         #  Categorías
         update_user_category_points(
