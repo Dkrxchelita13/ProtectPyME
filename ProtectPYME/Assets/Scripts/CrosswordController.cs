@@ -275,10 +275,11 @@ public class CrosswordController : MonoBehaviour
             juegoTerminado = true;
 
             canvasGanador.SetActive(true);
-            int score =
-                Mathf.RoundToInt(
-                    tiempoRestante * 2
-                );
+            int score = 10;
+            //int score =
+                //Mathf.RoundToInt(
+                    //tiempoRestante * 2
+                //);
 
 
             txtVidas.text =

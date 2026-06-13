@@ -211,7 +211,7 @@ public void Responder(int indiceSeleccionado) {
         Image imagenIcono = iconosResultado[indiceSeleccionado].GetComponent<Image>();
 
         if (indiceSeleccionado == indiceCorrecto) {
-            SumarPuntos(30);
+            SumarPuntos(2);
             Debug.Log("¡Correcto!");
             // Feedback Visual Acierto
             imagenesBotones[indiceSeleccionado].color = colorCorrecto;

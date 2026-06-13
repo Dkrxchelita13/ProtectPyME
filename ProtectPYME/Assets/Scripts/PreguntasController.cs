@@ -206,7 +206,7 @@ public class PreguntasController : MonoBehaviour
 
             bloqueado = true;
 
-            gamificacion.SumarPuntos(10);
+            gamificacion.SumarPuntos(2);
 
             foreach (var c in casillasSeleccionadas)
                 c.MarcarCorrecta();
