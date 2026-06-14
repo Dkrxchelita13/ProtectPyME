@@ -3,6 +3,8 @@ using UnityEngine.Networking;
 using System.Collections;
 using System.Text;
 using TMPro;
+using System;
+
 
 public class APIManager : MonoBehaviour
 {
@@ -406,6 +408,38 @@ public class APIManager : MonoBehaviour
             callback(badgeList.badges.Length);
         }
     }
+
+    public IEnumerator GetAIRisk(
+        Action<AIRiskResponse> onSuccess,
+        Action<string> onError
+    )
+    {
+        string url = $"{baseUrl}/ai/risk/me";
+
+        UnityWebRequest request = UnityWebRequest.Get(url);
+
+        request.SetRequestHeader(
+            "Authorization",
+            "Bearer " + token
+        );
+
+        yield return request.SendWebRequest();
+
+        if (request.result == UnityWebRequest.Result.Success)
+        {
+            AIRiskResponse response =
+                JsonUtility.FromJson<AIRiskResponse>(
+                    request.downloadHandler.text
+                );
+
+            onSuccess?.Invoke(response);
+        }
+        else
+        {
+            onError?.Invoke(request.error);
+        }
+    }
+
 }
     
     [System.Serializable]

@@ -25,7 +25,7 @@ load_dotenv()
 
 from app.routes import minigames
 
-
+from app.routes import ai
 
 
 from app.routes import users, decisions, scenarios, auth, leaderboard, admin
@@ -78,7 +78,7 @@ app.include_router(auth.router)
 app.include_router(leaderboard.router)
 app.include_router(admin.router)
 app.include_router(minigames.router)
-
+app.include_router(ai.router)
 
 
 @app.get("/")

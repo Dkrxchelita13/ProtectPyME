@@ -3,6 +3,9 @@ using TMPro;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
+
+
+
 public class ProgresoController : MonoBehaviour
 {
     [Header("Referencias de UI (Estadísticas/Progreso)")]
@@ -12,6 +15,7 @@ public class ProgresoController : MonoBehaviour
     public TextMeshProUGUI txtPartidasJugadas;
     public TextMeshProUGUI txtVidasMax;
 
+    public TextMeshProUGUI txtRiskLevel;
     [Header("Lista Maestra de Niveles (Menú Selección)")]
     public Button[] botonesNiveles; 
 
@@ -66,6 +70,19 @@ public class ProgresoController : MonoBehaviour
                 {
                     if (txtInsignias != null)
                         txtInsignias.text = cantidad.ToString();
+                }
+            )
+        );
+
+
+        StartCoroutine(
+            APIManager.Instance.GetAIRisk(
+                OnRiskLoaded,
+                error =>
+                {
+                    Debug.LogError(
+                        "Error IA: " + error
+                    );
                 }
             )
         );
@@ -149,5 +166,41 @@ public class ProgresoController : MonoBehaviour
             botonesNiveles[i].interactable = false;
             SetBotonVisual(botonesNiveles[i], false);
         }
+    }
+
+
+    private void OnRiskLoaded(
+        AIRiskResponse data
+    )
+    {
+        if (txtRiskLevel == null)
+            return;
+
+        switch (data.risk_level)
+        {
+            case "BAJO":
+                txtRiskLevel.text = "BAJO";
+                break;
+
+            case "MEDIO":
+                txtRiskLevel.text = "MEDIO";
+                break;
+
+            case "ALTO":
+                txtRiskLevel.text = "ALTO";
+                break;
+
+            default:
+                txtRiskLevel.text = "N/A";
+                break;
+        }
+
+        Debug.Log(
+            "🤖 Riesgo IA: " +
+            data.risk_level +
+            " (" +
+            data.probability +
+            ")"
+        );
     }
 }
