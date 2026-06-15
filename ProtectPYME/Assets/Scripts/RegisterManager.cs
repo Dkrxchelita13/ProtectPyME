@@ -27,13 +27,13 @@ public class RegisterManager : MonoBehaviour
 
         if (inputPassword.text == "")
         {
-            txtMensaje.text = "Ingresa una contraseña";
+            txtMensaje.text = "Ingresa una contraseï¿½a";
             return;
         }
 
         if (inputPassword.text != inputConfirmPassword.text)
         {
-            txtMensaje.text = "Las contraseñas no coinciden";
+            txtMensaje.text = "Las contraseï¿½as no coinciden";
             return;
         }
 
@@ -49,6 +49,6 @@ public class RegisterManager : MonoBehaviour
 
     public void Volver()
     {
-        SceneManager.LoadScene("Login");
+        SceneManager.LoadScene("Inicio");
     }
 }
