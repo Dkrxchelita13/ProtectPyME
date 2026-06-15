@@ -39,3 +39,42 @@ def evaluate_decision(scenario, choice):
         "risk_level": risk_level,
         "feedback": feedback
     }
+    
+    
+def get_recommendation(category):
+
+    recommendations = {
+
+        "phishing": {
+            "training": "phishing",
+            "scenario": 1,
+            "message": "Practica detección de correos fraudulentos"
+        },
+
+        "password": {
+            "training": "password",
+            "scenario": 2,
+            "message": "Refuerza buenas prácticas de contraseñas"
+        },
+
+        "wifi": {
+            "training": "wifi",
+            "scenario": 3,
+            "message": "Evita redes públicas inseguras"
+        },
+
+        "social_engineering": {
+            "training": "social_engineering",
+            "scenario": 1,
+            "message": "Fortalece tus conocimientos sobre ingeniería social"
+        }
+    }
+
+    return recommendations.get(
+        category,
+        {
+            "training": "general",
+            "scenario": 1,
+            "message": "Continúa reforzando tus conocimientos"
+        }
+    )

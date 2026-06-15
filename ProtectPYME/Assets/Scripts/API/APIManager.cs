@@ -10,7 +10,7 @@ public class APIManager : MonoBehaviour
 {
     public static APIManager Instance;
 
-    private string baseUrl = "http://192.168.56.1:8000";
+    private string baseUrl = "https://protectpyme.onrender.com";
     private string token;
 
 

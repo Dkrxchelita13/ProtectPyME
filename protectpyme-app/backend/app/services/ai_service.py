@@ -1,6 +1,11 @@
 from sqlalchemy.orm import Session
 
+
+
 from app.ai.predict import RiskPredictor
+
+from app.ai.rules import get_recommendation
+
 from app.services.analytics import get_user_analytics
 from app.models import User
 
@@ -41,10 +46,24 @@ class AIService:
             "most_failed_category": analytics["most_failed_category"] or "phishing"
         }
 
+        
         prediction = predictor.predict_risk(features)
+
+        recommendation = get_recommendation(
+            analytics["most_failed_category"]
+        )
 
         return {
             "user_id": user_id,
             "risk_level": prediction["risk_level"],
-            "probability": prediction["probability"]
+            "probability": prediction["probability"],
+
+            "recommended_training":
+                recommendation["training"],
+
+            "recommended_scenario":
+                recommendation["scenario"],
+
+            "message":
+                recommendation["message"]
         }
