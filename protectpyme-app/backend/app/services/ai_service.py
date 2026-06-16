@@ -58,6 +58,8 @@ class AIService:
             "user_id": user_id,
             "risk_level": prediction["risk_level"],
             "probability": prediction["probability"],
+            "debug_category": analytics["most_failed_category"],
+
 
             "recommended_training":
                 recommendation["training"],
@@ -68,3 +70,4 @@ class AIService:
             "message":
                 recommendation["message"]
         }
+        
