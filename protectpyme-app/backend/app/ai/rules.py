@@ -53,28 +53,21 @@ def get_recommendation(category):
             "message": "Practica detección de correos fraudulentos"
         },
 
-        "password": {
-            "training": "passwords",
-            "scenario": 2,
-            "message": "Refuerza buenas prácticas de contraseñas"
-        },
-
         "passwords": {
             "training": "passwords",
             "scenario": 2,
             "message": "Refuerza buenas prácticas de contraseñas"
         },
 
-        "wifi": {
-            "training": "wifi",
+        "malware": {
+            "training": "malware",
             "scenario": 3,
-            "message": "Evita redes públicas inseguras"
+            "message": "Refuerza tus conocimientos sobre malware y software malicioso"
         },
-
-        "social_engineering": {
-            "training": "social_engineering",
-            "scenario": 1,
-            "message": "Fortalece tus conocimientos sobre ingeniería social"
+        "network": {
+            "training": "network",
+            "scenario": 4,
+            "message": "Aprende a protegerte al utilizar redes WiFi públicas"
         }
     }
 
