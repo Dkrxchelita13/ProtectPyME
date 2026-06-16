@@ -43,12 +43,20 @@ def evaluate_decision(scenario, choice):
     
 def get_recommendation(category):
 
+    category = (category or "").lower()
+
     recommendations = {
 
         "phishing": {
             "training": "phishing",
             "scenario": 1,
             "message": "Practica detección de correos fraudulentos"
+        },
+
+        "password": {
+            "training": "passwords",
+            "scenario": 2,
+            "message": "Refuerza buenas prácticas de contraseñas"
         },
 
         "passwords": {
@@ -75,6 +83,6 @@ def get_recommendation(category):
         {
             "training": "general",
             "scenario": 1,
-            "message": "Continúa reforzando tus conocimientos"
+            "message": "Excelente desempeño. No se detectaron áreas críticas de mejora."
         }
     )
