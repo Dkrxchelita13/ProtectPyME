@@ -372,7 +372,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -1120, y: -368.76877}
+  m_AnchoredPosition: {x: -1120, y: -821.35}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &63764039
@@ -604,8 +604,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -348, y: 255}
-  m_SizeDelta: {x: 179.69, y: 45.543}
+  m_AnchoredPosition: {x: -362, y: 337}
+  m_SizeDelta: {x: 145.2635, y: 36.8175}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &174485819
 MonoBehaviour:
@@ -627,7 +627,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\xA1Correcto!\nAnalizar la memoria USB con un antivirus \nes una acci\xF3n
+  m_text: "\xA1Correcto!\n\nAnalizar la memoria USB con un antivirus \nes una acci\xF3n
     segura, ya que ayuda a detectar \namenazas antes de abrir cualquier archivo."
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -655,8 +655,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 12
-  m_fontSizeBase: 12
+  m_fontSize: 10
+  m_fontSizeBase: 10
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -1274,8 +1274,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 108, y: -264}
-  m_SizeDelta: {x: 160, y: 30}
+  m_AnchoredPosition: {x: 92.30852, y: -161.4206}
+  m_SizeDelta: {x: 129.3459, y: 24.2523}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &398816625
 MonoBehaviour:
@@ -12467,8 +12467,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchoredPosition: {x: 5, y: 52}
+  m_SizeDelta: {x: 80.8412, y: 80.8412}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &917771033
 MonoBehaviour:
@@ -12802,8 +12802,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 180}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -151.66895, y: -301}
-  m_SizeDelta: {x: 160, y: 30}
+  m_AnchoredPosition: {x: -121.825485, y: -199.72687}
+  m_SizeDelta: {x: 131.6821, y: 24.6904}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &974403517
 MonoBehaviour:
@@ -14843,8 +14843,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchoredPosition: {x: 12, y: 40}
+  m_SizeDelta: {x: 75.7494, y: 75.7494}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1344247671
 MonoBehaviour:
@@ -15632,8 +15632,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -336, y: 234}
-  m_SizeDelta: {x: 179.69, y: 45.543}
+  m_AnchoredPosition: {x: -340, y: 300}
+  m_SizeDelta: {x: 147.8872, y: 37.4825}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1507291177
 MonoBehaviour:
@@ -15655,9 +15655,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\xA1incorrecto! \nAbrir una memoria USB desconocida puede poner \nen riesgo
-    tu informaci\xF3n y tu dispositivo, ya que \npodr\xEDa contener malware o archivos
-    peligrosos."
+  m_text: "\xA1Incorrecto! \n\nAbrir una memoria USB desconocida puede poner \nen
+    riesgo tu informaci\xF3n y tu dispositivo, ya que \npodr\xEDa contener malware
+    o archivos peligrosos."
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2100000, guid: e73a58f6e2794ae7b1b7e50b7fb811b0, type: 2}
@@ -15684,8 +15684,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 12
-  m_fontSizeBase: 12
+  m_fontSize: 10
+  m_fontSizeBase: 10
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -16297,6 +16297,50 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1672300330}
   m_CullTransparentMesh: 1
+--- !u!1 &1673002225
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1673002227}
+  - component: {fileID: 1673002226}
+  m_Layer: 0
+  m_Name: API_MANAGER
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1673002226
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1673002225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d175cbe800d120448a36061d240dbef8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!4 &1673002227
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1673002225}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1513.5033, y: 676.97015, z: -10.558569}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1685331197
 GameObject:
   m_ObjectHideFlags: 0
@@ -16889,8 +16933,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 133}
-  m_SizeDelta: {x: 200, y: 50}
+  m_AnchoredPosition: {x: 11.999985, y: 140.74663}
+  m_SizeDelta: {x: 151.4988, y: 37.8747}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1774832846
 MonoBehaviour:
@@ -16939,8 +16983,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 12
-  m_fontSizeBase: 12
+  m_fontSize: 9
+  m_fontSizeBase: 9
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -17241,8 +17285,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 121, y: -273}
-  m_SizeDelta: {x: 160, y: 30}
+  m_AnchoredPosition: {x: 102.584564, y: -176.6825}
+  m_SizeDelta: {x: 131.6821, y: 24.6904}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1803232319
 MonoBehaviour:
@@ -17386,8 +17430,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchoredPosition: {x: 3, y: 48}
+  m_SizeDelta: {x: 82.3013, y: 82.3013}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1807740398
 MonoBehaviour:
@@ -17969,8 +18013,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 180}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -151.66895, y: -287}
-  m_SizeDelta: {x: 160, y: 30}
+  m_AnchoredPosition: {x: -117.61096, y: -180.0141}
+  m_SizeDelta: {x: 129.3459, y: 24.2523}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1959011868
 MonoBehaviour:
@@ -19754,3 +19798,4 @@ SceneRoots:
   - {fileID: 1290417157}
   - {fileID: 406946410}
   - {fileID: 1685331199}
+  - {fileID: 1673002227}

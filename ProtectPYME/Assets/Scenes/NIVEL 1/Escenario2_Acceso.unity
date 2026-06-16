@@ -159,8 +159,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 48, y: 29}
-  m_SizeDelta: {x: 160, y: 30}
+  m_AnchoredPosition: {x: 57.61362, y: 48.61656}
+  m_SizeDelta: {x: 130.4406, y: 23.1341}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2357374
 MonoBehaviour:
@@ -1097,8 +1097,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchoredPosition: {x: 25, y: 79}
+  m_SizeDelta: {x: 116.4124, y: 116.4124}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &89640775
 MonoBehaviour:
@@ -1399,7 +1399,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -1167, y: -985}
+  m_AnchoredPosition: {x: -1177.5, y: -1182.5}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &180659999
@@ -1626,8 +1626,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 49, y: -135}
-  m_SizeDelta: {x: 160, y: 30}
+  m_AnchoredPosition: {x: 57.36297, y: -77.84972}
+  m_SizeDelta: {x: 133.5494, y: 23.1341}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &195594969
 MonoBehaviour:
@@ -1769,8 +1769,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 74, y: 207}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchoredPosition: {x: 78.230095, y: 185.87875}
+  m_SizeDelta: {x: 83.4684, y: 77.1136}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &215193359
 MonoBehaviour:
@@ -1844,8 +1844,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchoredPosition: {x: 16, y: 46}
+  m_SizeDelta: {x: 87.6388, y: 87.6388}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &224009067
 MonoBehaviour:
@@ -2236,7 +2236,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 1.1}
+  m_AnchoredPosition: {x: 0, y: 0.8}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &300131304
@@ -2322,7 +2322,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 2.4661999, z: 0, w: 0}
+  m_margin: {x: -13.185959, y: 2.4661999, z: -13.185959, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -4974,8 +4974,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 180}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -151.66895, y: -301}
-  m_SizeDelta: {x: 160, y: 30}
+  m_AnchoredPosition: {x: -114.94817, y: -222.92377}
+  m_SizeDelta: {x: 136.5708, y: 25.607}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &581687253
 MonoBehaviour:
@@ -5085,6 +5085,50 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 581687251}
   m_CullTransparentMesh: 1
+--- !u!1 &586131746
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 586131748}
+  - component: {fileID: 586131747}
+  m_Layer: 0
+  m_Name: API_MANAGER
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &586131747
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 586131746}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d175cbe800d120448a36061d240dbef8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!4 &586131748
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 586131746}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1513.5033, y: 676.97015, z: -10.558569}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &596027794
 GameObject:
   m_ObjectHideFlags: 0
@@ -7296,8 +7340,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -336, y: 243}
-  m_SizeDelta: {x: 179.69, y: 45.543}
+  m_AnchoredPosition: {x: -298, y: 286}
+  m_SizeDelta: {x: 157.4782, y: 39.9133}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &651502093
 MonoBehaviour:
@@ -7320,9 +7364,9 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_text: "\xA1Excelente decisi\xF3n! \nCambiar la contrase\xF1a y activar la autenticaci\xF3n
-    \nen dos pasos (2FA) ayuda a proteger  tu cuenta\n contra accesos no autorizados.\nCuando
-    recibas alertas de actividad sospechosa, \nact\xFAa de inmediato para mantener
-    segura \ntu informaci\xF3n personal."
+    en dos pasos (2FA) ayuda a proteger  tu cuenta contra accesos no autorizados.
+    Cuando recibas alertas de actividad sospechosa, act\xFAa de inmediato para mantener
+    segura tu informaci\xF3n personal."
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2100000, guid: e73a58f6e2794ae7b1b7e50b7fb811b0, type: 2}
@@ -7349,8 +7393,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 12
-  m_fontSizeBase: 12
+  m_fontSize: 11
+  m_fontSizeBase: 11
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -7365,7 +7409,7 @@ MonoBehaviour:
   m_lineSpacingMax: 0
   m_paragraphSpacing: 0
   m_charWidthMaxAdj: 0
-  m_enableWordWrapping: 0
+  m_enableWordWrapping: 1
   m_wordWrappingRatios: 0.4
   m_overflowMode: 0
   m_linkedTextComponent: {fileID: 0}
@@ -7385,7 +7429,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 0, z: -157.238, w: -87.17353}
+  m_margin: {x: 8.740059, y: 0, z: -148.49788, w: -87.17353}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -7647,7 +7691,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -1172, y: -1178}
+  m_AnchoredPosition: {x: -1231, y: -1320}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &736486201
@@ -7722,8 +7766,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 62, y: 111}
-  m_SizeDelta: {x: 200, y: 50}
+  m_AnchoredPosition: {x: 25, y: 251}
+  m_SizeDelta: {x: 232.8247, y: 58.2062}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &743441548
 MonoBehaviour:
@@ -7772,14 +7816,14 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 12
-  m_fontSizeBase: 12
+  m_fontSize: 13
+  m_fontSizeBase: 13
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 0
-  m_HorizontalAlignment: 1
+  m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
@@ -7910,8 +7954,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 13
-  m_fontSizeBase: 13
+  m_fontSize: 12
+  m_fontSizeBase: 12
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -7997,8 +8041,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 180}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -129, y: -290}
-  m_SizeDelta: {x: 160, y: 30}
+  m_AnchoredPosition: {x: -97.054054, y: -208.15259}
+  m_SizeDelta: {x: 140.2221, y: 26.2916}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &814340019
 MonoBehaviour:
@@ -8222,8 +8266,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 27, y: -12}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchoredPosition: {x: 39, y: 17}
+  m_SizeDelta: {x: 83.4684, y: 77.1136}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &847304182
 MonoBehaviour:
@@ -9107,8 +9151,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 137, y: 117}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchoredPosition: {x: 132, y: 114.6}
+  m_SizeDelta: {x: 90.46983, y: 90.46983}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1054861897
 MonoBehaviour:
@@ -9184,8 +9228,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 96, y: -264}
-  m_SizeDelta: {x: 160, y: 30}
+  m_AnchoredPosition: {x: 100.13329, y: -185.36641}
+  m_SizeDelta: {x: 140.2221, y: 26.2916}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1135411507
 MonoBehaviour:
@@ -9392,8 +9436,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 48, y: -334}
-  m_SizeDelta: {x: 160, y: 30}
+  m_AnchoredPosition: {x: 56.528297, y: -231.30585}
+  m_SizeDelta: {x: 133.5494, y: 23.1341}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1147094607
 MonoBehaviour:
@@ -9748,8 +9792,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 180}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 104.4581, y: 89.39746}
-  m_SizeDelta: {x: 160, y: 30}
+  m_AnchoredPosition: {x: 110.40724, y: 88.33515}
+  m_SizeDelta: {x: 144.75177, y: 27.14095}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1230761104
 MonoBehaviour:
@@ -9876,7 +9920,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1245215951
 RectTransform:
   m_ObjectHideFlags: 0
@@ -16446,8 +16490,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchoredPosition: {x: 14.5115, y: 34}
+  m_SizeDelta: {x: 85.3567, y: 85.3567}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1340310431
 MonoBehaviour:
@@ -16835,8 +16879,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -336, y: 223}
-  m_SizeDelta: {x: 179.69, y: 45.543}
+  m_AnchoredPosition: {x: -292, y: 267}
+  m_SizeDelta: {x: 153.3775, y: 38.8741}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1383487398
 MonoBehaviour:
@@ -16859,8 +16903,8 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_text: "Esa opci\xF3n puede poner en riesgo tu cuenta.\nAnte un posible acceso
-    no autorizado, \nes importante cambiar la contrase\xF1a y \nactivar medidas adicionales
-    de seguridad como\n la autenticaci\xF3n en dos pasos (2FA)."
+    no autorizado, es importante cambiar la contrase\xF1a y activar medidas adicionales
+    de seguridad como la autenticaci\xF3n en dos pasos (2FA)."
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2100000, guid: e73a58f6e2794ae7b1b7e50b7fb811b0, type: 2}
@@ -16903,7 +16947,7 @@ MonoBehaviour:
   m_lineSpacingMax: 0
   m_paragraphSpacing: 0
   m_charWidthMaxAdj: 0
-  m_enableWordWrapping: 0
+  m_enableWordWrapping: 1
   m_wordWrappingRatios: 0.4
   m_overflowMode: 0
   m_linkedTextComponent: {fileID: 0}
@@ -16954,7 +16998,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1385602404
 RectTransform:
   m_ObjectHideFlags: 0
@@ -17204,7 +17248,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: "Los ataques de phishing no solo ocurren por correos falsos, tambi\xE9n
     pueden comenzar cuando alguien obtiene acceso a una cuenta personal. Los ciberdelincuentes
-    pueden robar contrase\xF1as, enviar mensajes fraudulentos o hacers"
+    pueden robar contrase\xF1as, enviar mensajes fraudulentos o hacerse pasar por
+    otra persona."
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -17298,7 +17343,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1423994057
 RectTransform:
   m_ObjectHideFlags: 0
@@ -17527,8 +17572,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 112.62402, y: -273}
-  m_SizeDelta: {x: 160, y: 30}
+  m_AnchoredPosition: {x: 110.64365, y: -199.02391}
+  m_SizeDelta: {x: 136.5708, y: 25.607}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1467571747
 MonoBehaviour:
@@ -17672,7 +17717,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -14.3}
+  m_AnchoredPosition: {x: 0, y: -15.4}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1510597885
@@ -20476,8 +20521,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 152.64296, y: 94.774765}
-  m_SizeDelta: {x: 160, y: 30}
+  m_AnchoredPosition: {x: 154, y: 93.2}
+  m_SizeDelta: {x: 144.75177, y: 27.14095}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2058812856
 MonoBehaviour:
@@ -20811,3 +20856,4 @@ SceneRoots:
   - {fileID: 899096923}
   - {fileID: 430579159}
   - {fileID: 384606180}
+  - {fileID: 586131748}
