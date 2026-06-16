@@ -51,8 +51,8 @@ def get_recommendation(category):
             "message": "Practica detección de correos fraudulentos"
         },
 
-        "password": {
-            "training": "password",
+        "passwords": {
+            "training": "passwords",
             "scenario": 2,
             "message": "Refuerza buenas prácticas de contraseñas"
         },

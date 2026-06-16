@@ -49,9 +49,7 @@ class AIService:
         
         prediction = predictor.predict_risk(features)
 
-        logger.info(
-            f"Most failed category: {analytics['most_failed_category']}"
-        )
+        
         recommendation = get_recommendation(
             analytics["most_failed_category"]
         )
