@@ -16,8 +16,16 @@ public class ProgresoController : MonoBehaviour
     public TextMeshProUGUI txtVidasMax;
 
     public TextMeshProUGUI txtRiskLevel;
+    [Header("IA")]
+
+    public TextMeshProUGUI txtAreaVulnerable;
+
+    public TextMeshProUGUI txtRecomendacion;
+    public TextMeshProUGUI txtEscenarioSugerido;
+    private int recommendedScenario;
+
     [Header("Lista Maestra de Niveles (Menú Selección)")]
-    public Button[] botonesNiveles; 
+    public Button[] botonesNiveles;
 
     void Start()
     {
@@ -53,7 +61,7 @@ public class ProgresoController : MonoBehaviour
                     Mathf.RoundToInt(data.awareness_score).ToString();
 
             //if (txtVidasMax != null)
-               // txtVidasMax.text = "0";
+            // txtVidasMax.text = "0";
 
             Debug.Log("✅ Analytics cargados con éxito");
 
@@ -96,7 +104,7 @@ public class ProgresoController : MonoBehaviour
         SetBotonVisual(botonesNiveles[0], true);
 
         // Condición para abrir Nivel 2: awareness_score mayor o igual a 80
-        bool desbloquearNivel2 = (data.awareness_score >= 80f); 
+        bool desbloquearNivel2 = (data.awareness_score >= 80f);
 
         if (botonesNiveles.Length > 1)
         {
@@ -107,11 +115,11 @@ public class ProgresoController : MonoBehaviour
         // Condición para abrir Nivel 3: precisión mayor o igual a 70% (Ejemplo)
         if (botonesNiveles.Length > 2)
         {
-            bool desbloquearNivel3 = (data.accuracy >= 70f); 
+            bool desbloquearNivel3 = (data.accuracy >= 70f);
             botonesNiveles[2].interactable = desbloquearNivel3;
             SetBotonVisual(botonesNiveles[2], desbloquearNivel3);
         }
-        
+
         // Bloquear el resto de niveles por si acaso
         for (int i = 3; i < botonesNiveles.Length; i++)
         {
@@ -124,7 +132,7 @@ public class ProgresoController : MonoBehaviour
     {
         // Buscamos los componentes decorativos por su nombre dentro de este botón específico
         Transform capaOpacidad = boton.transform.Find("Opacidad");
-        Transform iconoCandado = boton.transform.Find("Candado");   
+        Transform iconoCandado = boton.transform.Find("Candado");
 
         if (estaDesbloqueado)
         {
@@ -157,7 +165,7 @@ public class ProgresoController : MonoBehaviour
     void BloquearNivelesPorDefecto()
     {
         if (botonesNiveles == null || botonesNiveles.Length == 0) return;
-        
+
         botonesNiveles[0].interactable = true;
         SetBotonVisual(botonesNiveles[0], true);
 
@@ -173,34 +181,76 @@ public class ProgresoController : MonoBehaviour
         AIRiskResponse data
     )
     {
-        if (txtRiskLevel == null)
-            return;
-
-        switch (data.risk_level)
+        if (txtRiskLevel != null)
         {
-            case "BAJO":
-                txtRiskLevel.text = "BAJO";
+            txtRiskLevel.text =
+                data.risk_level;
+        }
+
+        if (txtEscenarioSugerido != null)
+        {
+            txtEscenarioSugerido.text =
+                "Escenario " +
+                data.recommended_scenario;
+        }
+
+        if (txtAreaVulnerable != null)
+        {
+            txtAreaVulnerable.text =
+                data.recommended_training;
+        }
+
+        if (txtRecomendacion != null)
+        {
+            txtRecomendacion.text =
+                data.message;
+        }
+
+        recommendedScenario =
+            data.recommended_scenario;
+
+        Debug.Log(
+            "🤖 Riesgo: " +
+            data.risk_level
+        );
+
+        Debug.Log(
+            "📚 Área vulnerable: " +
+            data.recommended_training
+        );
+
+        Debug.Log(
+            "💡 Recomendación: " +
+            data.message
+        );
+    }
+
+    public void PracticarEscenarioIA()
+    {
+        Debug.Log(
+            "🚀 Escenario recomendado: " +
+            recommendedScenario
+        );
+
+        switch (recommendedScenario)
+        {
+            case 1:
+                SceneManager.LoadScene("Escenario");
                 break;
 
-            case "MEDIO":
-                txtRiskLevel.text = "MEDIO";
+            case 2:
+                SceneManager.LoadScene("Escenario2_Acceso");
                 break;
 
-            case "ALTO":
-                txtRiskLevel.text = "ALTO";
+            case 3:
+                SceneManager.LoadScene("Escenario 3 (USB sospechoso)");
                 break;
 
             default:
-                txtRiskLevel.text = "N/A";
+                Debug.LogWarning(
+                    "Escenario no configurado"
+                );
                 break;
         }
-
-        Debug.Log(
-            "🤖 Riesgo IA: " +
-            data.risk_level +
-            " (" +
-            data.probability +
-            ")"
-        );
     }
 }

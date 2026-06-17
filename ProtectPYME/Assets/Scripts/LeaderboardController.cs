@@ -37,7 +37,10 @@ public class LeaderboardController : MonoBehaviour
         // limpiar anteriores
         foreach (Transform child in contenido)
         {
-            Destroy(child.gameObject);
+            if (child.name != "HeaderRanking")
+            {
+                Destroy(child.gameObject);
+            }
         }
 
         foreach (LeaderboardUser user in users)
@@ -54,8 +57,14 @@ public class LeaderboardController : MonoBehaviour
             textos[0].text =
                 "#" + user.rank;
 
-            textos[1].text =
-                user.name;
+            string nombre = user.name;
+
+            if (nombre.Contains("@"))
+            {
+                nombre = nombre.Split('@')[0];
+            }
+
+            textos[1].text = nombre;
 
             textos[2].text =
                 user.total_points.ToString();
