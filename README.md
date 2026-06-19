@@ -154,7 +154,7 @@ ProtectPyme
 ### Clonar repositorio
 
 ```bash
-git clone https://github.com/TU-USUARIO/ProtectPyme.git
+git clone https://github.com/Dkrxchelita13/ProtectPyme.git
 cd ProtectPyme
 ```
 
