@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using System.Linq;
 
 public class CrosswordInput : MonoBehaviour
 {
@@ -10,6 +11,10 @@ public class CrosswordInput : MonoBehaviour
     public static CrosswordInput Instance;
 
     private CellWorld selectedCell;
+
+
+    private TouchScreenKeyboard keyboard;
+    private bool keyboardOpened = false;
 
     void Awake()
     {
@@ -32,6 +37,20 @@ public class CrosswordInput : MonoBehaviour
         HighlightWord(cell);
 
         Debug.Log("CELDA SELECCIONADA");
+
+        #if UNITY_ANDROID || UNITY_IOS
+        keyboard = TouchScreenKeyboard.Open(
+            "",
+            TouchScreenKeyboardType.Default,
+            false,
+            false,
+            false,
+            false,
+            "Escribe una letra"
+        );
+
+        keyboardOpened = true;
+        #endif
     }
     void HighlightWord(CellWorld startCell)
     {
@@ -63,6 +82,7 @@ public class CrosswordInput : MonoBehaviour
     {
         DetectClick();
         DetectKeyboard();
+        ReadMobileKeyboard();
     }
 
     void DetectClick()
@@ -131,9 +151,100 @@ void DetectKeyboard()
 
     // 2. DETECCIÓN ROBUSTA: Capturar la letra del teclado usando la interfaz OnGUI/Event
 }
+void ReadMobileKeyboard()
+{
+#if UNITY_ANDROID || UNITY_IOS
 
-// Usamos OnGUI para capturar la letra real directamente antes de que Unity la filtre
-void OnGUI()
+    if (!keyboardOpened)
+        return;
+
+    if (keyboard == null)
+        return;
+
+    if (selectedCell == null)
+        return;
+
+    if (keyboard.status == TouchScreenKeyboard.Status.Done)
+    {
+        keyboardOpened = false;
+
+        string texto = keyboard.text.Trim().ToUpper();
+
+        if (texto.Length > 0)
+        {
+
+            FillWord(texto);
+            texto = texto.Replace(" ", "");
+
+            texto = new string(
+                texto
+                .Where(char.IsLetter)
+                .ToArray()
+            );
+
+            CrosswordController controller =
+                FindObjectOfType<CrosswordController>();
+
+            int nextX =
+                selectedCell.GetX() + selectedCell.GetDirX();
+
+            int nextY =
+                selectedCell.GetY() + selectedCell.GetDirY();
+
+            CellWorld nextCell =
+                controller.GetCell(nextX, nextY);
+
+            if (nextCell != null)
+            {
+                SelectCell(nextCell);
+            }
+        }
+    }
+
+#endif
+
+    }
+    void FillWord(string word)
+    {
+        CrosswordController controller =
+            FindObjectOfType<CrosswordController>();
+
+        CellWorld currentCell = selectedCell;
+
+        foreach (char c in word)
+        {
+            if (currentCell == null)
+                break;
+
+            if (!char.IsLetter(c))
+                continue;
+
+            currentCell.SetLetter(
+                char.ToUpper(c).ToString()
+            );
+
+            int nextX =
+                currentCell.GetX() +
+                currentCell.GetDirX();
+
+            int nextY =
+                currentCell.GetY() +
+                currentCell.GetDirY();
+
+            currentCell =
+                controller.GetCell(
+                    nextX,
+                    nextY
+                );
+        }
+
+        if (currentCell != null)
+        {
+            SelectCell(currentCell);
+        }
+    }
+    // Usamos OnGUI para capturar la letra real directamente antes de que Unity la filtre
+    void OnGUI()
 {
     // Si no hay celda seleccionada o no es un evento de teclado, no hacemos nada
     if (selectedCell == null || Event.current == null || !Event.current.isKey) return;
