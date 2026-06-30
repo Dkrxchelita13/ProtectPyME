@@ -86,7 +86,12 @@ public class QuizController : MonoBehaviour
             colorOriginalBotones = imagenesBotones[0].color;
 
         // intentar backend
-        StartCoroutine(APIManager.Instance.GetQuiz(OnQuizLoaded));
+        StartCoroutine(
+            APIManager.Instance.GetQuiz(
+                AIState.RecommendedTraining,
+                OnQuizLoaded
+            )
+        );
     }
 
     void OnQuizLoaded(string json)

@@ -181,7 +181,9 @@ public class APIManager : MonoBehaviour
         }
     }
     // 🔥 GET QUIZ
-    public IEnumerator GetQuiz(System.Action<string> callback)
+    public IEnumerator GetQuiz(
+    string topic,
+    System.Action<string> callback)
     {
         if (string.IsNullOrEmpty(token))
         {
@@ -190,7 +192,10 @@ public class APIManager : MonoBehaviour
             yield break;
         }
 
-        string url = baseUrl + "/minigames/quiz";
+        string url =
+            baseUrl +
+            "/minigames/quiz?topic=" +
+            topic;
 
         UnityWebRequest request = UnityWebRequest.Get(url);
         request.SetRequestHeader("Authorization", "Bearer " + token);
@@ -431,6 +436,15 @@ public class APIManager : MonoBehaviour
                 JsonUtility.FromJson<AIRiskResponse>(
                     request.downloadHandler.text
                 );
+
+            // NUEVO
+            AIState.RecommendedTraining =
+                response.recommended_training;
+
+            Debug.Log(
+                "Tema recomendado IA: "
+                + AIState.RecommendedTraining
+            );
 
             onSuccess?.Invoke(response);
         }
