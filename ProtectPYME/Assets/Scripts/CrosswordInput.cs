@@ -1,5 +1,4 @@
-﻿using UnityEngine;
-using System.Linq;
+using UnityEngine;
 
 public class CrosswordInput : MonoBehaviour
 {
@@ -12,9 +11,11 @@ public class CrosswordInput : MonoBehaviour
 
     private CellWorld selectedCell;
 
-
+#if UNITY_ANDROID || UNITY_IOS
     private TouchScreenKeyboard keyboard;
+    private string mobileKeyboardText = "";
     private bool keyboardOpened = false;
+#endif
 
     void Awake()
     {
@@ -23,8 +24,22 @@ public class CrosswordInput : MonoBehaviour
 
     public void SelectCell(CellWorld cell)
     {
-        CrosswordController controller =
-            FindObjectOfType<CrosswordController>();
+        SelectCell(cell, true);
+    }
+
+    private void SelectCell(CellWorld cell, bool openKeyboard)
+    {
+        if (cell == null)
+        {
+            return;
+        }
+
+        CrosswordController controller = FindObjectOfType<CrosswordController>();
+
+        if (controller == null)
+        {
+            return;
+        }
 
         foreach (CellWorld c in controller.GetAllCells())
         {
@@ -32,44 +47,31 @@ public class CrosswordInput : MonoBehaviour
         }
 
         selectedCell = cell;
-        //fuenteAudio.PlayOneShot(sonidoSeleccion);
-
-        HighlightWord(cell);
+        HighlightWord(cell, controller);
 
         Debug.Log("CELDA SELECCIONADA");
 
-        #if UNITY_ANDROID || UNITY_IOS
-        keyboard = TouchScreenKeyboard.Open(
-            "",
-            TouchScreenKeyboardType.Default,
-            false,
-            false,
-            false,
-            false,
-            "Escribe una letra"
-        );
-
-        keyboardOpened = true;
-        #endif
+        if (openKeyboard)
+        {
+            OpenMobileKeyboard();
+        }
     }
-    void HighlightWord(CellWorld startCell)
-    {
-        CrosswordController controller =
-            FindObjectOfType<CrosswordController>();
 
+    private void HighlightWord(CellWorld startCell, CrosswordController controller)
+    {
         int dx = startCell.GetDirX();
         int dy = startCell.GetDirY();
-
         int x = startCell.GetX();
         int y = startCell.GetY();
 
         while (true)
         {
-            CellWorld cell =
-                controller.GetCell(x, y);
+            CellWorld cell = controller.GetCell(x, y);
 
             if (cell == null)
+            {
                 break;
+            }
 
             cell.Select();
 
@@ -81,202 +83,281 @@ public class CrosswordInput : MonoBehaviour
     void Update()
     {
         DetectClick();
-        DetectKeyboard();
+        DetectBackspace();
         ReadMobileKeyboard();
     }
 
-    void DetectClick()
-{
-    if (Input.GetMouseButtonDown(0))
+    private void DetectClick()
     {
-        // Convertimos la posición a coordenadas del mundo
+        if (!Input.GetMouseButtonDown(0))
+        {
+            return;
+        }
+
+        if (Camera.main == null)
+        {
+            return;
+        }
+
         Vector3 worldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        
-        // Forzamos un vector 2D para la posición del clic
         Vector2 mousePos2D = new Vector2(worldPos.x, worldPos.y);
 
         Debug.Log("CLICK EN COORDENADAS MUNDO: " + mousePos2D);
 
-        // Lanzamos un rayo infinito hacia el fondo en esa coordenada exacta
         RaycastHit2D hit = Physics2D.Raycast(mousePos2D, Vector2.zero);
 
-        if (hit.collider != null)
+        if (hit.collider == null)
         {
-            Debug.Log("¡TOCÓ ALGO!: " + hit.collider.name);
-
-            CellWorld cell = hit.collider.GetComponentInParent<CellWorld>();
-
-            if (cell != null)
-            {
-                Debug.Log("CLICK DETECTADO EN CELDA");
-                SelectCell(cell);
-            }
-            else
-            {
-                Debug.Log("El objeto tocado no tiene CellWorld en sus componentes.");
-            }
+            Debug.Log("El Raycast no choco con ningun Collider2D en esa posicion.");
+            return;
         }
-        else
+
+        Debug.Log("TOCO ALGO: " + hit.collider.name);
+
+        CellWorld cell = hit.collider.GetComponentInParent<CellWorld>();
+
+        if (cell == null)
         {
-            Debug.Log("El Raycast no chocó con ningún Collider2D en esa posición.");
+            Debug.Log("El objeto tocado no tiene CellWorld en sus componentes.");
+            return;
         }
+
+        Debug.Log("CLICK DETECTADO EN CELDA");
+        SelectCell(cell);
     }
-}
 
-void DetectKeyboard()
-{
-    if (selectedCell == null) return;
-
-    // 1. Detectar si quieres borrar
-    if (Input.GetKeyDown(KeyCode.Backspace))
+    private void DetectBackspace()
     {
-        selectedCell.ClearLetter();
-
-        int prevX = selectedCell.GetX();
-        int prevY = selectedCell.GetY();
-        bool horizontal = selectedCell.GetDirX() == 1;
-
-        if (horizontal) prevX--;
-        else prevY--;
-
-        CrosswordController controller = FindObjectOfType<CrosswordController>();
-        CellWorld prevCell = controller.GetCell(prevX, prevY);
-
-        if (prevCell != null)
+        if (selectedCell == null)
         {
-            selectedCell = prevCell;
+            return;
         }
-        return;
+
+        if (Input.GetKeyDown(KeyCode.Backspace))
+        {
+            HandleBackspace();
+        }
     }
 
-    // 2. DETECCIÓN ROBUSTA: Capturar la letra del teclado usando la interfaz OnGUI/Event
-}
-void ReadMobileKeyboard()
-{
+    private void ReadMobileKeyboard()
+    {
 #if UNITY_ANDROID || UNITY_IOS
-
-    if (!keyboardOpened)
-        return;
-
-    if (keyboard == null)
-        return;
-
-    if (selectedCell == null)
-        return;
-
-    if (keyboard.status == TouchScreenKeyboard.Status.Done)
-    {
-        keyboardOpened = false;
-
-        string texto = keyboard.text.Trim().ToUpper();
-
-        if (texto.Length > 0)
+        if (!keyboardOpened || keyboard == null || selectedCell == null)
         {
-
-            FillWord(texto);
-            texto = texto.Replace(" ", "");
-
-            texto = new string(
-                texto
-                .Where(char.IsLetter)
-                .ToArray()
-            );
-
-            CrosswordController controller =
-                FindObjectOfType<CrosswordController>();
-
-            int nextX =
-                selectedCell.GetX() + selectedCell.GetDirX();
-
-            int nextY =
-                selectedCell.GetY() + selectedCell.GetDirY();
-
-            CellWorld nextCell =
-                controller.GetCell(nextX, nextY);
-
-            if (nextCell != null)
-            {
-                SelectCell(nextCell);
-            }
+            return;
         }
+
+        if (keyboard.status == TouchScreenKeyboard.Status.Canceled ||
+            keyboard.status == TouchScreenKeyboard.Status.LostFocus)
+        {
+            keyboardOpened = false;
+            return;
+        }
+
+        ProcessMobileKeyboardText(NormalizeKeyboardText(keyboard.text ?? ""));
+
+        if (keyboard.status == TouchScreenKeyboard.Status.Done)
+        {
+            keyboardOpened = false;
+        }
+#endif
     }
 
+#if UNITY_ANDROID || UNITY_IOS
+    private void OpenMobileKeyboard()
+    {
+        mobileKeyboardText = "";
+        keyboard = TouchScreenKeyboard.Open(
+            "",
+            TouchScreenKeyboardType.Default,
+            false,
+            false,
+            false,
+            false,
+            "Escribe una letra"
+        );
+
+        keyboardOpened = true;
+    }
+
+    private void ProcessMobileKeyboardText(string currentText)
+    {
+        if (currentText == mobileKeyboardText)
+        {
+            return;
+        }
+
+        int commonPrefix = GetCommonPrefixLength(mobileKeyboardText, currentText);
+
+        for (int i = commonPrefix; i < mobileKeyboardText.Length; i++)
+        {
+            HandleBackspace();
+        }
+
+        for (int i = commonPrefix; i < currentText.Length; i++)
+        {
+            HandleTypedCharacter(currentText[i]);
+        }
+
+        mobileKeyboardText = currentText;
+    }
+
+    private string NormalizeKeyboardText(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return "";
+        }
+
+        char[] letters = new char[text.Length];
+        int count = 0;
+
+        for (int i = 0; i < text.Length; i++)
+        {
+            if (!char.IsLetter(text[i]))
+            {
+                continue;
+            }
+
+            letters[count] = char.ToUpperInvariant(text[i]);
+            count++;
+        }
+
+        return new string(letters, 0, count);
+    }
+
+    private int GetCommonPrefixLength(string previousText, string currentText)
+    {
+        int length = Mathf.Min(previousText.Length, currentText.Length);
+
+        for (int i = 0; i < length; i++)
+        {
+            if (previousText[i] != currentText[i])
+            {
+                return i;
+            }
+        }
+
+        return length;
+    }
+#else
+    private void OpenMobileKeyboard()
+    {
+    }
 #endif
 
-    }
-    void FillWord(string word)
+    private void HandleTypedCharacter(char character)
     {
-        CrosswordController controller =
-            FindObjectOfType<CrosswordController>();
-
-        CellWorld currentCell = selectedCell;
-
-        foreach (char c in word)
+        if (selectedCell == null || !char.IsLetter(character))
         {
-            if (currentCell == null)
-                break;
-
-            if (!char.IsLetter(c))
-                continue;
-
-            currentCell.SetLetter(
-                char.ToUpper(c).ToString()
-            );
-
-            int nextX =
-                currentCell.GetX() +
-                currentCell.GetDirX();
-
-            int nextY =
-                currentCell.GetY() +
-                currentCell.GetDirY();
-
-            currentCell =
-                controller.GetCell(
-                    nextX,
-                    nextY
-                );
+            return;
         }
 
-        if (currentCell != null)
+        string letter = char.ToUpperInvariant(character).ToString();
+
+        Debug.Log("LETRA DETECTADA: " + letter);
+
+        selectedCell.SetLetter(letter);
+        PlaySound(sonidoEscribir);
+        MoveSelection(1);
+    }
+
+    private void HandleBackspace()
+    {
+        if (selectedCell == null)
         {
-            SelectCell(currentCell);
+            return;
+        }
+
+        if (HasLetter(selectedCell))
+        {
+            selectedCell.ClearLetter();
+            MoveSelection(-1);
+            return;
+        }
+
+        if (MoveSelection(-1))
+        {
+            selectedCell.ClearLetter();
         }
     }
-    // Usamos OnGUI para capturar la letra real directamente antes de que Unity la filtre
+
+    private bool MoveSelection(int direction)
+    {
+        if (selectedCell == null)
+        {
+            return false;
+        }
+
+        CrosswordController controller = FindObjectOfType<CrosswordController>();
+
+        if (controller == null)
+        {
+            return false;
+        }
+
+        int nextX = selectedCell.GetX() + selectedCell.GetDirX() * direction;
+        int nextY = selectedCell.GetY() + selectedCell.GetDirY() * direction;
+        CellWorld nextCell = controller.GetCell(nextX, nextY);
+
+        if (nextCell == null)
+        {
+            return false;
+        }
+
+        SelectCell(nextCell, false);
+        return true;
+    }
+
+    private bool HasLetter(CellWorld cell)
+    {
+        CrosswordController controller = FindObjectOfType<CrosswordController>();
+
+        if (controller == null || controller.GetModel() == null)
+        {
+            return false;
+        }
+
+        int x = cell.GetX();
+        int y = cell.GetY();
+        CrosswordModel model = controller.GetModel();
+
+        if (x < 0 || y < 0 || x >= model.width || y >= model.height)
+        {
+            return false;
+        }
+
+        return !string.IsNullOrEmpty(model.grid[x, y].currentLetter);
+    }
+
+    private void PlaySound(AudioClip clip)
+    {
+        if (fuenteAudio != null && clip != null)
+        {
+            fuenteAudio.PlayOneShot(clip);
+        }
+    }
+
     void OnGUI()
-{
-    // Si no hay celda seleccionada o no es un evento de teclado, no hacemos nada
-    if (selectedCell == null || Event.current == null || !Event.current.isKey) return;
-
-    // Solo actuamos en el momento en que se presiona la tecla (KeyDown)
-    if (Event.current.type == EventType.KeyDown)
     {
-        char caracter = Event.current.character;
-
-        // Validamos que sea una letra válida (A-Z)
-        if (char.IsLetter(caracter))
+        if (selectedCell == null || Event.current == null || !Event.current.isKey)
         {
-            string letraMayuscula = caracter.ToString().ToUpper();
-            
-            Debug.Log("🎯 ¡AHORA SÍ DETECTADA!: " + letraMayuscula);
-
-            // Pasamos la letra a la celda
-            selectedCell.SetLetter(letraMayuscula);
-
-            // Avanzar a la siguiente celda automáticamente
-            CrosswordController controller = FindObjectOfType<CrosswordController>();
-
-            int nextX = selectedCell.GetX() + selectedCell.GetDirX();
-            int nextY = selectedCell.GetY() + selectedCell.GetDirY();
-            
-            CellWorld nextCell = controller.GetCell(nextX, nextY);
-
-            if (nextCell != null)
-            {
-                selectedCell = nextCell;
-            }
+            return;
         }
+
+        if (Event.current.type != EventType.KeyDown)
+        {
+            return;
+        }
+
+        char character = Event.current.character;
+
+        if (!char.IsLetter(character))
+        {
+            return;
+        }
+
+        HandleTypedCharacter(character);
+        Event.current.Use();
     }
-}
 }

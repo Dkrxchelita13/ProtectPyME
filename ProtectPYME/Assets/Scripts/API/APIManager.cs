@@ -243,7 +243,9 @@ public class APIManager : MonoBehaviour
         }
     }
     // 🔥 GET WORDS (SOPA DE LETRAS)
-    public IEnumerator GetWords(System.Action<string> callback)
+    public IEnumerator GetWords(
+        string topic,
+        System.Action<string> callback)
     {
         if (string.IsNullOrEmpty(token))
         {
@@ -252,25 +254,42 @@ public class APIManager : MonoBehaviour
             yield break;
         }
 
-        string url = baseUrl + "/minigames/wordsearch";
+        string url =
+            baseUrl +
+            "/minigames/wordsearch?topic=" +
+            topic;
 
-        UnityWebRequest request = UnityWebRequest.Get(url);
-        request.SetRequestHeader("Authorization", "Bearer " + token);
+        UnityWebRequest request =
+            UnityWebRequest.Get(url);
+
+        request.SetRequestHeader(
+            "Authorization",
+            "Bearer " + token
+        );
 
         yield return request.SendWebRequest();
 
-        if (request.result == UnityWebRequest.Result.Success)
+        if (request.result ==
+            UnityWebRequest.Result.Success)
         {
-            Debug.Log("✅ Palabras recibidas");
-            callback?.Invoke(request.downloadHandler.text);
+            Debug.Log(
+                "✅ Sopa adaptativa recibida"
+            );
+
+            callback?.Invoke(
+                request.downloadHandler.text
+            );
         }
         else
         {
-            Debug.LogError("❌ Error words: " + request.error);
+            Debug.LogError(request.error);
+
             callback?.Invoke("ERROR");
         }
     }
-    public IEnumerator GetCrossword(System.Action<string> callback)
+    public IEnumerator GetCrossword(
+        string topic,
+        System.Action<string> callback)
     {
         if (string.IsNullOrEmpty(token))
         {
@@ -279,23 +298,34 @@ public class APIManager : MonoBehaviour
             yield break;
         }
 
-        string url = baseUrl + "/minigames/crossword";
+        string url =
+            baseUrl +
+            "/minigames/crossword?topic=" +
+            topic;
 
-        UnityWebRequest request = UnityWebRequest.Get(url);
-        request.SetRequestHeader("Authorization", "Bearer " + token);
+        UnityWebRequest request =
+            UnityWebRequest.Get(url);
+
+        request.SetRequestHeader(
+            "Authorization",
+            "Bearer " + token
+        );
 
         yield return request.SendWebRequest();
 
-        if (request.result == UnityWebRequest.Result.Success)
+        if (request.result ==
+            UnityWebRequest.Result.Success)
         {
-            Debug.Log("✅ Crossword recibido");
-            Debug.Log("📦 JSON: " + request.downloadHandler.text);
-            callback?.Invoke(request.downloadHandler.text);
+            Debug.Log("✅ Crossword adaptativo");
+
+            callback?.Invoke(
+                request.downloadHandler.text
+            );
         }
         else
         {
-            Debug.LogError("❌ Error crossword: " + request.error);
-            Debug.LogError("Respuesta: " + request.downloadHandler.text);
+            Debug.LogError(request.error);
+
             callback?.Invoke("ERROR");
         }
     }
