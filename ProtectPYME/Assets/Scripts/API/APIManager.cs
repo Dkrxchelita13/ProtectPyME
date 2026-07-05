@@ -221,8 +221,9 @@ public class APIManager : MonoBehaviour
     }
     // 🔥 GET QUIZ
     public IEnumerator GetQuiz(
-    string topic,
-    System.Action<string> callback)
+        string topic,
+        string risk,
+        System.Action<string> callback)
     {
         if (string.IsNullOrEmpty(token))
         {
@@ -234,7 +235,9 @@ public class APIManager : MonoBehaviour
         string url =
             baseUrl +
             "/minigames/quiz?topic=" +
-            topic;
+            UnityWebRequest.EscapeURL(topic) +
+            "&risk=" +
+            UnityWebRequest.EscapeURL(risk);
 
         UnityWebRequest request = UnityWebRequest.Get(url);
         request.SetRequestHeader("Authorization", "Bearer " + token);
@@ -284,6 +287,7 @@ public class APIManager : MonoBehaviour
     // 🔥 GET WORDS (SOPA DE LETRAS)
     public IEnumerator GetWords(
         string topic,
+        string risk,
         System.Action<string> callback)
     {
         if (string.IsNullOrEmpty(token))
@@ -296,7 +300,9 @@ public class APIManager : MonoBehaviour
         string url =
             baseUrl +
             "/minigames/wordsearch?topic=" +
-            topic;
+            UnityWebRequest.EscapeURL(topic) +
+            "&risk=" +
+            UnityWebRequest.EscapeURL(risk);
 
         UnityWebRequest request =
             UnityWebRequest.Get(url);
@@ -328,6 +334,7 @@ public class APIManager : MonoBehaviour
     }
     public IEnumerator GetCrossword(
         string topic,
+        string risk,
         System.Action<string> callback)
     {
         if (string.IsNullOrEmpty(token))
@@ -340,7 +347,9 @@ public class APIManager : MonoBehaviour
         string url =
             baseUrl +
             "/minigames/crossword?topic=" +
-            topic;
+            UnityWebRequest.EscapeURL(topic) +
+            "&risk=" +
+            UnityWebRequest.EscapeURL(risk);
 
         UnityWebRequest request =
             UnityWebRequest.Get(url);
@@ -509,6 +518,8 @@ public class APIManager : MonoBehaviour
             // NUEVO
             AIState.RecommendedTraining =
                 response.recommended_training;
+            AIState.RiskLevel =
+                NormalizeRiskLevel(response.risk_level);
 
             Debug.Log(
                 "Tema recomendado IA: "
@@ -522,7 +533,28 @@ public class APIManager : MonoBehaviour
             onError?.Invoke(request.error);
         }
     }
+    private string NormalizeRiskLevel(string risk)
+    {
+        if (string.IsNullOrEmpty(risk))
+            return "alto";
 
+        risk = risk.Trim().ToUpper();
+
+        switch (risk)
+        {
+            case "ALTO":
+                return "alto";
+
+            case "MEDIO":
+                return "medio";
+
+            case "BAJO":
+                return "bajo";
+
+            default:
+                return "alto";
+        }
+    }
 }
     
     [System.Serializable]

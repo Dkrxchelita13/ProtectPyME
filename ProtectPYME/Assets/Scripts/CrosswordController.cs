@@ -105,10 +105,11 @@ public class CrosswordController : MonoBehaviour
         }
 
         StartCoroutine(
-            APIManager.Instance.GetCrossword(
-                AIState.RecommendedTraining,
-                OnData
-            )
+        APIManager.Instance.GetCrossword(
+            AIState.RecommendedTraining,
+            AIState.RiskLevel,
+            OnData
+        )
         );
     }
 

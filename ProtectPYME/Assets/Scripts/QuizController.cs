@@ -89,6 +89,7 @@ public class QuizController : MonoBehaviour
         StartCoroutine(
             APIManager.Instance.GetQuiz(
                 AIState.RecommendedTraining,
+                AIState.RiskLevel,
                 OnQuizLoaded
             )
         );

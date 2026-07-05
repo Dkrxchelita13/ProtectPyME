@@ -61,6 +61,7 @@ public class PreguntasController : MonoBehaviour
         StartCoroutine(
             APIManager.Instance.GetWords(
                 AIState.RecommendedTraining,
+                AIState.RiskLevel,
                 OnCrosswordLoaded
             )
         );
