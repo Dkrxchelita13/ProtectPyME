@@ -34,6 +34,63 @@ def hash_password(password: str):
 def verify_password(plain, hashed):
     return pwd_context.verify(plain, hashed)
 
+
+def get_google_client_ids():
+    raw_client_ids = os.getenv("GOOGLE_CLIENT_IDS") or os.getenv("GOOGLE_CLIENT_ID")
+
+    if not raw_client_ids:
+        logger.error("GOOGLE_CLIENT_IDS is not configured")
+        raise HTTPException(status_code=500, detail="Google OAuth is not configured")
+
+    client_ids = [
+        client_id.strip()
+        for client_id in raw_client_ids.split(",")
+        if client_id.strip()
+    ]
+
+    if not client_ids:
+        logger.error("GOOGLE_CLIENT_IDS is empty")
+        raise HTTPException(status_code=500, detail="Google OAuth is not configured")
+
+    return client_ids
+
+
+def verify_google_id_token(token: str):
+    try:
+        from google.auth.transport import requests as google_requests
+        from google.oauth2 import id_token as google_id_token
+    except ImportError:
+        logger.error("google-auth dependency is not installed")
+        raise HTTPException(status_code=500, detail="Google OAuth dependency is missing")
+
+    last_error = None
+    request = google_requests.Request()
+
+    for client_id in get_google_client_ids():
+        try:
+            payload = google_id_token.verify_oauth2_token(
+                token,
+                request,
+                client_id
+            )
+
+            issuer = payload.get("iss")
+            if issuer not in ("accounts.google.com", "https://accounts.google.com"):
+                logger.warning("Invalid Google token issuer: %s", issuer)
+                raise HTTPException(status_code=401, detail="Invalid Google token")
+
+            if payload.get("email_verified") is not True:
+                logger.warning("Google login rejected because email is not verified")
+                raise HTTPException(status_code=401, detail="Google email is not verified")
+
+            return payload
+
+        except ValueError as exc:
+            last_error = exc
+
+    logger.warning("Invalid Google token: %s", last_error)
+    raise HTTPException(status_code=401, detail="Invalid Google token")
+
 # Create token
 def create_access_token(data: dict):
     to_encode = data.copy()

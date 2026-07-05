@@ -29,7 +29,9 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100))
     email = Column(String(100), unique=True, index=True)
-    password = Column(String(255))
+    password = Column(String(255), nullable=True)
+    auth_provider = Column(String(30), default="local")
+    google_sub = Column(String(255), unique=True, index=True, nullable=True)
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
 
     total_points = Column(Integer, default=0)

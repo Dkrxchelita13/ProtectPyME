@@ -79,6 +79,9 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
 
+class GoogleLoginRequest(BaseModel):
+    id_token: str
+
 from datetime import datetime
 class UserOut(BaseModel):
     id: int
