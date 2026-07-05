@@ -150,6 +150,45 @@ public class APIManager : MonoBehaviour
         }
     }
 
+    public IEnumerator LoginWithGoogle(string googleIdToken, System.Action<string> callback)
+    {
+        if (string.IsNullOrEmpty(googleIdToken))
+        {
+            Debug.LogError("Google id_token vacio");
+            callback?.Invoke("ERROR");
+            yield break;
+        }
+
+        string url = baseUrl + "/auth/google";
+        string json = JsonUtility.ToJson(new GoogleLoginData(googleIdToken));
+
+        UnityWebRequest request = new UnityWebRequest(url, "POST");
+        byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
+
+        request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        request.downloadHandler = new DownloadHandlerBuffer();
+        request.SetRequestHeader("Content-Type", "application/json");
+
+        yield return request.SendWebRequest();
+
+        if (request.result == UnityWebRequest.Result.Success)
+        {
+            TokenResponse res = JsonUtility.FromJson<TokenResponse>(request.downloadHandler.text);
+            token = res.access_token;
+
+            PlayerPrefs.SetString("token", token);
+            PlayerPrefs.Save();
+
+            callback?.Invoke("OK");
+        }
+        else
+        {
+            Debug.LogError("Error en login Google: " + request.error);
+            Debug.LogError("Respuesta: " + request.downloadHandler.text);
+            callback?.Invoke("ERROR");
+        }
+    }
+
     // GET SCENARIOS
     public IEnumerator GetScenarios(System.Action<string> callback)
     {
@@ -504,6 +543,17 @@ public class TokenResponse
 {
     public string access_token;
     public string token_type;
+}
+
+[System.Serializable]
+public class GoogleLoginData
+{
+    public string id_token;
+
+    public GoogleLoginData(string token)
+    {
+        id_token = token;
+    }
 }
 
 [System.Serializable]

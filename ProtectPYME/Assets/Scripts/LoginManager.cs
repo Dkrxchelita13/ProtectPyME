@@ -4,6 +4,9 @@ using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
 using System.Collections;
 using UnityEngine.UI;
+#if GOOGLE_SIGN_IN
+using Google;
+#endif
 
 [System.Serializable]
 public class LoginRequest
@@ -38,6 +41,10 @@ public class LoginManager : MonoBehaviour
     public TMP_InputField inputPassword;
     public TMP_Text txtStatus;
 
+    [Header("Google Sign-In")]
+    public Button botonGoogleLogin;
+    public string googleWebClientId;
+
     private string apiUrl = "https://protectpyme.onrender.com/login";
 
     public void OnLoginClicked()
@@ -56,6 +63,95 @@ public class LoginManager : MonoBehaviour
 
         // 3. Si ambos campos tienen texto, procedemos con el login normal
         StartCoroutine(Login());
+    }
+
+    public void OnGoogleLoginClicked()
+    {
+        if (txtStatus != null) txtStatus.text = "";
+
+        SetGoogleButtonInteractable(false);
+
+#if GOOGLE_SIGN_IN
+        if (googleWebClientId == null || googleWebClientId.Trim().Length == 0)
+        {
+            ShowGoogleLoginError("Configure el Web Client ID de Google.");
+            return;
+        }
+
+        GoogleSignIn.Configuration = new GoogleSignInConfiguration
+        {
+            WebClientId = googleWebClientId,
+            RequestIdToken = true,
+            RequestEmail = true
+        };
+
+        GoogleSignIn.DefaultInstance.SignIn().ContinueWithOnMainThread(task =>
+        {
+            if (task.IsCanceled)
+            {
+                ShowGoogleLoginError("Inicio con Google cancelado.");
+                return;
+            }
+
+            if (task.IsFaulted)
+            {
+                Debug.LogError("Error Google Sign-In: " + task.Exception);
+                ShowGoogleLoginError("No se pudo iniciar sesión con Google.");
+                return;
+            }
+
+            string idToken = task.Result != null ? task.Result.IdToken : "";
+
+            if (string.IsNullOrEmpty(idToken))
+            {
+                ShowGoogleLoginError("Google no devolvió un id_token válido.");
+                return;
+            }
+
+            StartCoroutine(SendGoogleTokenToBackend(idToken));
+        });
+#else
+        ShowGoogleLoginError("Google Sign-In no está instalado o no está habilitado.");
+        Debug.LogWarning("Importe Google Sign-In for Unity y agregue GOOGLE_SIGN_IN en Scripting Define Symbols.");
+#endif
+    }
+
+#if GOOGLE_SIGN_IN
+    IEnumerator SendGoogleTokenToBackend(string idToken)
+    {
+        if (APIManager.Instance == null)
+        {
+            ShowGoogleLoginError("APIManager no está disponible.");
+            yield break;
+        }
+
+        yield return StartCoroutine(APIManager.Instance.LoginWithGoogle(idToken, result =>
+        {
+            if (result == "OK")
+            {
+                if (txtStatus != null) txtStatus.text = "Login con Google exitoso";
+                SceneManager.LoadScene("MenuPrincipal");
+            }
+            else
+            {
+                ShowGoogleLoginError("No se pudo validar Google con el servidor.");
+            }
+        }));
+    }
+#endif
+
+    void ShowGoogleLoginError(string message)
+    {
+        if (txtStatus != null) txtStatus.text = message;
+        SetGoogleButtonInteractable(true);
+    }
+
+    void SetGoogleButtonInteractable(bool interactable)
+    {
+        if (botonGoogleLogin != null)
+        {
+            botonGoogleLogin.interactable = interactable;
+        }
     }
 
     IEnumerator Login()
