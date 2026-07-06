@@ -526,6 +526,11 @@ public class APIManager : MonoBehaviour
                 + AIState.RecommendedTraining
             );
 
+            Debug.Log(
+                "Nivel de riesgo IA: " +
+                AIState.RiskLevel
+            );
+
             onSuccess?.Invoke(response);
         }
         else
@@ -555,6 +560,7 @@ public class APIManager : MonoBehaviour
                 return "alto";
         }
     }
+
 }
     
     [System.Serializable]
