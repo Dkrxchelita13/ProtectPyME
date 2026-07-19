@@ -238,6 +238,13 @@ public class Escenario2Manager : MonoBehaviour
                 tiempoRespuesta
             )
         );
+
+        if (PlayerPrefs.GetInt("ProgresionNivelInicial", 1) < 3)
+        {
+            PlayerPrefs.SetInt("ProgresionNivelInicial", 3);
+            PlayerPrefs.Save();
+        }
+
         panelDecision.SetActive(false);
         panelBueno.SetActive(true);
 

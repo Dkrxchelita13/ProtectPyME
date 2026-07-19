@@ -225,6 +225,12 @@ public class Escenario3Manager : MonoBehaviour
             )
         );
 
+        if (PlayerPrefs.GetInt("ProgresionNivelInicial", 1) < 4)
+        {
+            PlayerPrefs.SetInt("ProgresionNivelInicial", 4);
+            PlayerPrefs.Save();
+        }
+
         Invoke(nameof(MostrarRetroCorrecta), 2f);
     }
 

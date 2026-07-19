@@ -212,7 +212,7 @@ public class PreguntasController : MonoBehaviour
 
             bloqueado = true;
 
-            gamificacion.SumarPuntos(2);
+            gamificacion.SumarPuntos(10);
 
             foreach (var c in casillasSeleccionadas)
                 c.MarcarCorrecta();
@@ -223,7 +223,9 @@ public class PreguntasController : MonoBehaviour
         }
         else if (formada.Length >= correcta.Length)
         {
-            ResetSeleccion("❌ Incorrecta");
+        bloqueado = true; 
+        gamificacion.RegistrarError(); 
+        StartCoroutine(FeedbackErrorConDelay("❌ Incorrecta"));
         }
     }
 
@@ -362,11 +364,53 @@ public class PreguntasController : MonoBehaviour
         if (tiempoRestante <= 0f)
         {
             corriendoTiempo = false;
+            gamificacion.RegistrarError();
 
             ResetSeleccion("⏰ Tiempo agotado");
 
             bloqueado = true;
             StartCoroutine(SiguientePreguntaConDelay());
         }
+    }
+
+    private IEnumerator FeedbackErrorConDelay(string mensaje)
+    {
+        Debug.Log(mensaje);
+
+        foreach (var c in casillasSeleccionadas)
+        {
+            c.MarcarIncorrecta();
+        }
+
+        yield return new WaitForSeconds(0.5f);
+
+        foreach (var c in casillasSeleccionadas)
+        {
+            c.Resetear();
+        }
+
+        casillasSeleccionadas.Clear();
+        
+        // 🔥 Solo desbloquear si aún le quedan vidas
+        if (GamificacionController.vidas > 0)
+        {
+            bloqueado = false;
+        }
+    }
+
+    public void DetenerJuegoPorGameOver()
+    {
+        bloqueado = true;
+        corriendoTiempo = false;
+        
+        // Detener cualquier corrutina de siguiente pregunta que pudiera estar en marcha
+        StopAllCoroutines(); 
+
+        // Limpiar selección de casillas activas
+        foreach (var c in casillasSeleccionadas)
+        {
+            if (c != null) c.Resetear();
+        }
+        casillasSeleccionadas.Clear();
     }
 }

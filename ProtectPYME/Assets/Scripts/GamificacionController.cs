@@ -9,7 +9,6 @@ public class GamificacionController : MonoBehaviour
 {
     [Header("UI")]
     public TextMeshProUGUI txtPuntaje;
-    public Image fillCronometro;
     public GameObject[] iconosVidas;
 
     [Header("Ajustes")]
@@ -18,7 +17,9 @@ public class GamificacionController : MonoBehaviour
     public static int puntaje = 0;
     public static int vidas = 3;
 
+    private int erroresAcumulados = 0;
     private PreguntasController pController;
+    public GameObject canvasGameOver;
 
     void Start()
     {
@@ -28,6 +29,7 @@ public class GamificacionController : MonoBehaviour
 
         puntaje = 0;
         vidas = 3;
+        erroresAcumulados = 0;
 
         txtPuntaje.text = puntaje.ToString();
 
@@ -46,22 +48,54 @@ public class GamificacionController : MonoBehaviour
         ActualizarUI();
     }
 
+    public void RegistrarError()
+    {
+        erroresAcumulados++;
+        Debug.Log($"❌ Error acumulado: {erroresAcumulados}/2");
 
+        if (erroresAcumulados >= 2)
+        {
+            QuitarVida();
+            erroresAcumulados = 0; // Reiniciar contador tras perder la vida
+        }
+    }
 
     public void QuitarVida() {
         vidas--;
-        if (vidas >= 0) iconosVidas[vidas].SetActive(false);
-        if (vidas <= 0) FinalizarJuego();
+        
+        // Apagamos el icono de vida correspondiente (3 vidas -> índices 2, 1, 0)
+        if (vidas >= 0 && vidas < iconosVidas.Length) 
+        {
+            if (iconosVidas[vidas] != null)
+                iconosVidas[vidas].SetActive(false);
+        }
+
+        if (vidas <= 0) 
+        {
+            FinalizarJuego();
+        }
     }
 
     public void ReiniciarCronometro()
+
     {
+
     }
+
     void ActualizarUI() => txtPuntaje.text = puntaje.ToString();
 
     void FinalizarJuego()
     {
         Debug.Log("GAME OVER");
+        if (canvasGameOver != null)
+        {
+            canvasGameOver.SetActive(true);
+        }
+        if (pController != null)
+        {
+            pController.DetenerJuegoPorGameOver();
+        }
+
     }
 }
 

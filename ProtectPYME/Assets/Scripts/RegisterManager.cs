@@ -27,6 +27,8 @@ public class RegisterManager : MonoBehaviour
 
     public TMP_Text txtMensaje;
 
+    [SerializeField] private string nombreEscenaLogin = "Login";
+
     public void Registrar()
     {
         if (txtMensaje != null) txtMensaje.text = "";
@@ -87,7 +89,6 @@ public class RegisterManager : MonoBehaviour
     // 3. Bucle de carga simulada (hasta el 90% máximo mientras procesa)
     while (progresoSimulado < 0.9f)
     {
-        // Si el APIManager ya terminó antes de llegar al 90%, rompemos este bucle para pasar directo a la animación de llenado rápido al 100%
         if (APIManager.Instance != null && !requestEstaActiva(apiCall)) 
         {
             break; 
@@ -123,6 +124,13 @@ public class RegisterManager : MonoBehaviour
 
     // Volvemos a activar el texto en pantalla AHORA que la barra llegó al 100%
     if (txtMensaje != null) txtMensaje.gameObject.SetActive(true);
+
+    if(txtMensaje != null && txtMensaje.text.Contains("correctamente"))
+    {
+        yield return new WaitForSeconds(1.5f);
+        SceneManager.LoadScene(nombreEscenaLogin);
+    }
+
     }
 
     public void AlternarVisibilidadPassword()

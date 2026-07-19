@@ -8227,13 +8227,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   txtPuntaje: {fileID: 980876072}
-  fillCronometro: {fileID: 209754864}
   iconosVidas:
   - {fileID: 446015413}
   - {fileID: 1292883124}
   - {fileID: 2057007938}
   tiempoLimite: 15
   tiempoActual: 0
+  canvasGameOver: {fileID: 176319304}
 --- !u!114 &809319585
 MonoBehaviour:
   m_ObjectHideFlags: 0

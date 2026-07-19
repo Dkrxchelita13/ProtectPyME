@@ -10,6 +10,7 @@ public class CasillaController : MonoBehaviour
     // 🔥 POSICIÓN EN LA MATRIZ
     public int fila;
     public int columna;
+    public Color colorIncorrecto = Color.red;
 
     private PreguntasController controlador;
     private bool seleccionada = false;
@@ -45,5 +46,15 @@ public class CasillaController : MonoBehaviour
         GetComponent<Image>().color = Color.white;
 
         GetComponent<Button>().interactable = true;
+    }
+
+     public void MarcarIncorrecta()
+    {
+        // Si usas UnityEngine.UI.Image en tus botones:
+        Image img = GetComponent<Image>();
+        if (img != null)
+        {
+            img.color = colorIncorrecto;
+        }
     }
 }

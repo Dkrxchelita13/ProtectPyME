@@ -99,33 +99,22 @@ public class ProgresoController : MonoBehaviour
 
     void ControlarDesbloqueoDeNiveles(AnalyticsData data)
     {
-        // El Nivel 1 (Índice 0) siempre está abierto
-        botonesNiveles[0].interactable = true;
-        SetBotonVisual(botonesNiveles[0], true);
+            if (botonesNiveles == null || botonesNiveles.Length == 0) return;
 
-        // Condición para abrir Nivel 2: awareness_score mayor o igual a 80
-        bool desbloquearNivel2 = (data.awareness_score >= 80f);
+            // Obtener el nivel máximo alcanzado guardado (1 por defecto)
+            int progresoInicial = PlayerPrefs.GetInt("ProgresoNIvelInicial", 1);
 
-        if (botonesNiveles.Length > 1)
-        {
-            botonesNiveles[1].interactable = desbloquearNivel2;
-            SetBotonVisual(botonesNiveles[1], desbloquearNivel2);
-        }
+            // Opcional: Si deseas que los datos del Backend (AnalyticsData) también desbloqueen niveles,
+            // puedes actualizar 'nivelAlcanzado' según el progreso recibido del servidor.
 
-        // Condición para abrir Nivel 3: precisión mayor o igual a 70% (Ejemplo)
-        if (botonesNiveles.Length > 2)
-        {
-            bool desbloquearNivel3 = (data.accuracy >= 70f);
-            botonesNiveles[2].interactable = desbloquearNivel3;
-            SetBotonVisual(botonesNiveles[2], desbloquearNivel3);
-        }
+            for (int i = 0; i < botonesNiveles.Length; i++)
+            {
+                // El botón del nivel (i + 1) se desbloquea si el nivel alcanzado es mayor o igual a ese número
+                bool estaDesbloqueado = (progresoInicial >= (i + 1));
 
-        // Bloquear el resto de niveles por si acaso
-        for (int i = 3; i < botonesNiveles.Length; i++)
-        {
-            botonesNiveles[i].interactable = false;
-            SetBotonVisual(botonesNiveles[i], false);
-        }
+                botonesNiveles[i].interactable = estaDesbloqueado;
+                SetBotonVisual(botonesNiveles[i], estaDesbloqueado);
+            }
     }
 
     void SetBotonVisual(Button boton, bool estaDesbloqueado)

@@ -248,6 +248,12 @@ public class Escenario1Manager : MonoBehaviour
             )
         );
 
+        if (PlayerPrefs.GetInt("ProgresionNivelInicial", 1) < 2)
+        {
+            PlayerPrefs.SetInt("ProgresionNivelInicial", 2);
+            PlayerPrefs.Save();
+        }
+
         panelDecision.SetActive(false);
         panelBueno.SetActive(true);
 
