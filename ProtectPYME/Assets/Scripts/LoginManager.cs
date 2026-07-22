@@ -130,6 +130,7 @@ public class LoginManager : MonoBehaviour
             if (result == "OK")
             {
                 if (txtStatus != null) txtStatus.text = "Login con Google exitoso";
+                PrepararSesionLimpia();
                 SceneManager.LoadScene("MenuPrincipal");
             }
             else
@@ -222,6 +223,7 @@ public class LoginManager : MonoBehaviour
         {
             LoginResponse response = JsonUtility.FromJson<LoginResponse>(request.downloadHandler.text);
             txtStatus.text = "Login exitoso";
+            PrepararSesionLimpia();
             PlayerPrefs.SetString("token", response.access_token);
             PlayerPrefs.Save();
             APIManager.Instance.SetToken(response.access_token);
@@ -267,6 +269,21 @@ public class LoginManager : MonoBehaviour
         inputPassword.ForceLabelUpdate();
     }
 
+    private void PrepararSesionLimpia()
+    {
+        // 1. Identificamos al usuario que está iniciando sesión
+        string usuarioActual = inputEmail != null ? inputEmail.text.Trim() : "usuario_google";
+        PlayerPrefs.SetString("UsuarioActual", usuarioActual);
+        PlayerPrefs.Save();
+
+        // 2. Si el GameManagerGlobal ya existe, le decimos que recargue los datos para este usuario
+        if (GameManagerGlobal.instancia != null)
+        {
+            GameManagerGlobal.instancia.CargarDatosUsuarioActual();
+        }
+
+        Debug.Log($"🧼 Sesión iniciada para: {usuarioActual}");
+    }
 }
 
 

@@ -225,13 +225,15 @@ public class Escenario3Manager : MonoBehaviour
             )
         );
 
-        if (PlayerPrefs.GetInt("ProgresionNivelInicial", 1) < 4)
+        if (PlayerPrefs.GetInt("NivelAlcanzado", 1) < 4)
         {
-            PlayerPrefs.SetInt("ProgresionNivelInicial", 4);
+            PlayerPrefs.SetInt("NivelAlcanzado", 4);
             PlayerPrefs.Save();
         }
 
         Invoke(nameof(MostrarRetroCorrecta), 2f);
+        ModificarSeguridadEscenario(3f);
+        GanarVida();
     }
 
     public void OpcionMala()
@@ -256,7 +258,7 @@ public class Escenario3Manager : MonoBehaviour
         );
 
         Invoke(nameof(MostrarRetroIncorrecta), 2f);
-
+        ModificarSeguridadEscenario(-3f);
         PerderVida();
     }
 
@@ -290,24 +292,33 @@ public class Escenario3Manager : MonoBehaviour
     {
         if (GameManagerGlobal.instancia != null)
         {
-            GameManagerGlobal.instancia.PerderVida();
+            GameManagerGlobal.instancia.PerderVida(); 
         }
-
         ActualizarCorazones();
     }
 
-    void ActualizarCorazones()
+    void GanarVida()
     {
-        int vidas = 3;
-
         if (GameManagerGlobal.instancia != null)
         {
-            vidas = GameManagerGlobal.instancia.vidas;
+            // Si el GameManager existe, lo usamos
+            GameManagerGlobal.instancia.GanarVida();
         }
+        ActualizarCorazones();
+    }   
+
+    void ActualizarCorazones()
+    {
+        if (corazones == null || corazones.Length == 0) return;
+
+        int vidasActuales = (GameManagerGlobal.instancia != null) ? GameManagerGlobal.instancia.vidas : 3;
 
         for (int i = 0; i < corazones.Length; i++)
         {
-            corazones[i].SetActive(i < vidas);
+            if (corazones[i] != null)
+            {
+                corazones[i].SetActive(i < vidasActuales);
+            }
         }
     }
 
@@ -354,5 +365,25 @@ public class Escenario3Manager : MonoBehaviour
         }
 
         camara.orthographicSize = tamaño;
+    }
+
+    private void ModificarSeguridadEscenario(float cambio)
+    {
+        string claveSeguridad = (GameManagerGlobal.instancia != null) 
+            ? GameManagerGlobal.instancia.ObtenerClaveUsuario("SeguridadPersistente") 
+            : "SeguridadPersistente";
+
+        float seguridadActual = PlayerPrefs.GetFloat(claveSeguridad, 0f);
+        float nuevaSeguridad = Mathf.Clamp(seguridadActual + cambio, 0f, 100f);
+
+        if (GameManagerGlobal.instancia != null)
+        {
+            GameManagerGlobal.instancia.nivelSeguridad = nuevaSeguridad;
+        }
+
+        PlayerPrefs.SetFloat(claveSeguridad, nuevaSeguridad);
+        PlayerPrefs.Save();
+
+        Debug.Log($"🛡️ Seguridad Escenario 1: Tenía {seguridadActual}%, cambió ({cambio}%), Ahora es: {nuevaSeguridad}%");
     }
 }

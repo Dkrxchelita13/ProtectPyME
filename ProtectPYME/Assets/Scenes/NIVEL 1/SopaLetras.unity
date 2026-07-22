@@ -8195,9 +8195,10 @@ MonoBehaviour:
   - textoPregunta: PROCESO MEDIANTE EL CUAL EL SISTEMA CONFIRMA QUE EL USUARIO ES
       QUIEN DICE SER
     respuestaCorrecta: IDENTIDAD
+  barraSeguridad: {fileID: 1035190816}
   barraTiempo: {fileID: 209754864}
-  txtTiempo: {fileID: 98205973}
   barraTiempo2: {fileID: 1418139034}
+  txtTiempo: {fileID: 98205973}
   txtTiempo2: {fileID: 278083600}
 --- !u!4 &809319583
 Transform:
@@ -8233,6 +8234,8 @@ MonoBehaviour:
   - {fileID: 2057007938}
   tiempoLimite: 15
   tiempoActual: 0
+  puntajeObtenido: 0
+  progresoSeguridad: 0
   canvasGameOver: {fileID: 176319304}
 --- !u!114 &809319585
 MonoBehaviour:

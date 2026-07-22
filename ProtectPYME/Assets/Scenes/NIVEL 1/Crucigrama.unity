@@ -2095,7 +2095,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: jsuuwhsdhhehdehdehduehduehduheudhuhduhduehduehuehduehduedhudhuedhuduedhuehduedhuehduduedhuedhududhudhud
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 37f9a49cdb0421a4d9578ff286c9336e, type: 2}
   m_sharedMaterial: {fileID: -5021077410540963070, guid: 37f9a49cdb0421a4d9578ff286c9336e, type: 2}
@@ -3296,6 +3296,7 @@ GameObject:
   - component: {fileID: 1240770506}
   - component: {fileID: 1240770505}
   - component: {fileID: 1240770507}
+  - component: {fileID: 1240770508}
   m_Layer: 0
   m_Name: GameController
   m_TagString: Untagged
@@ -3354,16 +3355,38 @@ MonoBehaviour:
   numeroPrefab: {fileID: 2673182938108150817, guid: 291de0c84252af14d9af3ff347b5026e, type: 3}
   gridOffset: {x: -12, y: 4}
   tiempoRestante: 90
-  vidas: 3
   txtTimer: {fileID: 139291823}
   barraTiempo: {fileID: 1092593560}
   txtTimer2: {fileID: 196416774}
   barraTiempo2: {fileID: 183796754}
   canvasGanador: {fileID: 742454042}
   canvasFinJuego: {fileID: 701124249}
-  txtPuntos: {fileID: 291242635}
-  txtVidas: {fileID: 1710456455}
-  txtSeguridad: {fileID: 1851461466}
+  txtPuntosFinal: {fileID: 291242635}
+  txtVidasFinal: {fileID: 1710456455}
+  txtSeguridadFinal: {fileID: 1851461466}
+  barraSeguridad: {fileID: 1696967004}
+--- !u!114 &1240770508
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1240770504}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a90ff11b9578b4040869b1e033dc97e0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  txtPuntaje: {fileID: 1854033314}
+  iconosVidas:
+  - {fileID: 1792652996}
+  - {fileID: 2008229537}
+  - {fileID: 1044332903}
+  tiempoLimite: 15
+  tiempoActual: 0
+  puntajeObtenido: 0
+  progresoSeguridad: 0
+  canvasGameOver: {fileID: 701124249}
 --- !u!1 &1263002521
 GameObject:
   m_ObjectHideFlags: 0

@@ -29,8 +29,33 @@ public class ProgresoController : MonoBehaviour
 
     void Start()
     {
-        // Al iniciar cualquiera de las dos escenas, solicita los datos al servidor
+        // 🟢 Cargar vidas correctamente al iniciar la escena
+        ActualizarTextoVidas();
+
         CargarYMostrarProgreso();
+    }
+
+    // 🟢 Método auxiliar para obtener y pintar las vidas del usuario actual
+    private void ActualizarTextoVidas()
+    {
+        if (txtVidasMax == null) return;
+
+        int vidasActuales = 3;
+
+        if (GameManagerGlobal.instancia != null)
+        {
+            // 1. Prioridad: Vidas en memoria RAM del GameManager Global
+            vidasActuales = GameManagerGlobal.instancia.vidas;
+        }
+        else
+        {
+            // 2. Si no hay GameManager, leemos del disco usando la clave del usuario activo
+            string usuarioActivo = PlayerPrefs.GetString("UsuarioActual", "default_user");
+            string claveVidas = $"{usuarioActivo}_Vidas";
+            vidasActuales = PlayerPrefs.GetInt(claveVidas, 3);
+        }
+
+        txtVidasMax.text = vidasActuales.ToString();
     }
 
     public void CargarYMostrarProgreso()
@@ -48,27 +73,43 @@ public class ProgresoController : MonoBehaviour
 
             AnalyticsData data = JsonUtility.FromJson<AnalyticsData>(json);
 
-            // 1. ASIGNACIÓN DE TEXTOS (Solo si existen en la escena actual)
-
+            // 1. ASIGNACIÓN DE TEXTOS
             if (txtPuntajeTotal != null)
                 txtPuntajeTotal.text = data.total_points.ToString();
-
-            if (txtSeguridadPromedio != null)
-                txtSeguridadPromedio.text = data.accuracy.ToString("F0") + "%";
 
             if (txtPartidasJugadas != null)
                 txtPartidasJugadas.text =
                     Mathf.RoundToInt(data.awareness_score).ToString();
 
-            //if (txtVidasMax != null)
-            // txtVidasMax.text = "0";
+            // 🟢 Obtener la clave dinámica del usuario para la seguridad persistente
+            string usuarioActivo = PlayerPrefs.GetString("UsuarioActual", "default_user");
+            string claveSeguridad = $"{usuarioActivo}_SeguridadPersistente";
 
-            Debug.Log("✅ Analytics cargados con éxito");
+            int seguridadServidor = Mathf.RoundToInt(data.awareness_score);
+            int seguridadLocal = (GameManagerGlobal.instancia != null) 
+                ? Mathf.RoundToInt(GameManagerGlobal.instancia.nivelSeguridad) 
+                : Mathf.RoundToInt(PlayerPrefs.GetFloat(claveSeguridad, 0f));
 
-            // 2. CONTROL DE BOTONES (Solo si fueron asignados en la escena actual)
+            // Tomamos el valor más alto
+            int seguridadDefinitiva = Mathf.Max(seguridadServidor, seguridadLocal);
+
+            if (GameManagerGlobal.instancia != null)
+            {
+                GameManagerGlobal.instancia.nivelSeguridad = seguridadDefinitiva;
+            }
+
+            if (txtSeguridadPromedio != null)
+            {
+                txtSeguridadPromedio.text = seguridadDefinitiva.ToString() + "%";
+            }
+
+            // 🟢 2. Sincronizamos las vidas actualizadas en la UI
+            ActualizarTextoVidas();
+
+            // 3. CONTROL DE BOTONES (Pasándole la seguridad definitiva)
             if (botonesNiveles != null && botonesNiveles.Length > 0)
             {
-                ControlarDesbloqueoDeNiveles(data);
+                ControlarDesbloqueoDeNiveles(data, seguridadDefinitiva);
             }
         }
 
@@ -82,7 +123,6 @@ public class ProgresoController : MonoBehaviour
             )
         );
 
-
         StartCoroutine(
             APIManager.Instance.GetAIRisk(
                 OnRiskLoaded,
@@ -94,27 +134,60 @@ public class ProgresoController : MonoBehaviour
                 }
             )
         );
-
     }
 
-    void ControlarDesbloqueoDeNiveles(AnalyticsData data)
+    void ControlarDesbloqueoDeNiveles(AnalyticsData data, float seguridadCalculada)
     {
-            if (botonesNiveles == null || botonesNiveles.Length == 0) return;
+        if (botonesNiveles == null || botonesNiveles.Length == 0) return;
 
-            // Obtener el nivel máximo alcanzado guardado (1 por defecto)
-            int progresoInicial = PlayerPrefs.GetInt("ProgresoNIvelInicial", 1);
+        int puntajeMinimoRequerido = 60;
+        float seguridadMinimaRequerida = 60f;
 
-            // Opcional: Si deseas que los datos del Backend (AnalyticsData) también desbloqueen niveles,
-            // puedes actualizar 'nivelAlcanzado' según el progreso recibido del servidor.
+        int puntajeActual = data.total_points;
+        // 🟢 Usamos la seguridad calculada (el valor más alto entre servidor y local)
+        float seguridadActual = seguridadCalculada; 
 
-            for (int i = 0; i < botonesNiveles.Length; i++)
+        // El Nivel Inicial (0) SIEMPRE está desbloqueado
+        botonesNiveles[0].interactable = true;
+        SetBotonVisual(botonesNiveles[0], true);
+
+        int nivelAptitud = 1; 
+
+        // 2. Nivel Intermedio (1)
+        if (botonesNiveles.Length > 1)
+        {
+            bool puedeDesbloquearIntermedio = (puntajeActual >= puntajeMinimoRequerido) && 
+                                             (seguridadActual >= seguridadMinimaRequerida);
+
+            botonesNiveles[1].interactable = puedeDesbloquearIntermedio;
+            SetBotonVisual(botonesNiveles[1], puedeDesbloquearIntermedio);
+
+            if (puedeDesbloquearIntermedio)
             {
-                // El botón del nivel (i + 1) se desbloquea si el nivel alcanzado es mayor o igual a ese número
-                bool estaDesbloqueado = (progresoInicial >= (i + 1));
-
-                botonesNiveles[i].interactable = estaDesbloqueado;
-                SetBotonVisual(botonesNiveles[i], estaDesbloqueado);
+                nivelAptitud = 2; // Tiene acceso hasta el nivel 2 o más
             }
+        }
+
+        // 3. Resto de niveles bloqueados...
+        for (int i = 2; i < botonesNiveles.Length; i++)
+        {
+            botonesNiveles[i].interactable = false;
+            SetBotonVisual(botonesNiveles[i], false);
+        }
+
+        // 🟢 CLAVE: Guardamos en PlayerPrefs el nivel calculado según sus datos reales del backend
+        int nivelActualGuardado = PlayerPrefs.GetInt("NivelAlcanzado", 1);
+        int nivelDefinitivo = Mathf.Max(nivelActualGuardado, nivelAptitud);
+        
+        PlayerPrefs.SetInt("NivelAlcanzado", nivelDefinitivo);
+        PlayerPrefs.Save();
+
+        // 🟢 Notificamos al controlador de botones y candados que se actualice
+        BotonesProgresoController controladorBotones = FindObjectOfType<BotonesProgresoController>();
+        if (controladorBotones != null)
+        {
+            controladorBotones.ActualizarProgreso();
+        }
     }
 
     void SetBotonVisual(Button boton, bool estaDesbloqueado)

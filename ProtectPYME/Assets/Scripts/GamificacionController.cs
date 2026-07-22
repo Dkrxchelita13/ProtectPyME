@@ -14,38 +14,68 @@ public class GamificacionController : MonoBehaviour
     [Header("Ajustes")]
     public float tiempoLimite = 15f;
     public float tiempoActual;
-    public static int puntaje = 0;
-    public static int vidas = 3;
+
+    public int puntajeObtenido = 0;
+    public float progresoSeguridad = 0f; // Cambiado a float
 
     private int erroresAcumulados = 0;
     private PreguntasController pController;
     public GameObject canvasGameOver;
 
+    void Awake()
+    {
+        progresoSeguridad = ObtenerSeguridadActual();
+    }
+
     void Start()
     {
         pController = GetComponent<PreguntasController>();
-
         tiempoActual = tiempoLimite;
 
-        puntaje = 0;
-        vidas = 3;
+        puntajeObtenido = 0;
         erroresAcumulados = 0;
 
-        txtPuntaje.text = puntaje.ToString();
+        progresoSeguridad = ObtenerSeguridadActual(); 
 
-        ActualizarUI();
+        if (txtPuntaje != null)
+            txtPuntaje.text = puntajeObtenido.ToString();
+
+        ActualizarUIVidas(); 
+        
+        Debug.Log("🎮 Minijuego iniciado. Vidas: " + ObtenerVidasActuales() + " | Seguridad inicial: " + progresoSeguridad.ToString("F1") + "%");
     }
 
+    public float ObtenerSeguridadActual()
+    {
+        string claveSeguridad = (GameManagerGlobal.instancia != null) 
+            ? GameManagerGlobal.instancia.ObtenerClaveUsuario("SeguridadPersistente") 
+            : "SeguridadPersistente";
 
+        float seguridadGuardada = PlayerPrefs.GetFloat(claveSeguridad, 0f);
+
+        if (GameManagerGlobal.instancia != null)
+        {
+            if (GameManagerGlobal.instancia.nivelSeguridad > seguridadGuardada)
+            {
+                seguridadGuardada = GameManagerGlobal.instancia.nivelSeguridad;
+            }
+            else
+            {
+                GameManagerGlobal.instancia.nivelSeguridad = seguridadGuardada;
+            }
+        }
+        
+        return seguridadGuardada;
+    }
 
     public void SumarPuntos(int cantidad) {
-        puntaje += cantidad;
-        ActualizarUI();
+        puntajeObtenido += cantidad;
+        txtPuntaje.text = puntajeObtenido.ToString();
     }
 
     public void RestarPuntos(int cantidad) {
-        puntaje = Mathf.Max(0, puntaje - cantidad);
-        ActualizarUI();
+        puntajeObtenido = Mathf.Max(0, puntajeObtenido - cantidad);
+        txtPuntaje.text = puntajeObtenido.ToString();
     }
 
     public void RegistrarError()
@@ -56,33 +86,60 @@ public class GamificacionController : MonoBehaviour
         if (erroresAcumulados >= 2)
         {
             QuitarVida();
-            erroresAcumulados = 0; // Reiniciar contador tras perder la vida
+            erroresAcumulados = 0; 
         }
     }
 
-    public void QuitarVida() {
-        vidas--;
+    public int ObtenerVidasActuales()
+    {
+        if (GameManagerGlobal.instancia != null)
+            return GameManagerGlobal.instancia.vidas;
         
-        // Apagamos el icono de vida correspondiente (3 vidas -> índices 2, 1, 0)
-        if (vidas >= 0 && vidas < iconosVidas.Length) 
+        string claveVidas = (GameManagerGlobal.instancia != null) 
+            ? GameManagerGlobal.instancia.ObtenerClaveUsuario("Vidas") 
+            : "Vidas";
+
+        return PlayerPrefs.GetInt(claveVidas, 3);
+    }
+
+    public void QuitarVida() {
+        if (GameManagerGlobal.instancia != null)
         {
-            if (iconosVidas[vidas] != null)
-                iconosVidas[vidas].SetActive(false);
+            GameManagerGlobal.instancia.PerderVida();
+        }
+        else
+        {
+            int vidas = PlayerPrefs.GetInt("Vidas", 3);
+            vidas--;
+            if (vidas < 0) vidas = 0;
+            PlayerPrefs.SetInt("Vidas", vidas);
+            PlayerPrefs.Save();
         }
 
-        if (vidas <= 0) 
+        ActualizarUIVidas();
+
+        if (ObtenerVidasActuales() <= 0) 
         {
             FinalizarJuego();
         }
     }
 
-    public void ReiniciarCronometro()
+    public void ReiniciarCronometro() { }
 
+    public void ActualizarUI() 
     {
-
+        txtPuntaje.text = puntajeObtenido.ToString();
     }
 
-    void ActualizarUI() => txtPuntaje.text = puntaje.ToString();
+    void ActualizarUIVidas()
+    {
+        int vidasActuales = ObtenerVidasActuales();
+
+        for (int i = 0; i < iconosVidas.Length; i++)
+        {
+            iconosVidas[i].SetActive(i < vidasActuales);
+        }
+    }
 
     void FinalizarJuego()
     {
@@ -95,7 +152,39 @@ public class GamificacionController : MonoBehaviour
         {
             pController.DetenerJuegoPorGameOver();
         }
+    }
 
+    public void ModificarSeguridad(float cantidad)
+    {
+        progresoSeguridad += cantidad;
+        progresoSeguridad = Mathf.Clamp(progresoSeguridad, 0f, 100f);
+
+        if (GameManagerGlobal.instancia != null)
+        {
+            GameManagerGlobal.instancia.nivelSeguridad = progresoSeguridad;
+            
+            string claveSeguridad = GameManagerGlobal.instancia.ObtenerClaveUsuario("SeguridadPersistente");
+            PlayerPrefs.SetFloat(claveSeguridad, progresoSeguridad);
+            PlayerPrefs.Save();
+        }
+        else
+        {
+            PlayerPrefs.SetFloat("SeguridadPersistente", progresoSeguridad);
+            PlayerPrefs.Save();
+        }
+
+        Debug.Log($"🛡️ Seguridad Minijuego modificada ({cantidad}%). Nueva seguridad: {progresoSeguridad}%");
+    }
+
+    public int ObtenerPuntos()
+    {
+        return puntajeObtenido;
+    }
+
+    public int ObtenerVidas()
+    {
+        return ObtenerVidasActuales();
     }
 }
+
 

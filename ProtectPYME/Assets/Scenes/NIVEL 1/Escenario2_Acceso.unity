@@ -4641,9 +4641,9 @@ MonoBehaviour:
   panelRetroCorrecto: {fileID: 296414077}
   panelRetroIncorrecto: {fileID: 1601173731}
   corazones:
-  - {fileID: 1851010268}
-  - {fileID: 421162195}
-  - {fileID: 1845076732}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
   camara: {fileID: 144149237}
   audioSource: {fileID: 384606179}
   sonidoDetalle: {fileID: 8300000, guid: f009f692035c3442e83be612eec707f6, type: 3}

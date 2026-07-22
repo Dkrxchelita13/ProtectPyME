@@ -127,6 +127,16 @@ public class RegisterManager : MonoBehaviour
 
     if(txtMensaje != null && txtMensaje.text.Contains("correctamente"))
     {
+        PlayerPrefs.DeleteKey("SeguridadPersistente");
+        PlayerPrefs.SetInt("NivelAlcanzado", 1);
+
+        if (GameManagerGlobal.instancia != null)
+        {
+            GameManagerGlobal.instancia.nivelSeguridad = 0f;
+        }
+
+        PlayerPrefs.Save();
+        
         yield return new WaitForSeconds(1.5f);
         SceneManager.LoadScene(nombreEscenaLogin);
     }
