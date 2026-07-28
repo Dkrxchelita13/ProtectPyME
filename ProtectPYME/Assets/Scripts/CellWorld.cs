@@ -83,6 +83,12 @@ public class CellWorld : MonoBehaviour
     public void LockCell()
     {
         locked = true;
+        sr.color = new Color(0.8f, 0.8f, 0.8f, 0.5f);
+    }
+    public void UnlockCell()
+    {
+        locked = false;
+        sr.color = new Color(1f, 1f, 1f, 0.9f); 
     }
     public void DisplayLetter(string letter)
     {

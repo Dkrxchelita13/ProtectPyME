@@ -987,6 +987,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   panelPausa: {fileID: 0}
   CanvasJuegoTerminado: {fileID: 0}
+  panelConfirmacionSalir: {fileID: 0}
   SonidoBoton: {fileID: 0}
   Boton: {fileID: 0}
 --- !u!4 &986176476
@@ -2683,7 +2684,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 071c70b4bc3ac904883f7032df1b6b2b, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 7c891a3a5a7070045be817df04c2d02c, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -2824,6 +2825,8 @@ MonoBehaviour:
   inputEmail: {fileID: 1762250695}
   inputPassword: {fileID: 1118543260}
   txtStatus: {fileID: 921206030}
+  botonGoogleLogin: {fileID: 0}
+  googleWebClientId: 
 --- !u!1 &2010172392
 GameObject:
   m_ObjectHideFlags: 0
@@ -3125,7 +3128,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: df636f9734ef41e439217008484d415c, type: 3}
+  m_Sprite: {fileID: 21300000, guid: f6225f38d6e56744299ef5ba66520091, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1

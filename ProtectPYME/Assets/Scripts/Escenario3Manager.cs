@@ -6,14 +6,16 @@ public class Escenario3Manager : MonoBehaviour
 {
     private float tiempoInicio;
 
-    [Header("Paneles")]
-    public GameObject panelIntroduccion;
-    public GameObject panelUSB;
+    [Header("Historia (Arreglo de Paneles)")]
+    [Tooltip("Arrastra aquí en orden: Panel 1 (Baiting), Panel 2 (Glosario Malware/Ransomware/Botnet), Panel 3 (Antivirus y Riesgo)")]
+    public GameObject[] panelesHistoria;
+
+    [Header("Decisión y Reacciones Inmediatas")]
     public GameObject panelDecision;
-
-    public GameObject panelMalo;
     public GameObject panelBueno;
+    public GameObject panelMalo;
 
+    [Header("Retroalimentaciones Finales")]
     public GameObject retroCorrecta;
     public GameObject retroIncorrecta;
 
@@ -31,17 +33,12 @@ public class Escenario3Manager : MonoBehaviour
     public AudioClip sonidoError;
     public AudioClip sonidoCorrecto;
 
+    [Header("Título Escenario")]
+    public GameObject tituloEscenario;
+    public float tiempoVisibilidadTitulo = 3.5f;
+
     private bool yaRespondio = false;
-
-    /*
-        0 = Introducción
-        1 = USB
-        2 = Decisión
-        3 = Retro Correcta
-        4 = Retro Incorrecta
-    */
-
-    int panelActual = 0;
+    private int indiceHistoriaActual = 0;
 
     void Start()
     {
@@ -49,27 +46,44 @@ public class Escenario3Manager : MonoBehaviour
 
         ActualizarCorazones();
 
-        panelBueno.SetActive(false);
-        panelMalo.SetActive(false);
+        // Ocultar paneles de reacción
+        if (panelBueno != null) panelBueno.SetActive(false);
+        if (panelMalo != null) panelMalo.SetActive(false);
 
-        MostrarIntroduccion();
+        // Ocultar retroalimentaciones
+        if (retroCorrecta != null) retroCorrecta.SetActive(false);
+        if (retroIncorrecta != null) retroIncorrecta.SetActive(false);
+
+        // Mostrar el título al inicio y programar su desactivación
+        if (tituloEscenario != null)
+        {
+            tituloEscenario.SetActive(true);
+            Invoke(nameof(OcultarTituloEscenario), tiempoVisibilidadTitulo);
+        }
+
+        MostrarHistoria(0);
     }
 
     void Update()
     {
-        if (panelDecision.activeSelf || panelMalo.activeSelf || panelBueno.activeSelf)
+        // Si hay un panel de reacción, retroalimentación o decisión activo, deshabilitar clics de pantalla
+        if (panelDecision.activeSelf || 
+            (panelBueno != null && panelBueno.activeSelf) || 
+            (panelMalo != null && panelMalo.activeSelf) ||
+            (retroCorrecta != null && retroCorrecta.activeSelf) ||
+            (retroIncorrecta != null && retroIncorrecta.activeSelf))
             return;
 
         if (Input.GetMouseButtonDown(0))
         {
             float mitad = Screen.width / 2;
 
-            // CLICK DERECHA
+            // CLICK DERECHA (Avanzar)
             if (Input.mousePosition.x > mitad)
             {
                 SiguientePanel();
             }
-            // CLICK IZQUIERDA
+            // CLICK IZQUIERDA (Retroceder)
             else
             {
                 PanelAnterior();
@@ -78,97 +92,37 @@ public class Escenario3Manager : MonoBehaviour
     }
 
     // =========================
-    // PANELES
+    // PANELES DE HISTORIA
     // =========================
 
-    void MostrarIntroduccion()
+    void MostrarHistoria(int indice)
     {
-        panelActual = 0;
+        indiceHistoriaActual = indice;
 
-        panelIntroduccion.SetActive(true);
-        panelUSB.SetActive(false);
+        // Apagar todos los paneles de historia
+        for (int i = 0; i < panelesHistoria.Length; i++)
+        {
+            if (panelesHistoria[i] != null)
+                panelesHistoria[i].SetActive(i == indiceHistoriaActual);
+        }
+
         panelDecision.SetActive(false);
-
-        panelBueno.SetActive(false);
-        panelMalo.SetActive(false);
-
-        retroCorrecta.SetActive(false);
-        retroIncorrecta.SetActive(false);
-
-        ReproducirSonido(sonidoCorreo);
-    }
-
-    void MostrarUSB()
-    {
-        panelActual = 1;
-
-        panelIntroduccion.SetActive(false);
-        panelUSB.SetActive(true);
-        panelDecision.SetActive(false);
-
-        panelBueno.SetActive(false);
-        panelMalo.SetActive(false);
-
-        retroCorrecta.SetActive(false);
-        retroIncorrecta.SetActive(false);
 
         ReproducirSonido(sonidoCorreo);
     }
 
     void MostrarDecision()
     {
-        panelActual = 2;
+        // Apagar historia
+        for (int i = 0; i < panelesHistoria.Length; i++)
+        {
+            if (panelesHistoria[i] != null)
+                panelesHistoria[i].SetActive(false);
+        }
 
-        panelIntroduccion.SetActive(false);
-        panelUSB.SetActive(false);
         panelDecision.SetActive(true);
 
-        panelBueno.SetActive(false);
-        panelMalo.SetActive(false);
-
-        retroCorrecta.SetActive(false);
-        retroIncorrecta.SetActive(false);
-
         ReproducirSonido(sonidoDetalle);
-
-        StartCoroutine(ZoomSuave(3.6f));
-    }
-
-    void MostrarRetroCorrecta()
-    {
-        panelActual = 3;
-
-        panelIntroduccion.SetActive(false);
-        panelUSB.SetActive(false);
-        panelDecision.SetActive(false);
-
-        panelBueno.SetActive(false);
-        panelMalo.SetActive(false);
-
-        retroCorrecta.SetActive(true);
-        retroIncorrecta.SetActive(false);
-
-        ReproducirSonido(sonidoDetalle);
-
-        StartCoroutine(ZoomSuave(3.6f));
-    }
-
-    void MostrarRetroIncorrecta()
-    {
-        panelActual = 4;
-
-        panelIntroduccion.SetActive(false);
-        panelUSB.SetActive(false);
-        panelDecision.SetActive(false);
-
-        panelBueno.SetActive(false);
-        panelMalo.SetActive(false);
-
-        retroCorrecta.SetActive(false);
-        retroIncorrecta.SetActive(true);
-
-        ReproducirSonido(sonidoDetalle);
-
         StartCoroutine(ZoomSuave(3.6f));
     }
 
@@ -178,11 +132,11 @@ public class Escenario3Manager : MonoBehaviour
 
     void SiguientePanel()
     {
-        if (panelActual == 0)
+        if (indiceHistoriaActual < panelesHistoria.Length - 1)
         {
-            MostrarUSB();
+            MostrarHistoria(indiceHistoriaActual + 1);
         }
-        else if (panelActual == 1)
+        else
         {
             MostrarDecision();
         }
@@ -190,30 +144,51 @@ public class Escenario3Manager : MonoBehaviour
 
     void PanelAnterior()
     {
-        if (panelActual == 1)
+        if (indiceHistoriaActual > 0)
         {
-            MostrarIntroduccion();
+            MostrarHistoria(indiceHistoriaActual - 1);
         }
-        else if (panelActual == 2)
-        {
-            MostrarUSB();
-        }
+    }
+
+    // =========================
+    // RETROALIMENTACIONES
+    // =========================
+
+    void MostrarRetroCorrecta()
+    {
+        OcultarTodo();
+        if (retroCorrecta != null) retroCorrecta.SetActive(true);
+        ReproducirSonido(sonidoDetalle);
+    }
+
+    void MostrarRetroIncorrecta()
+    {
+        OcultarTodo();
+        if (retroIncorrecta != null) retroIncorrecta.SetActive(true);
+        ReproducirSonido(sonidoDetalle);
+    }
+
+    void OcultarTodo()
+    {
+        panelDecision.SetActive(false);
+        if (panelBueno != null) panelBueno.SetActive(false);
+        if (panelMalo != null) panelMalo.SetActive(false);
     }
 
     // =========================
     // RESPUESTAS
     // =========================
 
+    // OPCIÓN BUENA: Entregar a Soporte Técnico / TI (O no conectar)
     public void OpcionBuena()
     {
         if (yaRespondio) return;
-
         yaRespondio = true;
 
         int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
 
         panelDecision.SetActive(false);
-        panelBueno.SetActive(true);
+        if (panelBueno != null) panelBueno.SetActive(true);
 
         ReproducirSonido(sonidoCorrecto);
 
@@ -236,16 +211,16 @@ public class Escenario3Manager : MonoBehaviour
         GanarVida();
     }
 
+    // OPCIÓN MALA: Conectar / Abrir el USB
     public void OpcionMala()
     {
         if (yaRespondio) return;
-
         yaRespondio = true;
 
         int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
 
         panelDecision.SetActive(false);
-        panelMalo.SetActive(true);
+        if (panelMalo != null) panelMalo.SetActive(true);
 
         ReproducirSonido(sonidoError);
 
@@ -264,14 +239,13 @@ public class Escenario3Manager : MonoBehaviour
 
     public void OtroIntento()
     {
-        panelBueno.SetActive(false);
-        panelMalo.SetActive(false);
+        if (panelBueno != null) panelBueno.SetActive(false);
+        if (panelMalo != null) panelMalo.SetActive(false);
 
-        retroCorrecta.SetActive(false);
-        retroIncorrecta.SetActive(false);
+        if (retroCorrecta != null) retroCorrecta.SetActive(false);
+        if (retroIncorrecta != null) retroIncorrecta.SetActive(false);
 
         panelDecision.SetActive(true);
-
         yaRespondio = false;
     }
 
@@ -301,7 +275,6 @@ public class Escenario3Manager : MonoBehaviour
     {
         if (GameManagerGlobal.instancia != null)
         {
-            // Si el GameManager existe, lo usamos
             GameManagerGlobal.instancia.GanarVida();
         }
         ActualizarCorazones();
@@ -384,6 +357,14 @@ public class Escenario3Manager : MonoBehaviour
         PlayerPrefs.SetFloat(claveSeguridad, nuevaSeguridad);
         PlayerPrefs.Save();
 
-        Debug.Log($"🛡️ Seguridad Escenario 1: Tenía {seguridadActual}%, cambió ({cambio}%), Ahora es: {nuevaSeguridad}%");
+        Debug.Log($"🛡️ Seguridad Escenario 3: Tenía {seguridadActual}%, cambió ({cambio}%), Ahora es: {nuevaSeguridad}%");
+    }
+
+    void OcultarTituloEscenario()
+    {
+        if (tituloEscenario != null)
+        {
+            tituloEscenario.SetActive(false);
+        }
     }
 }

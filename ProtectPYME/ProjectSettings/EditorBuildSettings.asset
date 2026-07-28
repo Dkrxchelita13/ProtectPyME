@@ -48,6 +48,9 @@ EditorBuildSettings:
     path: Assets/Scenes/NIVEL 1/Escenario2_Acceso.unity
     guid: d5eb8ce3456ad4ad5944b479cdafc444
   - enabled: 1
+    path: Assets/Scenes/NIVEL 1/Encuesta.unity
+    guid: 39ea57f26c82f6b43a4883cc95c5740d
+  - enabled: 1
     path: Assets/Scenes/NIVEL 1/Escenario 3 (USB sospechoso).unity
     guid: dc2d070750c95484aaff55e84598fa68
   - enabled: 1

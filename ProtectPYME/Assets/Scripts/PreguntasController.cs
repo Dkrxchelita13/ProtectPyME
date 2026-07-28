@@ -7,8 +7,8 @@ using UnityEngine.UI;
 [System.Serializable]
 public class Pregunta
 {
-    public string textoPregunta;
-    public string respuestaCorrecta;
+    public string textoPregunta;
+    public string respuestaCorrecta;
 }
 
 [System.Serializable]
@@ -19,366 +19,439 @@ public class CrosswordList { public CrosswordBackend[] items; }
 
 public class PreguntasController : MonoBehaviour
 {
-    [Header("Panel Ganador")]
-    public TextMeshProUGUI txtPuntosFinal;
-    public TextMeshProUGUI txtVidasFinal;
-    public TextMeshProUGUI txtSeguridadFinal;
-    public GameObject canvasGanador;
-    public TextMeshProUGUI txtPreguntaDisplay;
-    public Pregunta[] bancoDePreguntas;
+    [Header("Panel Ganador")]
+    public TextMeshProUGUI txtPuntosFinal;
+    public TextMeshProUGUI txtVidasFinal;
+    public TextMeshProUGUI txtSeguridadFinal;
+    public GameObject canvasGanador;
+    public TextMeshProUGUI txtPreguntaDisplay;
+    public Pregunta[] bancoDePreguntas;
 
-    [Header("Barras de Progreso")]
-    public Image barraSeguridad;
-    public Image barraTiempo;
-    public Image barraTiempo2;
-    public TextMeshProUGUI txtTiempo;
-    public TextMeshProUGUI txtTiempo2;
+    [Header("Barras de Progreso")]
+    public Image barraSeguridad;
+    public Image barraTiempo;
+    public Image barraTiempo2;
+    public TextMeshProUGUI txtTiempo;
+    public TextMeshProUGUI txtTiempo2;
 
-    private int indicePreguntaActual = 0;
-    private List<CasillaController> casillasSeleccionadas = new List<CasillaController>();
-    private GamificacionController gamificacion;
+    private int indicePreguntaActual = 0;
+    private List<CasillaController> casillasSeleccionadas = new List<CasillaController>();
+    private GamificacionController gamificacion;
 
-    private float tiempoRestante = 10f;
-    private float TIEMPO_MAX = 20f;
-    private bool corriendoTiempo = false;
-    private bool bloqueado = false;
-    private bool cambiandoPregunta = false;
-    private bool perfectGame = true;
+    private float tiempoRestante = 10f;
+    private float TIEMPO_MAX = 20f;
+    private bool corriendoTiempo = false;
+    private bool bloqueado = false;
+    private bool cambiandoPregunta = false;
 
-    void Start()
-    {
-        gamificacion = GetComponent<GamificacionController>();
+    private float seguridadInicial = 0f;
+    private int contadorErroresPalabra = 0;
+    
+    // 🔥 NUEVO: Contador para exigir que todas se contesten bien
+    private int respuestasCorrectas = 0;
 
-        if (gamificacion != null)
-        {
-            gamificacion.progresoSeguridad = gamificacion.ObtenerSeguridadActual();
-        }
+    void Start()
+    {
+        Time.timeScale = 1f;
+        gamificacion = GetComponent<GamificacionController>();
 
-        indicePreguntaActual = 0;
-        bloqueado = false;
-        corriendoTiempo = false;
-        perfectGame = true;
-        casillasSeleccionadas.Clear();
+        if (gamificacion != null)
+        {
+            seguridadInicial = gamificacion.ObtenerSeguridadActual();
+            gamificacion.progresoSeguridad = seguridadInicial;
+        }
 
-        ActualizarBarraSeguridadVisual();
+        indicePreguntaActual = 0;
+        respuestasCorrectas = 0;
+        bloqueado = false;
+        corriendoTiempo = false;
+        casillasSeleccionadas.Clear();
 
-        string token = APIManager.Instance.GetToken();
-        if (string.IsNullOrEmpty(token)) return;
+        ActualizarBarraSeguridadVisual();
 
-        StartCoroutine(APIManager.Instance.GetWords(AIState.RecommendedTraining, AIState.RiskLevel, OnCrosswordLoaded));
-    }
+        string token = APIManager.Instance != null ? APIManager.Instance.GetToken() : "";
+        if (string.IsNullOrEmpty(token)) return;
 
-    void OnCrosswordLoaded(string json)
-    {
-        indicePreguntaActual = 0;
-        if (!string.IsNullOrEmpty(json) && json != "ERROR")
-        {
-            string fixedJson = "{\"items\":" + json + "}";
-            CrosswordList data = JsonUtility.FromJson<CrosswordList>(fixedJson);
+        StartCoroutine(APIManager.Instance.GetWords(AIState.RecommendedTraining, AIState.RiskLevel, OnCrosswordLoaded));
+    }
 
-            if (data?.items != null && data.items.Length > 0)
-            {
-                bancoDePreguntas = new Pregunta[data.items.Length];
-                for (int i = 0; i < data.items.Length; i++)
-                {
-                    bancoDePreguntas[i] = new Pregunta
-                    {
-                        textoPregunta = data.items[i].clue,
-                        respuestaCorrecta = data.items[i].answer
-                    };
-                }
-            }
-        }
-        MostrarPregunta();
-    }
+    void OnCrosswordLoaded(string json)
+    {
+        indicePreguntaActual = 0;
+        if (!string.IsNullOrEmpty(json) && json != "ERROR")
+        {
+            string fixedJson = "{\"items\":" + json + "}";
+            CrosswordList data = JsonUtility.FromJson<CrosswordList>(fixedJson);
 
-    void MostrarPregunta()
-    {
-        casillasSeleccionadas.Clear();
-        if (bancoDePreguntas == null || bancoDePreguntas.Length == 0) return;
+            if (data?.items != null && data.items.Length > 0)
+            {
+                bancoDePreguntas = new Pregunta[data.items.Length];
+                for (int i = 0; i < data.items.Length; i++)
+                {
+                    bancoDePreguntas[i] = new Pregunta
+                    {
+                        textoPregunta = data.items[i].clue,
+                        respuestaCorrecta = data.items[i].answer
+                    };
+                }
+            }
+        }
+        MostrarPregunta();
+    }
 
-        if (indicePreguntaActual < bancoDePreguntas.Length)
-        {
-            tiempoRestante = TIEMPO_MAX;
-            corriendoTiempo = true;
-            txtPreguntaDisplay.text = bancoDePreguntas[indicePreguntaActual].textoPregunta;
-            GetComponent<GeneradorSopa>().GenerarLetras(bancoDePreguntas[indicePreguntaActual].respuestaCorrecta);
-        }
-    }
+    void MostrarPregunta()
+    {
+        casillasSeleccionadas.Clear();
+        if (bancoDePreguntas == null || bancoDePreguntas.Length == 0)
+        {
+            if (txtPreguntaDisplay != null) 
+                txtPreguntaDisplay.text = "No hay preguntas disponibles.";
+            return;
+        }
 
-    public void ActualizarBarraSeguridadVisual()
-    {
-        if (barraSeguridad != null && gamificacion != null)
-        {
-            barraSeguridad.fillAmount = gamificacion.progresoSeguridad / 100f;
-        }
-    }
+        if (indicePreguntaActual < bancoDePreguntas.Length)
+        {
+            tiempoRestante = TIEMPO_MAX;
+            corriendoTiempo = true;
+            txtPreguntaDisplay.text = bancoDePreguntas[indicePreguntaActual].textoPregunta;
+            
+            var generador = GetComponent<GeneradorSopa>();
+            if (generador != null)
+            {
+                generador.GenerarLetras(bancoDePreguntas[indicePreguntaActual].respuestaCorrecta);
+            }
+        }
+    }
 
-    public void AgregarLetra(string letra, CasillaController casilla, bool seleccionada)
-    {
-        if (bloqueado || indicePreguntaActual >= bancoDePreguntas.Length) return;
+    public void ActualizarBarraSeguridadVisual()
+    {
+        if (barraSeguridad != null && gamificacion != null)
+        {
+            barraSeguridad.fillAmount = gamificacion.progresoSeguridad / 100f;
+        }
+    }
 
-        if (seleccionada && !casillasSeleccionadas.Contains(casilla)) casillasSeleccionadas.Add(casilla);
-        else casillasSeleccionadas.Remove(casilla);
+    public void AgregarLetra(string letra, CasillaController casilla, bool seleccionada)
+    {
+        if (bloqueado || indicePreguntaActual >= bancoDePreguntas.Length) return;
 
-        ValidarSeleccion();
-    }
-    
-    void ValidarSeleccion()
-    {
-        if (bloqueado || casillasSeleccionadas.Count <= 1) return;
+        if (seleccionada && !casillasSeleccionadas.Contains(casilla)) 
+            casillasSeleccionadas.Add(casilla);
+        else 
+            casillasSeleccionadas.Remove(casilla);
 
-        int deltaFila = Mathf.Clamp(casillasSeleccionadas[1].fila - casillasSeleccionadas[0].fila, -1, 1);
-        int deltaCol = Mathf.Clamp(casillasSeleccionadas[1].columna - casillasSeleccionadas[0].columna, -1, 1);
+        ValidarSeleccion();
+    }
 
-        for (int i = 1; i < casillasSeleccionadas.Count; i++)
-        {
-            int df = Mathf.Clamp(casillasSeleccionadas[i].fila - casillasSeleccionadas[i - 1].fila, -1, 1);
-            int dc = Mathf.Clamp(casillasSeleccionadas[i].columna - casillasSeleccionadas[i - 1].columna, -1, 1);
+    void ValidarSeleccion()
+    {
+        if (bloqueado || casillasSeleccionadas.Count <= 1) return;
 
-            if (df != deltaFila || dc != deltaCol)
-            {
-                ResetSeleccion("❌ Dirección inválida");
-                return;
-            }
-        }
+        int deltaFila = Mathf.Clamp(casillasSeleccionadas[1].fila - casillasSeleccionadas[0].fila, -1, 1);
+        int deltaCol = Mathf.Clamp(casillasSeleccionadas[1].columna - casillasSeleccionadas[0].columna, -1, 1);
 
-        string formada = "";
-        foreach (var c in casillasSeleccionadas) formada += c.letraDeEsteBoton;
+        for (int i = 1; i < casillasSeleccionadas.Count; i++)
+        {
+            int df = Mathf.Clamp(casillasSeleccionadas[i].fila - casillasSeleccionadas[i - 1].fila, -1, 1);
+            int dc = Mathf.Clamp(casillasSeleccionadas[i].columna - casillasSeleccionadas[i - 1].columna, -1, 1);
 
-        string correcta = bancoDePreguntas[indicePreguntaActual].respuestaCorrecta.Trim().ToUpper();
-        string invertida = Invertir(formada);
+            if (df != deltaFila || dc != deltaCol)
+            {
+                ResetSeleccion("❌ Dirección inválida");
+                return;
+            }
+        }
 
-        if (formada == correcta || invertida == correcta)
-        {
-            if (cambiandoPregunta) return;
-            cambiandoPregunta = true;
-            bloqueado = true;
+        string formada = "";
+        foreach (var c in casillasSeleccionadas) formada += c.letraDeEsteBoton;
 
-            // 🔥 ACIERTO: Solo suma puntos para el backend, no altera arbitrariamente la seguridad local
-            gamificacion.SumarPuntos(10);
-            gamificacion.ModificarSeguridad(1f);
-            ActualizarBarraSeguridadVisual();
+        string correcta = bancoDePreguntas[indicePreguntaActual].respuestaCorrecta.Trim().ToUpper();
+        string invertida = Invertir(formada);
 
-            foreach (var c in casillasSeleccionadas) c.MarcarCorrecta();
-            StartCoroutine(SiguientePreguntaConDelay());
-        }
-        else if (formada.Length >= correcta.Length)
-        {
-            bloqueado = true; 
-            perfectGame = false;
-            gamificacion.RegistrarError(); 
-            
-            StartCoroutine(FeedbackErrorConDelay("❌ Incorrecta"));
-        }
-    }
+        if (formada == correcta || invertida == correcta)
+        {
+            if (cambiandoPregunta) return;
+            cambiandoPregunta = true;
+            bloqueado = true;
 
-    string Invertir(string s)
-    {
-        char[] arr = s.ToCharArray();
-        System.Array.Reverse(arr);
-        return new string(arr);
-    }
+            // 🔥 Cuenta la respuesta como válida
+            respuestasCorrectas++;
 
-    void ResetSeleccion(string mensaje)
-    {
-        foreach (var c in casillasSeleccionadas) c.Resetear();
-        casillasSeleccionadas.Clear();
-    }
-    
-    public void PasarSiguientePregunta()
-    {
-        indicePreguntaActual++;
+            if (gamificacion != null)
+            {
+                gamificacion.ReproducirAcierto();
+                gamificacion.SumarPuntos(10);
+                gamificacion.ModificarSeguridad(1f);
+                ActualizarBarraSeguridadVisual();
+            }
 
-        if (indicePreguntaActual < bancoDePreguntas.Length)
-        {
-            gamificacion.ReiniciarCronometro();
-            MostrarPregunta();
-        }
-        else
-        {
-            bloqueado = true;
-            corriendoTiempo = false;
-            txtPreguntaDisplay.text = "Guardando progreso...";
-            StartCoroutine(TerminarJuegoYSincronizar());
-        }
-    }
+            foreach (var c in casillasSeleccionadas) c.MarcarCorrecta();
+            
+            StartCoroutine(SiguientePreguntaConDelay());
+        }
+        else if (formada.Length >= correcta.Length)
+        {
+            bloqueado = true;
+            contadorErroresPalabra++;
 
-    private IEnumerator TerminarJuegoYSincronizar()
-    {
-        if (barraTiempo != null && barraTiempo2 != null)
-        {
-            barraTiempo.fillAmount = 0f;
-            barraTiempo2.fillAmount = 0f;
-        }
+            if (gamificacion != null) gamificacion.ReproducirError();
 
-        txtPreguntaDisplay.text = "Guardando progreso...";
+            if (contadorErroresPalabra >= 2)
+            {
+                contadorErroresPalabra = 0;
+                if (gamificacion != null) gamificacion.QuitarVida(); 
+            }
 
-        // 1. Obtener y asegurar la seguridad local ganada (72%)
-        float seguridadLocalGanada = ObtenerSeguridadPersistente();
-        
-        PlayerPrefs.SetFloat("SeguridadPersistente", seguridadLocalGanada);
-        if (GameManagerGlobal.instancia != null)
-        {
-            GameManagerGlobal.instancia.nivelSeguridad = seguridadLocalGanada;
-        }
-        PlayerPrefs.Save();
+            if (gamificacion != null && gamificacion.ObtenerVidas() > 0)
+            {
+                StartCoroutine(FeedbackErrorConDelay("❌ Incorrecta"));
+            }
+            else
+            {
+                DetenerJuegoPorGameOver();
+            }
+        }
+    }
 
-        // 2. Enviar los puntos del minijuego al backend (leaderboard/ranking)
-        yield return StartCoroutine(APIManager.Instance.SendScore(gamificacion.puntajeObtenido));
+    string Invertir(string s)
+    {
+        char[] arr = s.ToCharArray();
+        System.Array.Reverse(arr);
+        return new string(arr);
+    }
 
-        // 3. Consultar las analíticas globales
-        bool redCompletada = false;
-        yield return StartCoroutine(APIManager.Instance.GetAnalytics((json) =>
-        {
-            if (json != "ERROR" && json != "NO_TOKEN")
-            {
-                AnalyticsData data = JsonUtility.FromJson<AnalyticsData>(json);
-                
-                float seguridadServidor = data.awareness_score;
+    void ResetSeleccion(string mensaje)
+    {
+        foreach (var c in casillasSeleccionadas) c.Resetear();
+        casillasSeleccionadas.Clear();
+    }
 
-                // 🟢 PROTECCIÓN: Mantenemos el 72% local ya que el servidor no bajó por malas decisiones
-                float seguridadFinal = Mathf.Max(seguridadServidor, seguridadLocalGanada);
+    private IEnumerator TerminarJuegoYSincronizar()
+    {
+        if (barraTiempo != null && barraTiempo2 != null)
+        {
+            barraTiempo.fillAmount = 0f;
+            barraTiempo2.fillAmount = 0f;
+        }
 
-                if (GameManagerGlobal.instancia != null)
-                {
-                    GameManagerGlobal.instancia.nivelSeguridad = seguridadFinal;
-                }
+        txtPreguntaDisplay.text = "Guardando progreso...";
 
-                if (gamificacion != null)
-                {
-                    gamificacion.progresoSeguridad = seguridadFinal;
-                }
+        string claveSeguridad = (GameManagerGlobal.instancia != null) 
+            ? GameManagerGlobal.instancia.ObtenerClaveUsuario("SeguridadPersistente") 
+            : "SeguridadPersistente";
 
-                PlayerPrefs.SetFloat("SeguridadPersistente", seguridadFinal);
-                PlayerPrefs.Save();
-                
-                Debug.Log($"🛡️ Sincronización Minijuego | Servidor: {seguridadServidor}% | Local Ganado: {seguridadLocalGanada}% | Aplicado: {seguridadFinal}%");
-            }
-            redCompletada = true; 
-        }));
+        float seguridadLocalGanada = ObtenerSeguridadPersistente();
 
-        yield return new WaitUntil(() => redCompletada == true);
+        // 🔥 LOGICA ESTRICTA: Solo gana si contestó TODAS bien y sigue vivo
+        bool ganoElJuego = (gamificacion != null && gamificacion.ObtenerVidas() > 0 && respuestasCorrectas == bancoDePreguntas.Length);
 
-        ActualizarBarraSeguridadVisual();
+        // Si falló (ya sea por vidas o por saltarse preguntas por tiempo), pierde el progreso
+        if (!ganoElJuego)
+        {
+            seguridadLocalGanada = seguridadInicial;
+            if (gamificacion != null) gamificacion.progresoSeguridad = seguridadInicial;
+        }
 
-        if (gamificacion.ObtenerVidasActuales() <= 0 || !perfectGame)
-        {
-            txtPreguntaDisplay.text = "¡Juego Terminado!";
-            if (gamificacion.canvasGameOver != null)
-            {
-                gamificacion.canvasGameOver.SetActive(true);
-            }
-        }
-        else
-        {
-            txtPreguntaDisplay.text = "¡Completaste el juego!";
-            
-            if (canvasGanador != null)
-            {
-                txtPuntosFinal.text = gamificacion.puntajeObtenido.ToString();
-                txtVidasFinal.text = gamificacion.ObtenerVidasActuales().ToString();
+        PlayerPrefs.SetFloat(claveSeguridad, seguridadLocalGanada);
+        if (GameManagerGlobal.instancia != null)
+        {
+            GameManagerGlobal.instancia.nivelSeguridad = seguridadLocalGanada;
+        }
+        PlayerPrefs.Save();
 
-                float segFinal = ObtenerSeguridadPersistente();
-                txtSeguridadFinal.text = Mathf.RoundToInt(segFinal).ToString() + "%";
+        if (APIManager.Instance != null && gamificacion != null)
+        {
+            yield return StartCoroutine(APIManager.Instance.SendScore(gamificacion.ObtenerPuntos()));
+        }
 
-                canvasGanador.SetActive(true); 
-            }
-        }
+        bool redCompletada = false;
+        float tiempoEspera = 0f;
+        float tiempoLimiteRed = 5f; 
 
-        yield return new WaitForEndOfFrame();
-        Time.timeScale = 0f; 
-    }
+        if (APIManager.Instance != null)
+        {
+            StartCoroutine(APIManager.Instance.GetAnalytics((json) =>
+            {
+                if (json != "ERROR" && json != "NO_TOKEN")
+                {
+                    AnalyticsData data = JsonUtility.FromJson<AnalyticsData>(json);
+                    float seguridadServidor = data.awareness_score;
+                    float seguridadFinal = Mathf.Max(seguridadServidor, seguridadLocalGanada);
 
-    public IEnumerator SiguientePreguntaConDelay()
-    {
-        corriendoTiempo = false;
-        yield return new WaitForSeconds(1f);
+                    if (!ganoElJuego)
+                    {
+                        seguridadFinal = seguridadInicial;
+                    }
 
-        foreach (var c in casillasSeleccionadas) c.Resetear();
-        casillasSeleccionadas.Clear();
+                    if (GameManagerGlobal.instancia != null)
+                    {
+                        GameManagerGlobal.instancia.nivelSeguridad = seguridadFinal;
+                    }
 
-        indicePreguntaActual++;
-        bloqueado = false;
-        cambiandoPregunta = false;
+                    if (gamificacion != null)
+                    {
+                        gamificacion.progresoSeguridad = seguridadFinal;
+                    }
 
-        if (indicePreguntaActual >= bancoDePreguntas.Length)
-        {
-            PasarSiguientePregunta();
-            yield break;
-        }
+                    PlayerPrefs.SetFloat(claveSeguridad, seguridadFinal);
+                    PlayerPrefs.Save();
+                }
+                redCompletada = true; 
+            }));
 
-        tiempoRestante = TIEMPO_MAX;
-        corriendoTiempo = true;
-        MostrarPregunta();
-    }
-    
-    public bool PuedeInteractuar() { return !bloqueado; }
+            while (!redCompletada && tiempoEspera < tiempoLimiteRed)
+            {
+                tiempoEspera += Time.unscaledDeltaTime;
+                yield return null;
+            }
+        }
 
-    void Update()
-    {
-        if (!corriendoTiempo) return;
+        ActualizarBarraSeguridadVisual();
 
-        tiempoRestante -= Time.deltaTime;
-        if (tiempoRestante < 0f) tiempoRestante = 0f;
+        // 3. Desplegar pantalla correspondiente
+        if (!ganoElJuego)
+        {
+            if (gamificacion != null) gamificacion.ReproducirDerrota();
+            txtPreguntaDisplay.text = "¡Juego Terminado!";
+            if (gamificacion != null && gamificacion.canvasGameOver != null)
+            {
+                gamificacion.canvasGameOver.SetActive(true);
+            }
+        }
+        else
+        {
+            if (gamificacion != null) gamificacion.ReproducirVictoria();
+            
+            txtPreguntaDisplay.text = "¡Completaste el juego!";
+            if (canvasGanador != null)
+            {
+                if (txtPuntosFinal != null) txtPuntosFinal.text = gamificacion.ObtenerPuntos().ToString();
+                if (txtVidasFinal != null) txtVidasFinal.text = gamificacion.ObtenerVidas().ToString();
 
-        if (barraTiempo != null && barraTiempo2 != null)
-        {
-            barraTiempo.fillAmount = tiempoRestante / TIEMPO_MAX;
-            barraTiempo2.fillAmount = tiempoRestante / TIEMPO_MAX;
-        }
+                float segFinal = ObtenerSeguridadPersistente();
+                if (txtSeguridadFinal != null) txtSeguridadFinal.text = Mathf.RoundToInt(segFinal).ToString() + "%";
 
-        if (txtTiempo != null && txtTiempo2 != null)
-        {
-            txtTiempo.text = Mathf.CeilToInt(tiempoRestante).ToString();
-            txtTiempo2.text = Mathf.CeilToInt(tiempoRestante).ToString();
-        }
+                canvasGanador.SetActive(true); 
+            }
+        }
 
-        if (tiempoRestante <= 0f)
-        {
-            corriendoTiempo = false;
-            perfectGame = false;
-            gamificacion.RegistrarError();
+        yield return new WaitForEndOfFrame();
+        Time.timeScale = 0f; 
+    }
 
-            ResetSeleccion("⏰ Tiempo agotado");
-            bloqueado = true;
-            StartCoroutine(SiguientePreguntaConDelay());
-        }
-    }
+    public IEnumerator SiguientePreguntaConDelay()
+    {
+        corriendoTiempo = false;
+        yield return new WaitForSeconds(1f);
 
-    private IEnumerator FeedbackErrorConDelay(string mensaje)
-    {
-        foreach (var c in casillasSeleccionadas) c.MarcarIncorrecta();
-        yield return new WaitForSeconds(0.5f);
-        foreach (var c in casillasSeleccionadas) c.Resetear();
-        
-        casillasSeleccionadas.Clear();
-        if (gamificacion.ObtenerVidasActuales() > 0) bloqueado = false;
-    }
+        if (gamificacion != null && gamificacion.ObtenerVidas() <= 0)
+        {
+            yield break;
+        }
 
-    public void DetenerJuegoPorGameOver()
-    {
-        bloqueado = true;
-        corriendoTiempo = false;
+        foreach (var c in casillasSeleccionadas) c.Resetear();
+        casillasSeleccionadas.Clear();
 
-        foreach (var c in casillasSeleccionadas) if (c != null) c.Resetear();
-        casillasSeleccionadas.Clear();
+        indicePreguntaActual++;
+        bloqueado = false;
+        cambiandoPregunta = false;
 
-        txtPreguntaDisplay.text = "Guardando progreso...";
-        StartCoroutine(TerminarJuegoYSincronizar());
-    }
+        if (indicePreguntaActual >= bancoDePreguntas.Length)
+        {
+            bloqueado = true;
+            corriendoTiempo = false;
+            txtPreguntaDisplay.text = "Guardando progreso...";
+            StartCoroutine(TerminarJuegoYSincronizar());
+            yield break;
+        }
 
-    private float ObtenerSeguridadPersistente()
-    {
-        // 1. Si el controlador del minijuego tiene un valor actual válido, usar ese
-        if (gamificacion != null && gamificacion.progresoSeguridad > 0)
-            return gamificacion.progresoSeguridad;
+        tiempoRestante = TIEMPO_MAX;
+        corriendoTiempo = true;
+        if (gamificacion != null) gamificacion.ReiniciarCronometro();
+        MostrarPregunta();
+    }
 
-        // 2. Si GameManagerGlobal existe, tomar su valor en memoria RAM
-        if (GameManagerGlobal.instancia != null) 
-            return GameManagerGlobal.instancia.nivelSeguridad;
-            
-        // 3. Si todo lo anterior falla, leer directamente del almacenamiento local (disco)
-        return PlayerPrefs.GetFloat("SeguridadPersistente", 0f);
-    }
+    public bool PuedeInteractuar() { return !bloqueado; }
+
+    void Update()
+    {
+        if (!corriendoTiempo) return;
+
+        tiempoRestante -= Time.deltaTime;
+        if (tiempoRestante < 0f) tiempoRestante = 0f;
+
+        if (barraTiempo != null && barraTiempo2 != null)
+        {
+            barraTiempo.fillAmount = tiempoRestante / TIEMPO_MAX;
+            barraTiempo2.fillAmount = tiempoRestante / TIEMPO_MAX;
+        }
+
+        if (txtTiempo != null && txtTiempo2 != null)
+        {
+            txtTiempo.text = Mathf.CeilToInt(tiempoRestante).ToString();
+            txtTiempo2.text = Mathf.CeilToInt(tiempoRestante).ToString();
+        }
+
+        // 🔥 TIMEOUT: Resta vida y SALTA a la siguiente palabra
+        if (tiempoRestante <= 0f)
+        {
+            corriendoTiempo = false;
+            bloqueado = true;
+            ResetSeleccion("⏰ Tiempo agotado");
+
+            if (gamificacion != null)
+            {
+                gamificacion.ReproducirError();
+                contadorErroresPalabra = 0; 
+                gamificacion.QuitarVida(); 
+
+                if (gamificacion.ObtenerVidas() > 0)
+                {
+                    // Como el tiempo se acabó, obligamos al jugador a avanzar perdiendo esa palabra
+                    StartCoroutine(SiguientePreguntaConDelay());
+                }
+                else
+                {
+                    DetenerJuegoPorGameOver();
+                }
+            }
+        }
+    }
+
+    private IEnumerator FeedbackErrorConDelay(string mensaje)
+    {
+        foreach (var c in casillasSeleccionadas) c.MarcarIncorrecta();
+        yield return new WaitForSeconds(0.5f);
+        foreach (var c in casillasSeleccionadas) c.Resetear();
+
+        casillasSeleccionadas.Clear();
+        if (gamificacion != null && gamificacion.ObtenerVidas() > 0) bloqueado = false;
+    }
+
+    public void DetenerJuegoPorGameOver()
+    {
+        bloqueado = true;
+        corriendoTiempo = false;
+
+        foreach (var c in casillasSeleccionadas) if (c != null) c.Resetear();
+        casillasSeleccionadas.Clear();
+
+        txtPreguntaDisplay.text = "Guardando progreso...";
+        StartCoroutine(TerminarJuegoYSincronizar());
+    }
+
+    private float ObtenerSeguridadPersistente()
+    {
+        if (gamificacion != null && gamificacion.progresoSeguridad > 0)
+            return gamificacion.progresoSeguridad;
+
+        if (GameManagerGlobal.instancia != null) 
+            return GameManagerGlobal.instancia.nivelSeguridad;
+
+        string claveSeguridad = (GameManagerGlobal.instancia != null) 
+            ? GameManagerGlobal.instancia.ObtenerClaveUsuario("SeguridadPersistente") 
+            : "SeguridadPersistente";
+
+        return PlayerPrefs.GetFloat(claveSeguridad, 0f);
+    }
 }

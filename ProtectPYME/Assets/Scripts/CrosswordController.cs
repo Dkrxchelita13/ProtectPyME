@@ -35,7 +35,7 @@ public class CrosswordController : MonoBehaviour
     }
 
     [Header("Timer")]
-    public float tiempoRestante = 90f;
+    public float tiempoRestante = 30f;
     public TextMeshProUGUI txtTimer;
     public Image barraTiempo;
     public TextMeshProUGUI txtTimer2;
@@ -53,7 +53,9 @@ public class CrosswordController : MonoBehaviour
     public TextMeshProUGUI txtVidasFinal;
     public TextMeshProUGUI txtSeguridadFinal;
 
+    public int indicePreguntaActual = 0;
     public Image barraSeguridad;
+    private float seguridadInicial;
 
     // ➕ AGREGADO: Referencia al controlador de gamificación
     private GamificacionController gamificacion;
@@ -68,7 +70,12 @@ public class CrosswordController : MonoBehaviour
 
         if (gamificacion != null && barraSeguridad != null)
         {
-            barraSeguridad.fillAmount = gamificacion.progresoSeguridad / 100f;
+            seguridadInicial = gamificacion.ObtenerSeguridadActual();
+
+            if (barraSeguridad != null)
+            {
+                barraSeguridad.fillAmount = gamificacion.progresoSeguridad / 100f;
+            }
         }
 
         var extras = GameObject.FindObjectsOfType<SpriteRenderer>();
@@ -110,29 +117,35 @@ public class CrosswordController : MonoBehaviour
 
         if (barraTiempo != null && barraTiempo2 != null)
         {
-            barraTiempo.fillAmount = tiempoRestante / 90f;
-            barraTiempo2.fillAmount = tiempoRestante / 90f;
+            barraTiempo.fillAmount = tiempoRestante / 30f;
+            barraTiempo2.fillAmount = tiempoRestante / 30f;
         }
 
         if (tiempoRestante <= 0)
         {
-            if (gamificacion != null)
+            if (model != null && model.words != null && indicePreguntaActual < model.words.Count)
             {
-                gamificacion.QuitarVida();
+                CrosswordWordData palabraActual = model.words[indicePreguntaActual];
 
-                if (gamificacion.ObtenerVidas() <= 0)
+                // Si no contestó correctamente la palabra actual al terminar el tiempo
+                if (!palabrasPuntuadas.Contains(palabraActual))
                 {
-                    Debug.Log("💀 Sin vidas. Sincronizando y terminando el juego.");
-                    juegoTerminado = true;
-                    // 🔥 Llamamos a la sincronización en versión DERROTA
-                    StartCoroutine(TerminarJuegoYSincronizar(false));
-                }
-                else
-                {
-                    tiempoRestante = 90f; // Reiniciamos el tiempo
-                    Debug.Log($"💔 Tiempo agotado. Te quedan {gamificacion.ObtenerVidas()} vidas.");
+                    if (gamificacion != null)
+                    {
+                        gamificacion.ReproducirError();
+                        gamificacion.QuitarVida();
+                        Debug.Log($"⏳ Tiempo agotado. Palabra incorrecta/vacía. Vidas restantes: {gamificacion.ObtenerVidas()}");
+
+                        if (gamificacion.ObtenerVidas() <= 0)
+                        {
+                            juegoTerminado = true;
+                            StartCoroutine(TerminarJuegoYSincronizar(false));
+                            return;
+                        }
+                    }
                 }
             }
+            AvanzarSiguientePregunta();
         }
     }
 
@@ -249,6 +262,14 @@ public class CrosswordController : MonoBehaviour
                 }
             }
         }
+        indicePreguntaActual = 0;
+        tiempoRestante = 30f;
+
+        BloquearTodasLasCasillas();
+        if (model != null && model.words != null && model.words.Count > 0)
+        {
+            DesbloquearCasillasPalabra(model.words[indicePreguntaActual]);
+        }
     }
 
     public void OnLetterChanged(int x, int y, string letter)
@@ -275,6 +296,7 @@ public class CrosswordController : MonoBehaviour
                 // ➕ AGREGADO: Quitar vida si la letra escrita es incorrecta
                 if (gamificacion != null)
                 {
+                    gamificacion.ReproducirError();
                     gamificacion.RegistrarError();
                 }
             }
@@ -286,9 +308,9 @@ public class CrosswordController : MonoBehaviour
             {
                 MarkWord(word); //
                 
-                // 🔥 NUEVA LÓGICA DE GAMIFICACIÓN: Dar puntos por palabra correcta
                 if (gamificacion != null && !palabrasPuntuadas.Contains(word))
                 {
+                    gamificacion.ReproducirAcierto();
                     gamificacion.SumarPuntos(10); // 10 puntos, igual que la sopa de letras
                     gamificacion.ModificarSeguridad(1f); // 1% de seguridad por palabra (puedes ajustarlo)
                     if (barraSeguridad != null)
@@ -296,12 +318,17 @@ public class CrosswordController : MonoBehaviour
                         barraSeguridad.fillAmount = gamificacion.progresoSeguridad / 100f;
                     }
                     palabrasPuntuadas.Add(word); // La marcamos para no volver a dar puntos por esta
-                    Debug.Log("🌟 ¡Palabra del crucigrama completada! +10 puntos y +15% seguridad");
+                    Debug.Log("🌟 ¡Palabra del crucigrama completada! +10 puntos y +1% seguridad");
+
+                    if (model.words.IndexOf(word) == indicePreguntaActual)
+                    {
+                        AvanzarSiguientePregunta();
+                    }
                 }
             }
         }
 
-        if (AllWordsCompleted())
+        if (AllWordsCompleted() && !juegoTerminado)
         {
             Debug.Log("🎉 GANASTE. Sincronizando y terminando el juego.");
             juegoTerminado = true;
@@ -309,8 +336,62 @@ public class CrosswordController : MonoBehaviour
             CrosswordInput input = FindObjectOfType<CrosswordInput>();
             if (input != null) input.enabled = false;
 
-            // 🔥 Llamamos a la sincronización en versión VICTORIA
             StartCoroutine(TerminarJuegoYSincronizar(true));
+        }
+    }
+
+    public void AvanzarSiguientePregunta()
+    {
+        if (juegoTerminado) return;
+        BloquearTodasLasCasillas();
+
+        indicePreguntaActual++;
+
+        if (model != null && indicePreguntaActual < model.words.Count)
+        {
+            tiempoRestante = 30f;
+            DesbloquearCasillasPalabra(model.words[indicePreguntaActual]);
+            Debug.Log($"➡️ Turno de la pregunta {indicePreguntaActual + 1}");
+        }
+        else
+        {
+            Debug.Log("🏁 Se acabaron las palabras del crucigrama.");
+            juegoTerminado = true;
+
+            if (AllWordsCompleted())
+            {
+                StartCoroutine(TerminarJuegoYSincronizar(true));
+            }
+            else
+            {
+                StartCoroutine(TerminarJuegoYSincronizar(false));
+            }
+        }
+    }
+
+    private void BloquearTodasLasCasillas()
+    {
+        foreach (CellWorld cell in spawnedCells)
+        {
+            if (cell != null)
+            {
+                cell.LockCell();
+            }
+        }
+    }
+
+    private void DesbloquearCasillasPalabra(CrosswordWordData word)
+    {
+        for (int i = 0; i < word.answer.Length; i++)
+        {
+            int x = word.startX + (word.isHorizontal ? i : 0);
+            int y = word.startY + (word.isHorizontal ? 0 : i);
+
+            CellWorld cell = GetCell(x, y);
+            if (cell != null)
+            {
+                cell.UnlockCell();
+            }
         }
     }
 
@@ -411,60 +492,93 @@ public class CrosswordController : MonoBehaviour
         return null;
     }
 
-    // 🔥 NUEVO: Sincronización de datos al terminar la partida (Ganar o Perder)
+    // ✏️ REEMPLAZAR tu corrutina TerminarJuegoYSincronizar por esta versión:
     private IEnumerator TerminarJuegoYSincronizar(bool victoria)
     {
-        // 1. Guardar y asegurar la seguridad local ganada
-        float seguridadLocalGanada = gamificacion != null ? gamificacion.progresoSeguridad : 0f;
         string claveSeguridad = (GameManagerGlobal.instancia != null) 
             ? GameManagerGlobal.instancia.ObtenerClaveUsuario("SeguridadPersistente") 
             : "SeguridadPersistente";
 
-        PlayerPrefs.SetFloat(claveSeguridad, seguridadLocalGanada);
-        if (GameManagerGlobal.instancia != null)
+        // 🔴 1. GESTIÓN DE SEGURIDAD (Diferenciada según victoria o derrota)
+        if (victoria)
         {
-            GameManagerGlobal.instancia.nivelSeguridad = seguridadLocalGanada;
-        }
-        PlayerPrefs.Save();
+            // 🟢 SI GANÓ: Sincroniza y guarda el aumento de seguridad local
+            float seguridadLocalGanada = gamificacion != null ? gamificacion.progresoSeguridad : 0f;
+            
+            PlayerPrefs.SetFloat(claveSeguridad, seguridadLocalGanada);
+            if (GameManagerGlobal.instancia != null)
+            {
+                GameManagerGlobal.instancia.nivelSeguridad = seguridadLocalGanada;
+            }
+            PlayerPrefs.Save();
 
-        // 2. Enviar los puntos del minijuego al servidor
+            bool redCompletada = false;
+            yield return StartCoroutine(APIManager.Instance.GetAnalytics((json) =>
+            {
+                if (json != "ERROR" && json != "NO_TOKEN")
+                {
+                    AnalyticsData data = JsonUtility.FromJson<AnalyticsData>(json);
+                    float seguridadServidor = data.awareness_score;
+                    float seguridadFinal = Mathf.Max(seguridadServidor, seguridadLocalGanada);
+
+                    if (GameManagerGlobal.instancia != null) GameManagerGlobal.instancia.nivelSeguridad = seguridadFinal;
+                    if (gamificacion != null) gamificacion.progresoSeguridad = seguridadFinal;
+
+                    PlayerPrefs.SetFloat(claveSeguridad, seguridadFinal);
+                    PlayerPrefs.Save();
+                }
+                redCompletada = true; 
+            }));
+
+            yield return new WaitUntil(() => redCompletada == true);
+        }
+        else
+        {
+            // 🔴 SI PERDIÓ: Revierte la seguridad al valor inicial y descarta el aumento
+            if (GameManagerGlobal.instancia != null)
+            {
+                GameManagerGlobal.instancia.nivelSeguridad = seguridadInicial;
+            }
+            
+            PlayerPrefs.SetFloat(claveSeguridad, seguridadInicial);
+            PlayerPrefs.Save();
+            
+            if (gamificacion != null) gamificacion.progresoSeguridad = seguridadInicial;
+            
+            Debug.Log($"❌ Derrota: La seguridad vuelve a su valor inicial ({seguridadInicial}%).");
+        }
+
+        // ⭐ 2. GESTIÓN DE PUNTOS (SE GUARDAN SIEMPRE, GANE O PIERDA)
         if (gamificacion != null)
         {
-            yield return StartCoroutine(APIManager.Instance.SendScore(gamificacion.ObtenerPuntos()));
+            int puntosAcumulados = gamificacion.ObtenerPuntos();
+
+            // Enviamos los puntos de esta sesión al backend
+            yield return StartCoroutine(APIManager.Instance.SendScore(puntosAcumulados));
+
+            // Acumulamos los puntos en el progreso global local
+            if (GameManagerGlobal.instancia != null)
+            {
+                GameManagerGlobal.instancia.puntuacion += puntosAcumulados;
+                
+                string clavePuntos = GameManagerGlobal.instancia.ObtenerClaveUsuario("Puntuacion");
+                PlayerPrefs.SetInt(clavePuntos, GameManagerGlobal.instancia.puntuacion);
+                PlayerPrefs.Save();
+            }
+
+            Debug.Log($"⭐ Puntos conservados tras la partida ({puntosAcumulados} pts).");
         }
 
-        // 3. Consultar las analíticas globales y cruzar datos (Mantenemos el valor más alto)
-        bool redCompletada = false;
-        yield return StartCoroutine(APIManager.Instance.GetAnalytics((json) =>
-        {
-            if (json != "ERROR" && json != "NO_TOKEN")
-            {
-                AnalyticsData data = JsonUtility.FromJson<AnalyticsData>(json);
-                float seguridadServidor = data.awareness_score;
-                
-                float seguridadFinal = Mathf.Max(seguridadServidor, seguridadLocalGanada);
+        if (barraSeguridad != null && gamificacion != null) 
+            barraSeguridad.fillAmount = gamificacion.progresoSeguridad / 100f;
 
-                if (GameManagerGlobal.instancia != null) GameManagerGlobal.instancia.nivelSeguridad = seguridadFinal;
-                if (gamificacion != null) gamificacion.progresoSeguridad = seguridadFinal;
-
-                PlayerPrefs.SetFloat(claveSeguridad, seguridadFinal);
-                PlayerPrefs.Save();
-                
-                Debug.Log($"🛡️ Sincronización Crucigrama | Servidor: {seguridadServidor}% | Local: {seguridadLocalGanada}% | Final: {seguridadFinal}%");
-            }
-            redCompletada = true; 
-        }));
-
-        yield return new WaitUntil(() => redCompletada == true);
-
-        // Actualizamos visualmente por si acaso
-        if (barraSeguridad != null && gamificacion != null) barraSeguridad.fillAmount = gamificacion.progresoSeguridad / 100f;
-
-        // 4. Mostrar los Canvas correspondientes
+        // 📺 3. PANTALLAS FINALES
         if (victoria)
         {
             if (gamificacion != null)
             {
+                gamificacion.ReproducirVictoria();
+
                 if (txtPuntosFinal != null) txtPuntosFinal.text = gamificacion.ObtenerPuntos().ToString();
                 if (txtVidasFinal != null) txtVidasFinal.text = gamificacion.ObtenerVidas().ToString();
                 if (txtSeguridadFinal != null) txtSeguridadFinal.text = gamificacion.progresoSeguridad.ToString("0") + "%";
@@ -475,14 +589,25 @@ public class CrosswordController : MonoBehaviour
         {
             if (gamificacion != null && gamificacion.canvasGameOver != null)
             {
+                gamificacion.ReproducirDerrota();
                 gamificacion.canvasGameOver.SetActive(true);
             }
             else
             {
-                Perder(); // Backup en caso de no tener el canvas en Gamificacion
+                Perder();
             }
         }
+
         yield return new WaitForEndOfFrame();
         Time.timeScale = 0f;
+    }
+
+    public void DetenerJuegoPorGameOver()
+    {
+        if (juegoTerminado) return;
+        
+        juegoTerminado = true;
+        Debug.Log("💀 Game Over detectado desde GamificacionController. Sincronizando...");
+        StartCoroutine(TerminarJuegoYSincronizar(false));
     }
 }

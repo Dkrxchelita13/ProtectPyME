@@ -4,9 +4,9 @@ using UnityEngine.UI;
 public class ActualizadorAvatarFoto : MonoBehaviour
 {
     // Las mismas llaves de guardado que usas en el creador
-    private const string AvatarBaseKey = "avatar_base";
-    private const string AvatarCabelloKey = "avatar_cabello";
-    private const string AvatarAccesorioKey = "avatar_accesorio";
+    //private const string AvatarBaseKey = "avatar_base";
+    //private const string AvatarCabelloKey = "avatar_cabello";
+    //private const string AvatarAccesorioKey = "avatar_accesorio";
 
     [Header("Capas de la foto de perfil (Hijos del Mask)")]
     public Image imgBase;
@@ -29,8 +29,13 @@ public class ActualizadorAvatarFoto : MonoBehaviour
 
     public void ActualizarFoto()
     {
+        // Generamos las llaves dinámicas del usuario actual
+        string claveBase = ObtenerClaveAvatar("base");
+        string claveCabello = ObtenerClaveAvatar("cabello");
+        string claveAccesorio = ObtenerClaveAvatar("accesorio");
+
         // 1. EVALUAR SI EL JUGADOR YA TIENE UN AVATAR GUARDADO
-        if (!PlayerPrefs.HasKey(AvatarBaseKey))
+        if (!PlayerPrefs.HasKey(claveBase))
         {
             // --- CASO A: EL JUGADOR ES NUEVO / NUNCA HA GUARDADO UN AVATAR ---
             
@@ -49,10 +54,10 @@ public class ActualizadorAvatarFoto : MonoBehaviour
         {
             // --- CASO B: EL JUGADOR YA PERSONALIZÓ SU AVATAR ---
             
-            // A. Cargar los números guardados en PlayerPrefs
-            int baseIndex = PlayerPrefs.GetInt(AvatarBaseKey, 0);
-            int cabelloIndex = PlayerPrefs.GetInt(AvatarCabelloKey, 0);
-            int accesorioIndex = PlayerPrefs.GetInt(AvatarAccesorioKey, 0);
+            // A. Cargar los números guardados en PlayerPrefs con las llaves dinámicas
+            int baseIndex = PlayerPrefs.GetInt(claveBase, 0);
+            int cabelloIndex = PlayerPrefs.GetInt(claveCabello, 0);
+            int accesorioIndex = PlayerPrefs.GetInt(claveAccesorio, 0);
 
             // B. Asignar los sprites seleccionados a cada capa
             AsignarSprite(imgBase, bases, baseIndex);
@@ -75,5 +80,17 @@ public class ActualizadorAvatarFoto : MonoBehaviour
             image.sprite = null;
             image.enabled = false;
         }
+    }
+
+    private string ObtenerClaveAvatar(string parte)
+    {
+        if (GameManagerGlobal.instancia != null)
+        {
+            return GameManagerGlobal.instancia.ObtenerClaveUsuario("avatar_" + parte);
+        }
+        
+        // Respaldo por si se prueba la escena sin pasar por el Login
+        string usuario = PlayerPrefs.GetString("UsuarioActual", "default_user");
+        return $"{usuario}_avatar_{parte}";
     }
 }

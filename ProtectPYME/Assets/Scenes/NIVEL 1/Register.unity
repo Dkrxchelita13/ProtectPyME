@@ -238,7 +238,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 2e3ae4b8274707a4fae850caef3135b2, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 45bed19142e81674fa72432560fb364c, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -575,7 +575,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: df636f9734ef41e439217008484d415c, type: 3}
+  m_Sprite: {fileID: 21300000, guid: f6225f38d6e56744299ef5ba66520091, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -2987,6 +2987,7 @@ MonoBehaviour:
   inputPassword: {fileID: 2146988610}
   inputConfirmPassword: {fileID: 916424755}
   txtMensaje: {fileID: 503647262}
+  nombreEscenaLogin: Login
 --- !u!4 &1489495200
 Transform:
   m_ObjectHideFlags: 0

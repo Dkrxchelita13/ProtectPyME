@@ -8,9 +8,9 @@ public class AvatarPerfilController : MonoBehaviour
     public enum SeccionAvatar { Base, Cabello, Accesorio }
     private SeccionAvatar seccionActual = SeccionAvatar.Base;
 
-    private const string AvatarBaseKey = "avatar_base";
-    private const string AvatarCabelloKey = "avatar_cabello";
-    private const string AvatarAccesorioKey = "avatar_accesorio";
+    //private const string AvatarBaseKey = "avatar_base";
+    //private const string AvatarCabelloKey = "avatar_cabello";
+    //private const string AvatarAccesorioKey = "avatar_accesorio";
 
     [Header("Paneles")]
     public GameObject contenedorPerfil;
@@ -111,15 +111,16 @@ public class AvatarPerfilController : MonoBehaviour
     {
         NormalizarIndices();
 
-        PlayerPrefs.SetInt(AvatarBaseKey, baseIndex);
-        PlayerPrefs.SetInt(AvatarCabelloKey, cabelloIndex);
-        PlayerPrefs.SetInt(AvatarAccesorioKey, accesorioIndex);
+        // 🔄 MODIFICADO: Ahora usamos las claves dinámicas
+        PlayerPrefs.SetInt(ObtenerClaveAvatar("base"), baseIndex);
+        PlayerPrefs.SetInt(ObtenerClaveAvatar("cabello"), cabelloIndex);
+        PlayerPrefs.SetInt(ObtenerClaveAvatar("accesorio"), accesorioIndex);
         PlayerPrefs.Save();
 
         ActualizarAvatarPrincipal();
         MostrarPerfil();
 
-        // LÍNEA NUEVA: Refresca el objeto circular inmediatamente al guardar
+        // Refresca el objeto circular inmediatamente al guardar
         if (fotoPerfilCircular != null)
         {
             fotoPerfilCircular.ActualizarFoto();
@@ -131,9 +132,10 @@ public class AvatarPerfilController : MonoBehaviour
 
     private void CargarSeleccionGuardada()
     {
-        baseIndex = PlayerPrefs.GetInt(AvatarBaseKey, 0);
-        cabelloIndex = PlayerPrefs.GetInt(AvatarCabelloKey, 0);
-        accesorioIndex = PlayerPrefs.GetInt(AvatarAccesorioKey, 0);
+        // 🔄 MODIFICADO: Ahora leemos de las claves dinámicas
+        baseIndex = PlayerPrefs.GetInt(ObtenerClaveAvatar("base"), 0);
+        cabelloIndex = PlayerPrefs.GetInt(ObtenerClaveAvatar("cabello"), 0);
+        accesorioIndex = PlayerPrefs.GetInt(ObtenerClaveAvatar("accesorio"), 0);
         NormalizarIndices();
     }
 
@@ -197,5 +199,17 @@ public class AvatarPerfilController : MonoBehaviour
     private bool TieneSprites(Sprite[] sprites)
     {
         return sprites != null && sprites.Length > 0;
+    }
+
+    private string ObtenerClaveAvatar(string parte)
+    {
+        if (GameManagerGlobal.instancia != null)
+        {
+            return GameManagerGlobal.instancia.ObtenerClaveUsuario("avatar_" + parte);
+        }
+        
+        // Respaldo por si se prueba la escena sin pasar por el Login
+        string usuario = PlayerPrefs.GetString("UsuarioActual", "default_user");
+        return $"{usuario}_avatar_{parte}";
     }
 }
