@@ -166,7 +166,13 @@ def calculate_category_scores(evaluated_answers: Iterable[dict]) -> Dict[str, di
     return scores
 
 
-def get_primary_weakness(category_scores: Dict[str, dict]) -> str:
+def get_primary_weakness(
+    category_scores: Dict[str, dict],
+    total_risk_score: int
+) -> str:
+    if total_risk_score == 0:
+        return "none"
+
     return max(
         CATEGORY_ORDER,
         key=lambda category: category_scores[category]["risk_score"],
@@ -200,7 +206,10 @@ def evaluate_submission(answers: Iterable[schemas.SurveyAnswerSubmit]) -> dict:
     return {
         "answers": ordered_answers,
         "category_scores": category_scores,
-        "primary_weakness": get_primary_weakness(category_scores),
+        "primary_weakness": get_primary_weakness(
+            category_scores,
+            total_risk_score
+        ),
         "initial_risk": get_initial_risk(total_risk_score, category_scores),
         "total_risk_score": total_risk_score,
     }

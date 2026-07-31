@@ -148,6 +148,7 @@ def test_all_safe_answers_are_low_risk():
 
     assert result["total_risk_score"] == 0
     assert result["initial_risk"] == "BAJO"
+    assert result["primary_weakness"] == "none"
 
 
 def test_one_high_risk_answer_is_medium_risk():
@@ -207,6 +208,7 @@ def test_primary_weakness_tie_prefers_phishing():
 
     result = survey_service.evaluate_submission(answers)
 
+    assert result["total_risk_score"] > 0
     assert result["primary_weakness"] == "phishing"
 
 
@@ -267,6 +269,15 @@ def test_wrong_category_for_question_id_is_rejected():
     assert response.status_code == 400
 
 
+def test_none_category_from_client_is_rejected():
+    payload = safe_payload()
+    payload["answers"][0]["category"] = "none"
+
+    response = submit(payload)
+
+    assert response.status_code == 400
+
+
 def test_invalid_selected_option_is_rejected():
     payload = safe_payload()
     payload["answers"][0]["selected_option"] = "D"
@@ -294,6 +305,7 @@ def test_valid_post_returns_created_response():
     assert data["survey_version"] == "diagnostic_v1"
     assert data["total_risk_score"] == 0
     assert data["initial_risk"] == "BAJO"
+    assert data["primary_weakness"] == "none"
 
 
 def test_second_post_same_version_returns_conflict():
