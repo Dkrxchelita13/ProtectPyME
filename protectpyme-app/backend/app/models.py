@@ -16,8 +16,11 @@ from sqlalchemy import (
     Text,
     ForeignKey,
     TIMESTAMP,
-    DateTime
+    DateTime,
+    UniqueConstraint,
+    func
 )
+from sqlalchemy.orm import relationship
 
 from app.database import Base
 
@@ -143,6 +146,79 @@ class UserCategoryPoints(Base):
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
     category = Column(String, primary_key=True)
     total_points = Column(Integer, default=0)
+
+
+# -------- DIAGNOSTIC SURVEY --------
+class SurveySubmission(Base):
+    __tablename__ = "survey_submissions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    survey_version = Column(String(50), nullable=False)
+    primary_weakness = Column(String(50), nullable=False)
+    initial_risk = Column(String(10), nullable=False)
+    phishing_score = Column(Integer, nullable=False)
+    passwords_score = Column(Integer, nullable=False)
+    malware_score = Column(Integer, nullable=False)
+    phishing_risk_score = Column(Integer, nullable=False)
+    passwords_risk_score = Column(Integer, nullable=False)
+    malware_risk_score = Column(Integer, nullable=False)
+    total_risk_score = Column(Integer, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now()
+    )
+
+    answers = relationship(
+        "SurveyAnswer",
+        back_populates="submission",
+        cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "survey_version",
+            name="uq_survey_submissions_user_version"
+        ),
+    )
+
+
+class SurveyAnswer(Base):
+    __tablename__ = "survey_answers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    submission_id = Column(
+        Integer,
+        ForeignKey("survey_submissions.id"),
+        nullable=False,
+        index=True
+    )
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    question_id = Column(String(100), nullable=False)
+    category = Column(String(50), nullable=False)
+    selected_option = Column(String(1), nullable=False)
+    safe_score = Column(Integer, nullable=False)
+    risk_score = Column(Integer, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now()
+    )
+
+    submission = relationship(
+        "SurveySubmission",
+        back_populates="answers"
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "submission_id",
+            "question_id",
+            name="uq_survey_answers_submission_question"
+        ),
+    )
 
 # -------- AUDIT LOGS --------
 class AuditLog(Base):

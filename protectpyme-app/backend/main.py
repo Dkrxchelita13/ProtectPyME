@@ -28,7 +28,7 @@ from app.routes import minigames
 from app.routes import ai
 
 
-from app.routes import users, decisions, scenarios, auth, leaderboard, admin
+from app.routes import users, decisions, scenarios, auth, leaderboard, admin, survey
 from app.database import engine
 from app.models import Base
 from app.seed import seed_scenarios
@@ -79,6 +79,7 @@ app.include_router(leaderboard.router)
 app.include_router(admin.router)
 app.include_router(minigames.router)
 app.include_router(ai.router)
+app.include_router(survey.router)
 
 
 @app.get("/")

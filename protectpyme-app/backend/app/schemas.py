@@ -65,7 +65,7 @@ class Score(ScoreBase):
         from_attributes = True
  """
 
-from typing import Optional
+from typing import Dict, List, Optional
 from pydantic import BaseModel, EmailStr
 from typing import Literal
 
@@ -182,3 +182,61 @@ class AuditLogOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# -------- DIAGNOSTIC SURVEY --------
+
+class SurveyAnswerSubmit(BaseModel):
+    question_id: str
+    category: str
+    selected_option: str
+
+
+class SurveySubmitRequest(BaseModel):
+    survey_version: str
+    answers: List[SurveyAnswerSubmit]
+
+
+class SurveyCategoryScore(BaseModel):
+    safe_score: int
+    max_score: int
+    risk_score: int
+
+
+class SurveySubmitResponse(BaseModel):
+    submitted: bool
+    survey_version: str
+    primary_weakness: str
+    initial_risk: str
+    total_risk_score: int
+    category_scores: Dict[str, SurveyCategoryScore]
+
+
+class SurveyStatusResponse(BaseModel):
+    has_submitted: bool
+    survey_version: Optional[str] = None
+    submitted_at: Optional[datetime] = None
+    primary_weakness: Optional[str] = None
+    initial_risk: Optional[str] = None
+
+
+class SurveyAnswerOut(BaseModel):
+    question_id: str
+    category: str
+    selected_option: str
+    safe_score: int
+    risk_score: int
+
+    class Config:
+        from_attributes = True
+
+
+class SurveySubmissionOut(BaseModel):
+    id: int
+    survey_version: str
+    submitted_at: datetime
+    primary_weakness: str
+    initial_risk: str
+    total_risk_score: int
+    category_scores: Dict[str, SurveyCategoryScore]
+    answers: List[SurveyAnswerOut]
