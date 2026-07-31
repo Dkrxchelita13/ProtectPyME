@@ -240,3 +240,16 @@ class SurveySubmissionOut(BaseModel):
     total_risk_score: int
     category_scores: Dict[str, SurveyCategoryScore]
     answers: List[SurveyAnswerOut]
+
+
+# -------- MINIGAME LEARNING CONTENT --------
+
+class MinigameLessonResponse(BaseModel):
+    topic: str
+    risk: str
+    title: str
+    vulnerability: str
+    learning_objective: str
+    explanation: str
+    tips: List[str]
+    recommended_action: str
