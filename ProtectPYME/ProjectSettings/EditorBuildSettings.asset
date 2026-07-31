@@ -21,6 +21,9 @@ EditorBuildSettings:
     path: Assets/Scenes/NIVEL 1/MenuMinijuegos.unity
     guid: cdb41f4bc6f2e044a9a7562013f2586d
   - enabled: 1
+    path: Assets/Scenes/NIVEL 1/LeccionMinijuego.unity
+    guid: 6d847afe344f4337a94d51bb267e524b
+  - enabled: 1
     path: Assets/Scenes/NIVEL 1/MiPerfil.unity
     guid: 8c73b56fbf01fb94d98f3820db5f9f5b
   - enabled: 1
