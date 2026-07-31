@@ -965,6 +965,182 @@ public class ProgresoController : MonoBehaviour
 
 
 
+    private string ResolveRiskSource(AIRiskResponse data)
+
+    {
+
+        string source = data.risk_source;
+
+        if (!string.IsNullOrEmpty(source))
+
+        {
+
+            source = source.Trim().ToLower();
+
+            if (source == "survey" || source == "random_forest")
+
+            {
+
+                return source;
+
+            }
+
+        }
+
+
+
+        int minDecisions = data.min_behavioral_decisions;
+
+        if (data.sufficient_behavioral_data
+
+            || data.behavioral_decisions >= minDecisions)
+
+        {
+
+            return "random_forest";
+
+        }
+
+
+
+        return "survey";
+
+    }
+
+
+
+    private int GetMinBehavioralDecisions(AIRiskResponse data)
+
+    {
+
+        return data.min_behavioral_decisions > 0
+
+            ? data.min_behavioral_decisions
+
+            : 3;
+
+    }
+
+
+
+    private string GetTrainingDisplayName(string training)
+
+    {
+
+        if (string.IsNullOrEmpty(training))
+
+        {
+
+            return "Area de mejora general";
+
+        }
+
+
+
+        switch (training.Trim().ToLower())
+
+        {
+
+            case "phishing":
+
+                return "Phishing e ingenieria social";
+
+
+
+            case "passwords":
+
+                return "Contrasenas y proteccion de cuentas";
+
+
+
+            case "malware":
+
+                return "Malware y dispositivos USB";
+
+
+
+            case "wifi":
+
+            case "network":
+
+                return "Redes WiFi y conexiones inseguras";
+
+
+
+            case "general":
+
+                return "Capacitacion general";
+
+
+
+            case "none":
+
+                return "No se detecto un area critica";
+
+
+
+            default:
+
+                return "Area de mejora general";
+
+        }
+
+    }
+
+
+
+    private string BuildRiskRecommendationText(
+
+        AIRiskResponse data,
+
+        string riskSource
+
+    )
+
+    {
+
+        string message = string.IsNullOrEmpty(data.message)
+
+            ? "Revisa la practica sugerida para fortalecer tus conocimientos."
+
+            : data.message;
+
+        int minDecisions = GetMinBehavioralDecisions(data);
+
+
+
+        if (riskSource == "survey")
+
+        {
+
+            return message
+
+                + "\n\nDiagnostico basado en encuesta. Decisiones registradas: "
+
+                + data.behavioral_decisions
+
+                + " de "
+
+                + minDecisions
+
+                + ".";
+
+        }
+
+
+
+        return message
+
+            + "\n\nEvaluacion basada en "
+
+            + data.behavioral_decisions
+
+            + " decisiones registradas.";
+
+    }
+
+
+
     private void OnRiskLoaded(
 
         AIRiskResponse data
@@ -973,13 +1149,31 @@ public class ProgresoController : MonoBehaviour
 
     {
 
+        string riskSource = ResolveRiskSource(data);
+
+        string risk = NormalizeSurveyRisk(data.risk_level);
+
+        string area = GetTrainingDisplayName(data.recommended_training);
+
+        string recommendation = BuildRiskRecommendationText(
+
+            data,
+
+            riskSource
+
+        );
+
         if (txtRiskLevel != null)
 
         {
 
             txtRiskLevel.text =
 
-                data.risk_level;
+                riskSource == "survey"
+
+                    ? "Riesgo inicial: " + risk
+
+                    : "Riesgo conductual: " + risk;
 
         }
 
@@ -991,7 +1185,7 @@ public class ProgresoController : MonoBehaviour
 
             txtEscenarioSugerido.text =
 
-                "Escenario " +
+                "Practica sugerida: Escenario " +
 
                 data.recommended_scenario;
 
@@ -1005,7 +1199,7 @@ public class ProgresoController : MonoBehaviour
 
             txtAreaVulnerable.text =
 
-                data.recommended_training;
+                area;
 
         }
 
@@ -1017,7 +1211,7 @@ public class ProgresoController : MonoBehaviour
 
             txtRecomendacion.text =
 
-                data.message;
+                recommendation;
 
         }
 

@@ -14,4 +14,12 @@ public class AIRiskResponse
     public int recommended_scenario;
 
     public string message;
+
+    public string risk_source;
+
+    public int behavioral_decisions;
+
+    public int min_behavioral_decisions;
+
+    public bool sufficient_behavioral_data;
 }

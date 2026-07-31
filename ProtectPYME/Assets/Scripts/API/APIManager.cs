@@ -520,8 +520,20 @@ public class APIManager : MonoBehaviour
             // NUEVO
             AIState.RecommendedTraining =
                 response.recommended_training;
+            AIState.RecommendedScenario =
+                response.recommended_scenario;
             AIState.RiskLevel =
                 NormalizeRiskLevel(response.risk_level);
+            AIState.RiskSource =
+                response.risk_source;
+            AIState.BehavioralDecisions =
+                response.behavioral_decisions;
+            AIState.MinBehavioralDecisions =
+                response.min_behavioral_decisions > 0
+                    ? response.min_behavioral_decisions
+                    : 3;
+            AIState.SufficientBehavioralData =
+                response.sufficient_behavioral_data;
 
             Debug.Log(
                 "Tema recomendado IA: "
@@ -531,6 +543,18 @@ public class APIManager : MonoBehaviour
             Debug.Log(
                 "Nivel de riesgo IA: " +
                 AIState.RiskLevel
+            );
+
+            Debug.Log(
+                "Fuente de riesgo: " +
+                AIState.RiskSource
+            );
+
+            Debug.Log(
+                "Decisiones conductuales: " +
+                AIState.BehavioralDecisions +
+                "/" +
+                AIState.MinBehavioralDecisions
             );
 
             onSuccess?.Invoke(response);
