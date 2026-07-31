@@ -14,6 +14,7 @@ public class APIManager : MonoBehaviour
     private string token;
     private bool surveyStatusRequestInProgress;
     private bool surveySubmitRequestInProgress;
+    private bool minigameLessonRequestInProgress;
 
 
 
@@ -379,6 +380,82 @@ public class APIManager : MonoBehaviour
             callback?.Invoke("ERROR");
         }
     }
+
+    public IEnumerator GetMinigameLesson(
+        string topic,
+        string risk,
+        Action<MinigameLessonResponse> onSuccess,
+        Action<string> onError
+    )
+    {
+        if (minigameLessonRequestInProgress)
+        {
+            onError?.Invoke("Ya hay una consulta de leccion en curso.");
+            yield break;
+        }
+
+        if (string.IsNullOrEmpty(token))
+        {
+            onError?.Invoke("NO_TOKEN");
+            yield break;
+        }
+
+        string safeTopic = topic ?? "";
+        string safeRisk = risk ?? "";
+
+        string url =
+            baseUrl +
+            "/minigames/lesson?topic=" +
+            UnityWebRequest.EscapeURL(safeTopic) +
+            "&risk=" +
+            UnityWebRequest.EscapeURL(safeRisk);
+
+        minigameLessonRequestInProgress = true;
+
+        using (UnityWebRequest request = UnityWebRequest.Get(url))
+        {
+            request.SetRequestHeader(
+                "Authorization",
+                "Bearer " + token
+            );
+
+            yield return request.SendWebRequest();
+
+            minigameLessonRequestInProgress = false;
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                MinigameLessonResponse response =
+                    JsonUtility.FromJson<MinigameLessonResponse>(
+                        request.downloadHandler.text
+                    );
+
+                string validationError = ValidateMinigameLesson(response);
+
+                if (!string.IsNullOrEmpty(validationError))
+                {
+                    onError?.Invoke(validationError);
+                    yield break;
+                }
+
+                onSuccess?.Invoke(response);
+            }
+            else
+            {
+                if (request.responseCode == 401)
+                {
+                    onError?.Invoke(
+                        "HTTP_401: Sesion expirada. Inicia sesion nuevamente."
+                    );
+                }
+                else
+                {
+                    onError?.Invoke(BuildRequestError(request));
+                }
+            }
+        }
+    }
+
     // 🔥 GET ANALYTICS
     public IEnumerator GetAnalytics(System.Action<string> callback)
     {
@@ -682,6 +759,36 @@ public class APIManager : MonoBehaviour
         }
 
         return "HTTP_" + request.responseCode;
+    }
+
+    private string ValidateMinigameLesson(MinigameLessonResponse response)
+    {
+        if (response == null)
+        {
+            return "La respuesta de la leccion esta vacia.";
+        }
+
+        if (string.IsNullOrEmpty(response.title))
+        {
+            return "La leccion no incluye titulo.";
+        }
+
+        if (string.IsNullOrEmpty(response.explanation))
+        {
+            return "La leccion no incluye explicacion.";
+        }
+
+        if (response.tips == null)
+        {
+            return "La leccion no incluye recomendaciones.";
+        }
+
+        if (response.tips.Length != 3)
+        {
+            return "La leccion debe incluir exactamente 3 recomendaciones.";
+        }
+
+        return "";
     }
 
     private string NormalizeRiskLevel(string risk)
