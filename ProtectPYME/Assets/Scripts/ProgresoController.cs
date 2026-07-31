@@ -527,7 +527,7 @@ public class ProgresoController : MonoBehaviour
 
         {
 
-            txtRiskLevel.text = "Riesgo inicial: " + risk;
+            txtRiskLevel.text = risk;
 
         }
 
@@ -1167,13 +1167,7 @@ public class ProgresoController : MonoBehaviour
 
         {
 
-            txtRiskLevel.text =
-
-                riskSource == "survey"
-
-                    ? "Riesgo inicial: " + risk
-
-                    : "Riesgo conductual: " + risk;
+            txtRiskLevel.text = risk;
 
         }
 
