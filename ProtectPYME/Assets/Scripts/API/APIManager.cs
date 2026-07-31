@@ -12,6 +12,8 @@ public class APIManager : MonoBehaviour
 
     private string baseUrl = "https://protectpyme.onrender.com";
     private string token;
+    private bool surveyStatusRequestInProgress;
+    private bool surveySubmitRequestInProgress;
 
 
 
@@ -538,6 +540,126 @@ public class APIManager : MonoBehaviour
             onError?.Invoke(request.error);
         }
     }
+
+    public IEnumerator GetSurveyStatus(
+        Action<SurveyStatusResponse> onSuccess,
+        Action<string> onError
+    )
+    {
+        if (surveyStatusRequestInProgress)
+        {
+            onError?.Invoke("Ya hay una consulta de encuesta en curso.");
+            yield break;
+        }
+
+        if (string.IsNullOrEmpty(token))
+        {
+            onError?.Invoke("NO_TOKEN");
+            yield break;
+        }
+
+        surveyStatusRequestInProgress = true;
+
+        using (UnityWebRequest request = UnityWebRequest.Get(baseUrl + "/survey/status"))
+        {
+            request.SetRequestHeader(
+                "Authorization",
+                "Bearer " + token
+            );
+
+            yield return request.SendWebRequest();
+
+            surveyStatusRequestInProgress = false;
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                SurveyStatusResponse response =
+                    JsonUtility.FromJson<SurveyStatusResponse>(
+                        request.downloadHandler.text
+                    );
+
+                onSuccess?.Invoke(response);
+            }
+            else
+            {
+                onError?.Invoke(BuildRequestError(request));
+            }
+        }
+    }
+
+    public IEnumerator SubmitSurvey(
+        SurveySubmitRequest payload,
+        Action<SurveySubmitResponse> onSuccess,
+        Action<string> onError
+    )
+    {
+        if (surveySubmitRequestInProgress)
+        {
+            onError?.Invoke("Ya hay un envio de encuesta en curso.");
+            yield break;
+        }
+
+        if (string.IsNullOrEmpty(token))
+        {
+            onError?.Invoke("NO_TOKEN");
+            yield break;
+        }
+
+        string json = JsonUtility.ToJson(payload);
+        byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
+
+        surveySubmitRequestInProgress = true;
+
+        using (UnityWebRequest request =
+            new UnityWebRequest(baseUrl + "/survey/submit", "POST"))
+        {
+            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader("Content-Type", "application/json");
+            request.SetRequestHeader(
+                "Authorization",
+                "Bearer " + token
+            );
+
+            yield return request.SendWebRequest();
+
+            surveySubmitRequestInProgress = false;
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                SurveySubmitResponse response =
+                    JsonUtility.FromJson<SurveySubmitResponse>(
+                        request.downloadHandler.text
+                    );
+
+                onSuccess?.Invoke(response);
+            }
+            else
+            {
+                onError?.Invoke(BuildRequestError(request));
+            }
+        }
+    }
+
+    private string BuildRequestError(UnityWebRequest request)
+    {
+        string body = request.downloadHandler != null
+            ? request.downloadHandler.text
+            : "";
+
+        if (!string.IsNullOrEmpty(body))
+        {
+            return "HTTP_" + request.responseCode + ": " + body;
+        }
+
+        if (!string.IsNullOrEmpty(request.error))
+        {
+            return "HTTP_" + request.responseCode + ": " + request.error;
+        }
+
+        return "HTTP_" + request.responseCode;
+    }
+
     private string NormalizeRiskLevel(string risk)
     {
         if (string.IsNullOrEmpty(risk))
