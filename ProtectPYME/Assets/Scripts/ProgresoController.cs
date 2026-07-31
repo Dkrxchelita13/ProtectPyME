@@ -539,7 +539,7 @@ public class ProgresoController : MonoBehaviour
 
             txtAreaVulnerable.text =
 
-                "Area de mejora: " + GetSurveyAreaDisplayName(weakness);
+                GetSurveyAreaDisplayName(weakness);
 
         }
 
@@ -561,7 +561,7 @@ public class ProgresoController : MonoBehaviour
 
             txtEscenarioSugerido.text =
 
-                "Practica sugerida: " + GetSurveySuggestedPractice(weakness);
+                GetSurveySuggestedPractice(weakness);
 
         }
 
@@ -1115,15 +1115,15 @@ public class ProgresoController : MonoBehaviour
 
             return message
 
-                + "\n\nDiagnostico basado en encuesta. Decisiones registradas: "
+                + "\n\nFuente: encuesta ("
 
                 + data.behavioral_decisions
 
-                + " de "
+                + "/"
 
                 + minDecisions
 
-                + ".";
+                + " decisiones).";
 
         }
 
@@ -1131,11 +1131,11 @@ public class ProgresoController : MonoBehaviour
 
         return message
 
-            + "\n\nEvaluacion basada en "
+            + "\n\nFuente: evaluacion conductual ("
 
             + data.behavioral_decisions
 
-            + " decisiones registradas.";
+            + " decisiones).";
 
     }
 
@@ -1185,7 +1185,7 @@ public class ProgresoController : MonoBehaviour
 
             txtEscenarioSugerido.text =
 
-                "Practica sugerida: Escenario " +
+                "Escenario " +
 
                 data.recommended_scenario;
 
