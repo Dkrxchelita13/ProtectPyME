@@ -46,6 +46,11 @@ public class ProgresoController : MonoBehaviour
 
     public TextMeshProUGUI txtEscenarioSugerido;
 
+    [Header("Resultado Diagnostico")]
+    [SerializeField] private Image imagenBotonPracticar;
+    [SerializeField] private Sprite spriteBotonPracticar;
+    [SerializeField] private Sprite spriteBotonContinuar;
+
     private int recommendedScenario;
 
 
@@ -248,27 +253,45 @@ public class ProgresoController : MonoBehaviour
 
 
 
-        StartCoroutine(
+        if (DebeMostrarResultadoDiagnostico())
 
-            APIManager.Instance.GetAIRisk(
+        {
 
-                OnRiskLoaded,
+            ShowSurveyDiagnosticResult();
 
-                error =>
+        }
 
-                {
+        else
 
-                    Debug.LogError(
+        {
 
-                        "Error IA: " + error
+            AIState.SurveyResultPending = false;
 
-                    );
+            RestaurarSpriteBotonPracticar();
 
-                }
+            StartCoroutine(
 
-            )
+                APIManager.Instance.GetAIRisk(
 
-        );
+                    OnRiskLoaded,
+
+                    error =>
+
+                    {
+
+                        Debug.LogError(
+
+                            "Error IA: " + error
+
+                        );
+
+                    }
+
+                )
+
+            );
+
+        }
 
     }
 
@@ -480,6 +503,468 @@ public class ProgresoController : MonoBehaviour
 
 
 
+    private bool DebeMostrarResultadoDiagnostico()
+
+    {
+
+        return AIState.SurveyResultPending && AIState.SurveyCompleted;
+
+    }
+
+
+
+    private void ShowSurveyDiagnosticResult()
+
+    {
+
+        string weakness = NormalizeSurveyWeakness(AIState.SurveyPrimaryWeakness);
+
+        string risk = NormalizeSurveyRisk(AIState.SurveyInitialRisk);
+
+
+
+        if (txtRiskLevel != null)
+
+        {
+
+            txtRiskLevel.text = "Riesgo inicial: " + risk;
+
+        }
+
+
+
+        if (txtAreaVulnerable != null)
+
+        {
+
+            txtAreaVulnerable.text =
+
+                "Area de mejora: " + GetSurveyAreaDisplayName(weakness);
+
+        }
+
+
+
+        if (txtRecomendacion != null)
+
+        {
+
+            txtRecomendacion.text = GetSurveyRecommendation(weakness, risk);
+
+        }
+
+
+
+        if (txtEscenarioSugerido != null)
+
+        {
+
+            txtEscenarioSugerido.text =
+
+                "Practica sugerida: " + GetSurveySuggestedPractice(weakness);
+
+        }
+
+
+
+        if (imagenBotonPracticar != null && spriteBotonContinuar != null)
+
+        {
+
+            imagenBotonPracticar.sprite = spriteBotonContinuar;
+
+        }
+
+    }
+
+
+
+    private string NormalizeSurveyWeakness(string weakness)
+
+    {
+
+        if (string.IsNullOrEmpty(weakness))
+
+        {
+
+            return "";
+
+        }
+
+
+
+        string normalized = weakness.Trim().ToLower();
+
+
+
+        switch (normalized)
+
+        {
+
+            case "phishing":
+
+            case "passwords":
+
+            case "malware":
+
+            case "none":
+
+                return normalized;
+
+
+
+            default:
+
+                return "";
+
+        }
+
+    }
+
+
+
+    private string NormalizeSurveyRisk(string risk)
+
+    {
+
+        if (string.IsNullOrEmpty(risk))
+
+        {
+
+            return "NO DISPONIBLE";
+
+        }
+
+
+
+        string normalized = risk.Trim().ToUpper();
+
+
+
+        switch (normalized)
+
+        {
+
+            case "ALTO":
+
+            case "MEDIO":
+
+            case "BAJO":
+
+                return normalized;
+
+
+
+            default:
+
+                return "NO DISPONIBLE";
+
+        }
+
+    }
+
+
+
+    private string GetSurveyAreaDisplayName(string weakness)
+
+    {
+
+        switch (weakness)
+
+        {
+
+            case "phishing":
+
+                return "Phishing e ingenieria social";
+
+
+
+            case "passwords":
+
+                return "Contrasenas y proteccion de cuentas";
+
+
+
+            case "malware":
+
+                return "Malware y dispositivos USB";
+
+
+
+            case "none":
+
+                return "No se detecto un area critica";
+
+
+
+            default:
+
+                return "Area de mejora general";
+
+        }
+
+    }
+
+
+
+    private string GetSurveySuggestedPractice(string weakness)
+
+    {
+
+        switch (weakness)
+
+        {
+
+            case "phishing":
+
+                return "Escenario 1: correo fraudulento";
+
+
+
+            case "passwords":
+
+                return "Escenario 2: contrasenas y acceso";
+
+
+
+            case "malware":
+
+                return "Escenario 3: USB sospechoso";
+
+
+
+            case "none":
+
+                return "Ruta general de capacitacion";
+
+
+
+            default:
+
+                return "Capacitacion general";
+
+        }
+
+    }
+
+
+
+    private string GetSurveyRecommendation(string weakness, string risk)
+
+    {
+
+        if (weakness == "none")
+
+        {
+
+            return "Tu diagnostico inicial no detecto un area critica. "
+
+                + "Continuaras con una ruta general para fortalecer y comprobar "
+
+                + "tus conocimientos mediante situaciones practicas.";
+
+        }
+
+
+
+        switch (weakness)
+
+        {
+
+            case "phishing":
+
+                return GetPhishingRecommendation(risk);
+
+
+
+            case "passwords":
+
+                return GetPasswordRecommendation(risk);
+
+
+
+            case "malware":
+
+                return GetMalwareRecommendation(risk);
+
+
+
+            default:
+
+                return "Tu diagnostico inicial esta listo. Revisa la practica "
+
+                    + "sugerida para fortalecer tus conocimientos de seguridad.";
+
+        }
+
+    }
+
+
+
+    private string GetPhishingRecommendation(string risk)
+
+    {
+
+        switch (risk)
+
+        {
+
+            case "ALTO":
+
+                return "Tus respuestas indican que necesitas reforzar la "
+
+                    + "identificacion de remitentes, enlaces y mensajes urgentes "
+
+                    + "antes de interactuar con ellos.";
+
+
+
+            case "MEDIO":
+
+                return "Reconoces algunas senales de phishing, pero debes revisar "
+
+                    + "con mayor atencion el remitente, el dominio y los enlaces.";
+
+
+
+            case "BAJO":
+
+                return "Demuestras buenas practicas iniciales frente al phishing. "
+
+                    + "Continua fortaleciendo la verificacion de mensajes y enlaces.";
+
+
+
+            default:
+
+                return GetGeneralSurveyRecommendation();
+
+        }
+
+    }
+
+
+
+    private string GetPasswordRecommendation(string risk)
+
+    {
+
+        switch (risk)
+
+        {
+
+            case "ALTO":
+
+                return "Necesitas reforzar el uso de contrasenas unicas, extensas "
+
+                    + "y dificiles de predecir, ademas del uso de mecanismos "
+
+                    + "adicionales de autenticacion.";
+
+
+
+            case "MEDIO":
+
+                return "Conoces algunas practicas de proteccion de cuentas, pero "
+
+                    + "debes mejorar la creacion y administracion de contrasenas.";
+
+
+
+            case "BAJO":
+
+                return "Demuestras buenas practicas iniciales para proteger tus "
+
+                    + "cuentas. Continua utilizando credenciales unicas y "
+
+                    + "autenticacion adicional.";
+
+
+
+            default:
+
+                return GetGeneralSurveyRecommendation();
+
+        }
+
+    }
+
+
+
+    private string GetMalwareRecommendation(string risk)
+
+    {
+
+        switch (risk)
+
+        {
+
+            case "ALTO":
+
+                return "Necesitas reforzar la prevencion de malware y evitar "
+
+                    + "conectar dispositivos USB desconocidos a los equipos de "
+
+                    + "la empresa.";
+
+
+
+            case "MEDIO":
+
+                return "Identificas algunos riesgos de dispositivos externos, "
+
+                    + "pero debes fortalecer la respuesta ante memorias USB "
+
+                    + "desconocidas.";
+
+
+
+            case "BAJO":
+
+                return "Demuestras buenas practicas iniciales frente a dispositivos "
+
+                    + "USB y malware. Continua aplicando medidas preventivas.";
+
+
+
+            default:
+
+                return GetGeneralSurveyRecommendation();
+
+        }
+
+    }
+
+
+
+    private string GetGeneralSurveyRecommendation()
+
+    {
+
+        return "Tu diagnostico inicial esta listo. Continua con la ruta "
+
+            + "recomendada para fortalecer tus conocimientos de ciberseguridad.";
+
+    }
+
+
+
+    private void RestaurarSpriteBotonPracticar()
+
+    {
+
+        if (imagenBotonPracticar != null && spriteBotonPracticar != null)
+
+        {
+
+            imagenBotonPracticar.sprite = spriteBotonPracticar;
+
+        }
+
+    }
+
+
+
     private void OnRiskLoaded(
 
         AIRiskResponse data
@@ -579,6 +1064,20 @@ public class ProgresoController : MonoBehaviour
     public void PracticarEscenarioIA()
 
     {
+
+        if (AIState.SurveyResultPending)
+
+        {
+
+            AIState.SurveyResultPending = false;
+
+            RestaurarSpriteBotonPracticar();
+
+            SceneManager.LoadScene("MenuPrincipal");
+
+            return;
+
+        }
 
         Debug.Log(
 

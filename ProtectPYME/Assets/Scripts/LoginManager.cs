@@ -382,6 +382,7 @@ public class LoginManager : MonoBehaviour
         if (surveyStatus.has_submitted)
         {
             AIState.SurveyCompleted = true;
+            AIState.SurveyResultPending = false;
             AIState.SurveyInitialRisk = surveyStatus.initial_risk;
             AIState.SurveyPrimaryWeakness = surveyStatus.primary_weakness;
             AIState.SurveyTotalRiskScore = 0;
@@ -392,6 +393,7 @@ public class LoginManager : MonoBehaviour
         else
         {
             AIState.SurveyCompleted = false;
+            AIState.SurveyResultPending = false;
             AIState.SurveyInitialRisk = "";
             AIState.SurveyPrimaryWeakness = "";
             AIState.SurveyTotalRiskScore = 0;

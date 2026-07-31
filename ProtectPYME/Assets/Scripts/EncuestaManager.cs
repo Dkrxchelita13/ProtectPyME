@@ -254,6 +254,8 @@ public class EncuestaManager : MonoBehaviour
 
     private IEnumerator ContinuarSiEncuestaYaExiste()
     {
+        AIState.SurveyResultPending = false;
+
         SurveyStatusResponse status = null;
         string statusError = "";
 
@@ -265,7 +267,8 @@ public class EncuestaManager : MonoBehaviour
         if (status != null && status.has_submitted)
         {
             AplicarDiagnostico(status);
-            SceneManager.LoadScene(nombreEscenaSiguiente);
+            AIState.SurveyResultPending = false;
+            SceneManager.LoadScene("MenuPrincipal");
             yield break;
         }
 
@@ -417,6 +420,7 @@ public class EncuestaManager : MonoBehaviour
     private void AplicarDiagnostico(SurveySubmitResponse response)
     {
         AIState.SurveyCompleted = true;
+        AIState.SurveyResultPending = true;
         AIState.SurveyInitialRisk = response.initial_risk;
         AIState.SurveyPrimaryWeakness = response.primary_weakness;
         AIState.SurveyTotalRiskScore = response.total_risk_score;
@@ -425,6 +429,7 @@ public class EncuestaManager : MonoBehaviour
     private void AplicarDiagnostico(SurveyStatusResponse status)
     {
         AIState.SurveyCompleted = true;
+        AIState.SurveyResultPending = false;
         AIState.SurveyInitialRisk = status.initial_risk;
         AIState.SurveyPrimaryWeakness = status.primary_weakness;
         AIState.SurveyTotalRiskScore = 0;
