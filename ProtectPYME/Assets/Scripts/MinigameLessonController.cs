@@ -123,6 +123,12 @@ public class MinigameLessonController : MonoBehaviour
         currentLesson = response;
         lessonLoaded = true;
 
+        SetActive(loadingPanel, false);
+        SetActive(errorPanel, false);
+        SetActive(contentPanel, true);
+        SetButtonInteractable(btnStart, false);
+        SetButtonInteractable(btnRetry, true);
+
         SetText(txtTitle, response.title);
         SetText(txtVulnerability, response.vulnerability);
         SetText(txtLearningObjective, response.learning_objective);
@@ -132,7 +138,8 @@ public class MinigameLessonController : MonoBehaviour
         SetText(txtTip3, FormatTip(response.tips[2]));
         SetText(txtRecommendedAction, response.recommended_action);
 
-        ShowContent();
+        RebuildLessonLayout();
+        SetButtonInteractable(btnStart, true);
     }
 
     private void OnLessonError(string error)
@@ -152,22 +159,35 @@ public class MinigameLessonController : MonoBehaviour
 
     private bool HasEssentialReferences()
     {
-        bool hasReferences = txtTitle != null
-            && txtExplanation != null
-            && txtTip1 != null
-            && txtTip2 != null
-            && txtTip3 != null
-            && btnStart != null;
+        bool hasReferences = true;
+
+        hasReferences &= HasReference(txtTitle, nameof(txtTitle));
+        hasReferences &= HasReference(txtVulnerability, nameof(txtVulnerability));
+        hasReferences &= HasReference(txtLearningObjective, nameof(txtLearningObjective));
+        hasReferences &= HasReference(txtExplanation, nameof(txtExplanation));
+        hasReferences &= HasReference(txtTip1, nameof(txtTip1));
+        hasReferences &= HasReference(txtTip2, nameof(txtTip2));
+        hasReferences &= HasReference(txtTip3, nameof(txtTip3));
+        hasReferences &= HasReference(txtRecommendedAction, nameof(txtRecommendedAction));
+        hasReferences &= HasReference(btnStart, nameof(btnStart));
 
         if (!hasReferences)
         {
-            Debug.LogError(
-                "MinigameLessonController requiere titulo, explicacion, "
-                + "tres tips y boton comenzar."
-            );
+            Debug.LogError("MinigameLessonController tiene referencias esenciales incompletas.");
         }
 
         return hasReferences;
+    }
+
+    private bool HasReference(Object reference, string referenceName)
+    {
+        if (reference != null)
+        {
+            return true;
+        }
+
+        Debug.LogError("MinigameLessonController: falta referencia " + referenceName + ".");
+        return false;
     }
 
     private bool IsValidLesson(MinigameLessonResponse response)
@@ -193,8 +213,28 @@ public class MinigameLessonController : MonoBehaviour
         SetActive(loadingPanel, false);
         SetActive(errorPanel, false);
         SetActive(contentPanel, true);
+        RebuildLessonLayout();
         SetButtonInteractable(btnStart, true);
         SetButtonInteractable(btnRetry, true);
+    }
+
+    private void RebuildLessonLayout()
+    {
+        ScrollRect lessonScrollRect = contentPanel != null
+            ? contentPanel.GetComponentInChildren<ScrollRect>(true)
+            : null;
+
+        if (lessonScrollRect == null || lessonScrollRect.content == null)
+        {
+            Debug.LogWarning("MinigameLessonController: ScrollRect de leccion incompleto.");
+            return;
+        }
+
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(lessonScrollRect.content);
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(lessonScrollRect.content);
+        lessonScrollRect.verticalNormalizedPosition = 1f;
     }
 
     private void ShowError(string error)
@@ -226,7 +266,10 @@ public class MinigameLessonController : MonoBehaviour
             return;
         }
 
+        text.richText = false;
+        text.enableWordWrapping = true;
         text.text = SanitizeText(value);
+        text.ForceMeshUpdate();
     }
 
     private string SanitizeText(string value)
