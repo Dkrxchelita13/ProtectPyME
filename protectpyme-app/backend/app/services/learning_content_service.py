@@ -5,7 +5,7 @@ import logging
 logger = logging.getLogger("protectpyme")
 
 
-LEARNING_CONTENT = {
+BASE_CONTENT = {
     "phishing": {
         "alto": {
             "title": "Detección de phishing",
@@ -283,17 +283,457 @@ LEARNING_CONTENT = {
 }
 
 
-def get_learning_content(topic: str, risk: str) -> dict:
-    topic_content = LEARNING_CONTENT.get(topic)
+MINIGAME_ALIASES = {
+    "quiz": "quiz",
+    "kahoot": "quiz",
+    "wordsearch": "wordsearch",
+    "sopa": "wordsearch",
+    "sopa_letras": "wordsearch",
+    "sopaletras": "wordsearch",
+    "crossword": "crossword",
+    "crucigrama": "crossword",
+}
+
+
+CONCEPT_SETS = {
+    "phishing": {
+        "alto": [
+            {
+                "term": "Engaño",
+                "definition": "Técnica para hacer que una persona confíe en un mensaje falso.",
+                "why_it_matters": "El ataque funciona cuando alguien actúa sin verificar.",
+                "example": "Un correo simula ser del banco y pide actualizar datos de acceso.",
+            },
+            {
+                "term": "Enlace",
+                "definition": "Dirección dentro del mensaje que puede llevar a un sitio falso.",
+                "why_it_matters": "Un enlace puede capturar credenciales aunque el mensaje parezca real.",
+                "example": "El botón dice 'portal de nómina', pero abre un dominio desconocido.",
+            },
+            {
+                "term": "Reporte",
+                "definition": "Aviso al área responsable para revisar un correo sospechoso.",
+                "why_it_matters": "Reportar ayuda a proteger a otros empleados de la misma campaña.",
+                "example": "Reenvías el mensaje sospechoso al canal interno de soporte.",
+            },
+        ],
+        "medio": [
+            {
+                "term": "Dominio",
+                "definition": "Parte de la dirección que identifica a la organización real.",
+                "why_it_matters": "Dominios alterados son una señal frecuente de fraude.",
+                "example": "empresa.com es distinto de empresa-soporte.com.",
+            },
+            {
+                "term": "URL",
+                "definition": "Dirección completa de una página o recurso en internet.",
+                "why_it_matters": "Revisarla antes de hacer clic ayuda a detectar sitios falsos.",
+                "example": "Un enlace de pago apunta a un dominio que no pertenece al proveedor.",
+            },
+            {
+                "term": "Spam",
+                "definition": "Correo no deseado que puede ser molesto o riesgoso.",
+                "why_it_matters": "No todo spam es phishing, pero puede ocultar engaños.",
+                "example": "Un correo masivo ofrece descuentos y adjunta un archivo inesperado.",
+            },
+        ],
+        "bajo": [
+            {
+                "term": "Spear phishing",
+                "definition": "Phishing dirigido a una persona, área o empresa específica.",
+                "why_it_matters": "Usa contexto real para parecer más confiable.",
+                "example": "Un mensaje menciona a tu jefe y solicita revisar una factura urgente.",
+            },
+            {
+                "term": "SPF",
+                "definition": "Registro que indica qué servidores pueden enviar correo por un dominio.",
+                "why_it_matters": "Ayuda a detectar mensajes enviados desde servidores no autorizados.",
+                "example": "Un dominio corporativo define qué proveedor puede mandar sus correos.",
+            },
+            {
+                "term": "DKIM",
+                "definition": "Firma digital que ayuda a verificar que el correo no fue alterado.",
+                "why_it_matters": "Aporta evidencia técnica sobre la autenticidad del mensaje.",
+                "example": "El servidor receptor revisa la firma antes de confiar en el correo.",
+            },
+            {
+                "term": "DMARC",
+                "definition": "Política que usa SPF y DKIM para decidir qué hacer con correos sospechosos.",
+                "why_it_matters": "Reduce la suplantación de dominios de la empresa.",
+                "example": "La organización pide rechazar mensajes que no pasen validaciones.",
+            },
+        ],
+    },
+    "passwords": {
+        "alto": [
+            {
+                "term": "Contraseña larga",
+                "definition": "Clave con suficientes caracteres para ser difícil de adivinar.",
+                "why_it_matters": "La longitud aumenta el esfuerzo necesario para probar combinaciones.",
+                "example": "Una frase de varias palabras es mejor que '123456'.",
+            },
+            {
+                "term": "Contraseña única",
+                "definition": "Clave usada solo en una cuenta o servicio.",
+                "why_it_matters": "Si una cuenta se filtra, las demás no quedan expuestas automáticamente.",
+                "example": "El correo, la banca y el sistema de ventas usan claves distintas.",
+            },
+            {
+                "term": "Reutilización",
+                "definition": "Usar la misma contraseña en varios servicios.",
+                "why_it_matters": "Una filtración externa puede abrir accesos internos.",
+                "example": "La misma clave de una tienda se usa también en el correo laboral.",
+            },
+            {
+                "term": "Secreto",
+                "definition": "Dato privado que no debe compartirse por chat, correo o teléfono.",
+                "why_it_matters": "Compartirlo rompe el control sobre quién accede a una cuenta.",
+                "example": "Un código temporal de acceso no se envía a otra persona.",
+            },
+        ],
+        "medio": [
+            {
+                "term": "MFA",
+                "definition": "Autenticación que pide más de un factor para entrar.",
+                "why_it_matters": "Reduce el riesgo cuando una contraseña queda expuesta.",
+                "example": "Además de la clave, se aprueba el inicio de sesión en una app.",
+            },
+            {
+                "term": "Gestor de contraseñas",
+                "definition": "Herramienta para guardar y generar contraseñas únicas de forma segura.",
+                "why_it_matters": "Evita anotar claves o repetirlas por memoria.",
+                "example": "El gestor crea una clave distinta para cada proveedor.",
+            },
+            {
+                "term": "Passphrase",
+                "definition": "Frase larga usada como contraseña fácil de recordar y difícil de adivinar.",
+                "why_it_matters": "Combina longitud con menor carga para el usuario.",
+                "example": "Una frase interna sin datos personales puede proteger una cuenta.",
+            },
+        ],
+        "bajo": [
+            {
+                "term": "Hash",
+                "definition": "Resultado de aplicar una función a una contraseña para no guardar el texto original.",
+                "why_it_matters": "Permite verificar la contraseña sin almacenarla en claro; no es cifrado reversible.",
+                "example": "El sistema compara hashes en lugar de guardar 'MiClave2026'.",
+            },
+            {
+                "term": "Salt",
+                "definition": "Valor aleatorio único agregado antes de generar el hash.",
+                "why_it_matters": "Hace que contraseñas iguales produzcan hashes distintos.",
+                "example": "Dos empleados con la misma clave no tendrían el mismo hash guardado.",
+            },
+            {
+                "term": "Argon2id",
+                "definition": "Función moderna para almacenar contraseñas usando memoria y tiempo.",
+                "why_it_matters": "Dificulta intentos masivos contra hashes robados.",
+                "example": "Un sistema nuevo puede usar Argon2id para proteger credenciales.",
+            },
+            {
+                "term": "Password spraying",
+                "definition": "Ataque que prueba una contraseña común en muchas cuentas.",
+                "why_it_matters": "Evita bloqueos rápidos y explota claves débiles reutilizadas.",
+                "example": "Un atacante prueba 'Empresa2026' contra todos los correos.",
+            },
+        ],
+    },
+    "malware": {
+        "alto": [
+            {
+                "term": "Malware",
+                "definition": "Software diseñado para dañar, espiar o controlar un equipo sin permiso.",
+                "why_it_matters": "Puede afectar archivos, credenciales y continuidad del negocio.",
+                "example": "Un adjunto falso instala un programa no autorizado.",
+            },
+            {
+                "term": "Virus",
+                "definition": "Tipo de malware que puede propagarse al ejecutar archivos infectados.",
+                "why_it_matters": "Ayuda a distinguir un tipo específico dentro del malware.",
+                "example": "Un archivo compartido infecta otros documentos al abrirse.",
+            },
+            {
+                "term": "Antivirus",
+                "definition": "Herramienta que ayuda a detectar y bloquear software malicioso.",
+                "why_it_matters": "Es un apoyo, pero no reemplaza la verificación del usuario.",
+                "example": "Una alerta del antivirus indica que no abras el archivo.",
+            },
+            {
+                "term": "USB desconocido",
+                "definition": "Dispositivo externo cuyo origen no está autorizado o confirmado.",
+                "why_it_matters": "Puede contener archivos maliciosos o activar riesgos al conectarse.",
+                "example": "Una memoria encontrada en recepción se entrega a soporte.",
+            },
+        ],
+        "medio": [
+            {
+                "term": "Ransomware",
+                "definition": "Malware que cifra o bloquea archivos para exigir un pago.",
+                "why_it_matters": "Puede detener operaciones y afectar información crítica.",
+                "example": "Las carpetas compartidas quedan bloqueadas y aparece una nota de rescate.",
+            },
+            {
+                "term": "Spyware",
+                "definition": "Software que recopila información del usuario sin autorización.",
+                "why_it_matters": "Puede robar credenciales, hábitos de navegación o datos de clientes.",
+                "example": "Un programa falso registra lo que se escribe en el equipo.",
+            },
+            {
+                "term": "Botnet",
+                "definition": "Red de equipos infectados controlados por un atacante.",
+                "why_it_matters": "Un equipo de la empresa puede usarse para ataques sin que se note.",
+                "example": "Una computadora infectada envía tráfico extraño en segundo plano.",
+            },
+        ],
+        "bajo": [
+            {
+                "term": "Rootkit",
+                "definition": "Malware que intenta ocultar su presencia en el sistema.",
+                "why_it_matters": "Puede dificultar la detección y la limpieza del equipo.",
+                "example": "El equipo parece normal aunque mantiene procesos ocultos.",
+            },
+            {
+                "term": "Sandbox",
+                "definition": "Entorno aislado y autorizado para analizar archivos sospechosos.",
+                "why_it_matters": "Permite observar riesgos sin exponer sistemas reales.",
+                "example": "Soporte analiza un adjunto en un laboratorio controlado.",
+            },
+            {
+                "term": "Persistencia",
+                "definition": "Capacidad de mantenerse activo después de reiniciar el equipo.",
+                "why_it_matters": "Indica que la amenaza puede volver si no se elimina correctamente.",
+                "example": "Un programa reaparece cada vez que se prende la computadora.",
+            },
+        ],
+    },
+    "wifi": {
+        "alto": [
+            {
+                "term": "Red pública",
+                "definition": "WiFi disponible para muchas personas y con control limitado.",
+                "why_it_matters": "Puede exponer datos si se usa sin protección.",
+                "example": "La red abierta de una cafetería no es equivalente a la red corporativa.",
+            },
+            {
+                "term": "HTTPS",
+                "definition": "Protocolo que protege la comunicación con un sitio web.",
+                "why_it_matters": "Ayuda a evitar que otros vean o alteren información enviada.",
+                "example": "El navegador muestra candado al entrar al portal del proveedor.",
+            },
+            {
+                "term": "VPN",
+                "definition": "Servicio que protege la conexión hacia recursos autorizados.",
+                "why_it_matters": "Agrega una capa de protección al trabajar fuera de la oficina.",
+                "example": "Se activa la VPN antes de consultar un sistema interno.",
+            },
+            {
+                "term": "Datos sensibles",
+                "definition": "Información que puede causar daño si se expone.",
+                "why_it_matters": "Incluye credenciales, datos de clientes, pagos o documentos internos.",
+                "example": "No se envía una lista de clientes desde una red abierta.",
+            },
+        ],
+        "medio": [
+            {
+                "term": "SSID",
+                "definition": "Nombre visible de una red inalámbrica.",
+                "why_it_matters": "Los atacantes pueden imitar nombres conocidos para confundir.",
+                "example": "Oficina_Invitados no es igual a Oficina-Invitados.",
+            },
+            {
+                "term": "Hotspot",
+                "definition": "Punto de acceso que ofrece conexión WiFi.",
+                "why_it_matters": "Puede ser legítimo o falso según quién lo controle.",
+                "example": "Un celular comparte internet como hotspot temporal autorizado.",
+            },
+            {
+                "term": "WPA2",
+                "definition": "Estándar de seguridad usado para proteger redes inalámbricas.",
+                "why_it_matters": "Indica mejor protección que una red abierta sin clave.",
+                "example": "La red de oficina usa WPA2 con una clave administrada.",
+            },
+            {
+                "term": "Red falsa",
+                "definition": "Red creada para parecer confiable y atraer usuarios.",
+                "why_it_matters": "Puede capturar tráfico o credenciales si se usa sin verificar.",
+                "example": "Un atacante crea 'Empresa Gratis' cerca de la oficina.",
+            },
+        ],
+        "bajo": [
+            {
+                "term": "Evil Twin",
+                "definition": "Red falsa que imita una red legítima.",
+                "why_it_matters": "Engaña al usuario para conectarse a un punto controlado por otro.",
+                "example": "Una red copia el nombre del WiFi del hotel para robar accesos.",
+            },
+            {
+                "term": "Rogue AP",
+                "definition": "Punto de acceso no autorizado dentro o cerca de la organización.",
+                "why_it_matters": "Puede abrir una entrada insegura a la red o confundir empleados.",
+                "example": "Alguien conecta un router personal sin permiso en la oficina.",
+            },
+            {
+                "term": "WPA3",
+                "definition": "Estándar moderno que mejora la seguridad de redes WiFi.",
+                "why_it_matters": "Reduce riesgos frente a ataques comunes contra redes inalámbricas.",
+                "example": "Un router nuevo de la empresa se configura con WPA3 cuando es posible.",
+            },
+            {
+                "term": "Red oficial",
+                "definition": "Red confirmada por la organización como segura para trabajar.",
+                "why_it_matters": "Validarla evita conectarse a imitaciones o puntos no autorizados.",
+                "example": "El nombre de la red se confirma con TI antes de ingresar credenciales.",
+            },
+        ],
+    },
+}
+
+
+VISUAL_KEYS = {
+    "phishing": {
+        "alto": "phishing_email_signals",
+        "medio": "phishing_email_signals",
+        "bajo": "phishing_email_authentication",
+    },
+    "passwords": {
+        "alto": "password_unique_accounts",
+        "medio": "password_unique_accounts",
+        "bajo": "password_hash_flow",
+    },
+    "malware": {
+        "alto": "malware_usb_decision",
+        "medio": "malware_analysis_flow",
+        "bajo": "malware_analysis_flow",
+    },
+    "wifi": {
+        "alto": "wifi_public_check",
+        "medio": "wifi_fake_network",
+        "bajo": "wifi_fake_network",
+    },
+}
+
+
+QUICK_CHECKS = {
+    "phishing": {
+        "alto": ("Un proveedor pide abrir un enlace inesperado. ¿Qué haces primero?", ["Abrirlo para comprobar", "Revisar remitente y reportar si parece sospechoso", "Responder con tus datos"], 1, "Primero se revisan señales básicas y se reporta si hay duda."),
+        "medio": ("Un enlace dice una cosa pero apunta a otro dominio. ¿Qué señal es?", ["Posible sitio falso", "Confirmación automática", "Archivo local"], 0, "La URL real debe coincidir con el sitio esperado."),
+        "bajo": ("Un correo falla SPF y DKIM. ¿Qué ayuda a decidir la política?", ["DMARC", "USB", "WPA3"], 0, "DMARC combina esas validaciones para reducir suplantación."),
+    },
+    "passwords": {
+        "alto": ("Una clave se usa en correo y ventas. ¿Cuál es el riesgo?", ["Solo ocupa memoria", "Una filtración puede afectar ambas cuentas", "Hace más rápida la sesión"], 1, "Cada cuenta debe tener una contraseña única."),
+        "medio": ("Una cuenta crítica ya tiene clave fuerte. ¿Qué control agrega protección?", ["MFA", "Compartir la clave", "Usar una red abierta"], 0, "MFA reduce el riesgo si la clave se expone."),
+        "bajo": ("Dos usuarios tienen la misma contraseña. ¿Qué evita que el hash guardado sea igual?", ["Salt único", "SSID", "Spam"], 0, "El salt único cambia el resultado del hash."),
+    },
+    "malware": {
+        "alto": ("Encuentras un USB en recepción. ¿Qué decisión reduce el riesgo?", ["Conectarlo para ver archivos", "Entregarlo a soporte sin conectarlo", "Copiar su contenido"], 1, "Los dispositivos desconocidos deben verificarse por canales autorizados."),
+        "medio": ("Un archivo cifra carpetas compartidas y pide pago. ¿Qué concepto describe el caso?", ["Ransomware", "SSID", "MFA"], 0, "Ransomware bloquea o cifra archivos para presionar a la víctima."),
+        "bajo": ("Soporte quiere revisar un adjunto sin exponer equipos reales. ¿Qué usa?", ["Sandbox autorizada", "Red pública", "Password spraying"], 0, "La sandbox aísla el análisis del entorno productivo."),
+    },
+    "wifi": {
+        "alto": ("Necesitas enviar datos de clientes fuera de la oficina. ¿Qué revisas?", ["HTTPS/VPN y red confiable", "Solo el color del portal", "Que la red no pida clave"], 0, "Datos sensibles requieren conexión protegida."),
+        "medio": ("Ves dos redes con nombres casi iguales. ¿Qué debes validar?", ["SSID oficial", "El tamaño del texto", "La marca del celular"], 0, "El SSID ayuda a identificar la red correcta."),
+        "bajo": ("Una red copia el nombre exacto de la red oficial. ¿Qué ataque puede ser?", ["Evil Twin", "Hash", "Botnet"], 0, "Evil Twin imita una red legítima para engañar usuarios."),
+    },
+}
+
+
+def normalize_minigame(value: str) -> str:
+    normalized = (value or "").lower().strip()
+
+    if normalized in MINIGAME_ALIASES:
+        return MINIGAME_ALIASES[normalized]
+
+    raise ValueError("Minigame must be quiz, wordsearch or crossword.")
+
+
+def _build_practical_example(topic: str, risk: str, minigame: str) -> dict:
+    labels = {
+        "quiz": "Decidir antes de responder",
+        "wordsearch": "Reconocer términos clave",
+        "crossword": "Relacionar pistas con conceptos",
+    }
+
+    return {
+        "title": f"{labels[minigame]} en una PYME",
+        "steps": [
+            "Observa el caso como si ocurriera durante una jornada normal.",
+            "Identifica los términos o señales que aparecen en la situación.",
+            "Piensa por qué importan para proteger cuentas, equipos o datos.",
+            "Elige la respuesta o palabra solo después de verificar el concepto.",
+        ],
+    }
+
+
+def _build_common_mistake(minigame: str) -> dict:
+    mistakes = {
+        "quiz": (
+            "Responder por intuición",
+            "Elegir la opción que suena familiar sin revisar las señales puede reforzar hábitos inseguros.",
+        ),
+        "wordsearch": (
+            "Buscar palabras sin entenderlas",
+            "Reconocer un término ayuda poco si no se entiende cuándo aplicarlo en el trabajo.",
+        ),
+        "crossword": (
+            "Memorizar la pista literalmente",
+            "El objetivo es conectar definición y concepto, no repetir una frase exacta.",
+        ),
+    }
+    title, explanation = mistakes[minigame]
+    return {"title": title, "explanation": explanation}
+
+
+def _build_supplement(topic: str, risk: str, minigame: str) -> dict:
+    question, options, correct_option, explanation = QUICK_CHECKS[topic][risk]
+
+    return {
+        "key_concepts": copy.deepcopy(CONCEPT_SETS[topic][risk]),
+        "practical_example": _build_practical_example(topic, risk, minigame),
+        "common_mistake": _build_common_mistake(minigame),
+        "quick_check": {
+            "question": question,
+            "options": options,
+            "correct_option": correct_option,
+            "explanation": explanation,
+        },
+        "visual_key": VISUAL_KEYS[topic][risk],
+    }
+
+
+MINIGAME_SUPPLEMENTS = {
+    topic: {
+        risk: {
+            minigame: _build_supplement(topic, risk, minigame)
+            for minigame in ("quiz", "wordsearch", "crossword")
+        }
+        for risk in ("alto", "medio", "bajo")
+    }
+    for topic in ("phishing", "passwords", "malware", "wifi")
+}
+
+
+LEARNING_CONTENT = BASE_CONTENT
+
+
+def get_learning_content(topic: str, risk: str, minigame: str) -> dict:
+    topic_content = BASE_CONTENT.get(topic)
 
     if topic_content is None or risk not in topic_content:
         logger.warning("Learning content fallback applied for unsupported topic/risk")
         topic = "phishing"
         risk = "alto"
-        topic_content = LEARNING_CONTENT[topic]
+        topic_content = BASE_CONTENT[topic]
+
+    normalized_minigame = normalize_minigame(minigame)
 
     lesson = copy.deepcopy(topic_content[risk])
+    supplement = copy.deepcopy(
+        MINIGAME_SUPPLEMENTS[topic][risk][normalized_minigame]
+    )
+
+    lesson.update(supplement)
     lesson["topic"] = topic
     lesson["risk"] = risk
+    lesson["minigame"] = normalized_minigame
 
     return lesson

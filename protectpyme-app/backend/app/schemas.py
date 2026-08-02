@@ -244,12 +244,42 @@ class SurveySubmissionOut(BaseModel):
 
 # -------- MINIGAME LEARNING CONTENT --------
 
+class LessonConcept(BaseModel):
+    term: str
+    definition: str
+    why_it_matters: str
+    example: str
+
+
+class LessonPracticalExample(BaseModel):
+    title: str
+    steps: List[str]
+
+
+class LessonCommonMistake(BaseModel):
+    title: str
+    explanation: str
+
+
+class LessonQuickCheck(BaseModel):
+    question: str
+    options: List[str]
+    correct_option: int
+    explanation: str
+
+
 class MinigameLessonResponse(BaseModel):
     topic: str
     risk: str
+    minigame: str
     title: str
     vulnerability: str
     learning_objective: str
     explanation: str
     tips: List[str]
     recommended_action: str
+    key_concepts: List[LessonConcept]
+    practical_example: LessonPracticalExample
+    common_mistake: LessonCommonMistake
+    quick_check: LessonQuickCheck
+    visual_key: str

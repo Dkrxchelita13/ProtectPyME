@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from app import schemas
 from app.services import learning_content_service
 from app.services import minigame_service
@@ -22,20 +22,28 @@ def get_quiz(
     summary="Obtener contenido pedagógico previo al minijuego",
     description=(
         "Entrega una explicación educativa previa según el área de "
-        "vulnerabilidad y el nivel de riesgo del usuario autenticado."
+        "vulnerabilidad, el nivel de riesgo y el tipo de minijuego del "
+        "usuario autenticado."
     ),
 )
 def get_lesson(
     topic: str = Query(...),
     risk: str = Query(...),
+    minigame: str = Query(...),
     current_user=Depends(get_current_user)
 ):
     normalized_topic = minigame_service.normalize_topic(topic)
     normalized_risk = minigame_service.normalize_risk(risk)
 
+    try:
+        normalized_minigame = learning_content_service.normalize_minigame(minigame)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     return learning_content_service.get_learning_content(
         normalized_topic,
-        normalized_risk
+        normalized_risk,
+        normalized_minigame
     )
 
 
