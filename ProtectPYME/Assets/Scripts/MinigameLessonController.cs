@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -24,6 +26,8 @@ public class MinigameLessonController : MonoBehaviour
 
     private bool isLoading;
     private bool lessonLoaded;
+    private bool layoutRebuildPending;
+    private Coroutine rebuildCoroutine;
     private MinigameLessonResponse currentLesson;
 
     private void Start()
@@ -53,6 +57,8 @@ public class MinigameLessonController : MonoBehaviour
 
     public void LoadLesson()
     {
+        Debug.Log("Lesson: inicio LoadLesson");
+
         if (isLoading)
         {
             return;
@@ -67,6 +73,7 @@ public class MinigameLessonController : MonoBehaviour
         isLoading = true;
         lessonLoaded = false;
         currentLesson = null;
+        SetButtonInteractable(btnStart, false);
 
         ShowLoading();
 
@@ -74,6 +81,7 @@ public class MinigameLessonController : MonoBehaviour
             APIManager.Instance.GetMinigameLesson(
                 MinigameLessonState.Topic,
                 MinigameLessonState.Risk,
+                MinigameLessonState.MinigameKey,
                 OnLessonLoaded,
                 OnLessonError
             )
@@ -112,6 +120,7 @@ public class MinigameLessonController : MonoBehaviour
 
     private void OnLessonLoaded(MinigameLessonResponse response)
     {
+        Debug.Log("Lesson: respuesta recibida");
         isLoading = false;
 
         if (!IsValidLesson(response))
@@ -120,25 +129,32 @@ public class MinigameLessonController : MonoBehaviour
             return;
         }
 
+        Debug.Log("Lesson: respuesta validada");
+
         currentLesson = response;
         lessonLoaded = true;
 
-        SetActive(loadingPanel, false);
-        SetActive(errorPanel, false);
-        SetActive(contentPanel, true);
         SetButtonInteractable(btnStart, false);
         SetButtonInteractable(btnRetry, true);
 
         SetText(txtTitle, response.title);
         SetText(txtVulnerability, response.vulnerability);
         SetText(txtLearningObjective, response.learning_objective);
-        SetText(txtExplanation, response.explanation);
+        SetText(txtExplanation, BuildExtendedExplanation(response));
         SetText(txtTip1, FormatTip(response.tips[0]));
         SetText(txtTip2, FormatTip(response.tips[1]));
         SetText(txtTip3, FormatTip(response.tips[2]));
         SetText(txtRecommendedAction, response.recommended_action);
 
-        RebuildLessonLayout();
+        Debug.Log("Lesson: textos asignados");
+
+        SetActive(loadingPanel, false);
+        SetActive(errorPanel, false);
+        SetActive(contentPanel, true);
+
+        Debug.Log("Lesson: panel activado");
+
+        ScheduleLessonLayoutRebuild();
         SetButtonInteractable(btnStart, true);
     }
 
@@ -154,7 +170,8 @@ public class MinigameLessonController : MonoBehaviour
     {
         return !string.IsNullOrEmpty(MinigameLessonState.TargetScene)
             && !string.IsNullOrEmpty(MinigameLessonState.Topic)
-            && !string.IsNullOrEmpty(MinigameLessonState.Risk);
+            && !string.IsNullOrEmpty(MinigameLessonState.Risk)
+            && !string.IsNullOrEmpty(MinigameLessonState.MinigameKey);
     }
 
     private bool HasEssentialReferences()
@@ -162,13 +179,10 @@ public class MinigameLessonController : MonoBehaviour
         bool hasReferences = true;
 
         hasReferences &= HasReference(txtTitle, nameof(txtTitle));
-        hasReferences &= HasReference(txtVulnerability, nameof(txtVulnerability));
-        hasReferences &= HasReference(txtLearningObjective, nameof(txtLearningObjective));
         hasReferences &= HasReference(txtExplanation, nameof(txtExplanation));
         hasReferences &= HasReference(txtTip1, nameof(txtTip1));
         hasReferences &= HasReference(txtTip2, nameof(txtTip2));
         hasReferences &= HasReference(txtTip3, nameof(txtTip3));
-        hasReferences &= HasReference(txtRecommendedAction, nameof(txtRecommendedAction));
         hasReferences &= HasReference(btnStart, nameof(btnStart));
 
         if (!hasReferences)
@@ -195,12 +209,28 @@ public class MinigameLessonController : MonoBehaviour
         return response != null
             && !string.IsNullOrEmpty(response.title)
             && !string.IsNullOrEmpty(response.explanation)
+            && !string.IsNullOrEmpty(response.minigame)
+            && !string.IsNullOrEmpty(response.visual_key)
             && response.tips != null
-            && response.tips.Length == 3;
+            && response.tips.Length == 3
+            && response.key_concepts != null
+            && response.key_concepts.Length >= 2
+            && response.key_concepts.Length <= 4
+            && response.practical_example != null
+            && response.practical_example.steps != null
+            && response.practical_example.steps.Length >= 3
+            && response.practical_example.steps.Length <= 5
+            && response.common_mistake != null
+            && response.quick_check != null
+            && response.quick_check.options != null
+            && response.quick_check.options.Length == 3
+            && response.quick_check.correct_option >= 0
+            && response.quick_check.correct_option <= 2;
     }
 
     private void ShowLoading()
     {
+        CancelPendingLayoutRebuild();
         SetActive(loadingPanel, true);
         SetActive(contentPanel, false);
         SetActive(errorPanel, false);
@@ -208,18 +238,22 @@ public class MinigameLessonController : MonoBehaviour
         SetButtonInteractable(btnRetry, false);
     }
 
-    private void ShowContent()
+    private void ScheduleLessonLayoutRebuild()
     {
-        SetActive(loadingPanel, false);
-        SetActive(errorPanel, false);
-        SetActive(contentPanel, true);
-        RebuildLessonLayout();
-        SetButtonInteractable(btnStart, true);
-        SetButtonInteractable(btnRetry, true);
+        if (layoutRebuildPending && rebuildCoroutine != null)
+        {
+            StopCoroutine(rebuildCoroutine);
+        }
+
+        layoutRebuildPending = true;
+        rebuildCoroutine = StartCoroutine(RebuildLessonLayoutNextFrame());
+        Debug.Log("Lesson: rebuild programado");
     }
 
-    private void RebuildLessonLayout()
+    private IEnumerator RebuildLessonLayoutNextFrame()
     {
+        yield return null;
+
         ScrollRect lessonScrollRect = contentPanel != null
             ? contentPanel.GetComponentInChildren<ScrollRect>(true)
             : null;
@@ -227,18 +261,34 @@ public class MinigameLessonController : MonoBehaviour
         if (lessonScrollRect == null || lessonScrollRect.content == null)
         {
             Debug.LogWarning("MinigameLessonController: ScrollRect de leccion incompleto.");
-            return;
+            layoutRebuildPending = false;
+            rebuildCoroutine = null;
+            yield break;
         }
 
         Canvas.ForceUpdateCanvases();
         LayoutRebuilder.ForceRebuildLayoutImmediate(lessonScrollRect.content);
-        Canvas.ForceUpdateCanvases();
-        LayoutRebuilder.ForceRebuildLayoutImmediate(lessonScrollRect.content);
         lessonScrollRect.verticalNormalizedPosition = 1f;
+
+        layoutRebuildPending = false;
+        rebuildCoroutine = null;
+        Debug.Log("Lesson: rebuild completado");
+    }
+
+    private void CancelPendingLayoutRebuild()
+    {
+        if (rebuildCoroutine != null)
+        {
+            StopCoroutine(rebuildCoroutine);
+            rebuildCoroutine = null;
+        }
+
+        layoutRebuildPending = false;
     }
 
     private void ShowError(string error)
     {
+        CancelPendingLayoutRebuild();
         SetActive(loadingPanel, false);
         SetActive(contentPanel, false);
         SetActive(errorPanel, true);
@@ -251,6 +301,66 @@ public class MinigameLessonController : MonoBehaviour
 
         SetText(txtError, message);
         Debug.LogWarning("MinigameLessonController: " + message);
+    }
+
+    private string BuildExtendedExplanation(MinigameLessonResponse lesson)
+    {
+        StringBuilder builder = new StringBuilder();
+
+        builder.AppendLine(SanitizeText(lesson.explanation));
+        builder.AppendLine();
+        builder.AppendLine("CONCEPTOS CLAVE");
+        builder.AppendLine();
+
+        for (int i = 0; i < lesson.key_concepts.Length; i++)
+        {
+            LessonConcept concept = lesson.key_concepts[i];
+
+            if (concept == null)
+            {
+                continue;
+            }
+
+            builder.AppendLine(SanitizeText(concept.term));
+            builder.AppendLine();
+            builder.AppendLine("Definicion: " + SanitizeText(concept.definition));
+            builder.AppendLine();
+            builder.AppendLine("\u00bfPor qu\u00e9 importa?: " + SanitizeText(concept.why_it_matters));
+            builder.AppendLine();
+            builder.AppendLine("Ejemplo: " + SanitizeText(concept.example));
+            builder.AppendLine();
+        }
+
+        builder.AppendLine("EJEMPLO PR\u00c1CTICO");
+        builder.AppendLine();
+        builder.AppendLine(SanitizeText(lesson.practical_example.title));
+        builder.AppendLine();
+
+        for (int i = 0; i < lesson.practical_example.steps.Length; i++)
+        {
+            builder.Append(i + 1);
+            builder.Append(". ");
+            builder.AppendLine(SanitizeText(lesson.practical_example.steps[i]));
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("ERROR FRECUENTE");
+        builder.AppendLine();
+        builder.AppendLine(SanitizeText(lesson.common_mistake.title));
+        builder.AppendLine();
+        builder.AppendLine(SanitizeText(lesson.common_mistake.explanation));
+        builder.AppendLine();
+        builder.AppendLine("COMPROBACI\u00d3N R\u00c1PIDA");
+        builder.AppendLine();
+        builder.AppendLine(SanitizeText(lesson.quick_check.question));
+        builder.AppendLine();
+        builder.AppendLine("A) " + SanitizeText(lesson.quick_check.options[0]));
+        builder.AppendLine("B) " + SanitizeText(lesson.quick_check.options[1]));
+        builder.AppendLine("C) " + SanitizeText(lesson.quick_check.options[2]));
+        builder.AppendLine();
+        builder.Append("\u201cPiensa tu respuesta antes de comenzar el minijuego.\u201d");
+
+        return builder.ToString();
     }
 
     private string FormatTip(string tip)
@@ -266,10 +376,9 @@ public class MinigameLessonController : MonoBehaviour
             return;
         }
 
+        text.text = SanitizeText(value);
         text.richText = false;
         text.enableWordWrapping = true;
-        text.text = SanitizeText(value);
-        text.ForceMeshUpdate();
     }
 
     private string SanitizeText(string value)
@@ -280,8 +389,7 @@ public class MinigameLessonController : MonoBehaviour
         }
 
         char[] chars = value.ToCharArray();
-        System.Text.StringBuilder builder =
-            new System.Text.StringBuilder(chars.Length);
+        StringBuilder builder = new StringBuilder(chars.Length);
 
         for (int i = 0; i < chars.Length; i++)
         {

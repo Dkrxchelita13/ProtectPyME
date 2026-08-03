@@ -384,6 +384,7 @@ public class APIManager : MonoBehaviour
     public IEnumerator GetMinigameLesson(
         string topic,
         string risk,
+        string minigame,
         Action<MinigameLessonResponse> onSuccess,
         Action<string> onError
     )
@@ -402,13 +403,16 @@ public class APIManager : MonoBehaviour
 
         string safeTopic = topic ?? "";
         string safeRisk = risk ?? "";
+        string safeMinigame = minigame ?? "";
 
         string url =
             baseUrl +
             "/minigames/lesson?topic=" +
             UnityWebRequest.EscapeURL(safeTopic) +
             "&risk=" +
-            UnityWebRequest.EscapeURL(safeRisk);
+            UnityWebRequest.EscapeURL(safeRisk) +
+            "&minigame=" +
+            UnityWebRequest.EscapeURL(safeMinigame);
 
         minigameLessonRequestInProgress = true;
 
@@ -786,6 +790,89 @@ public class APIManager : MonoBehaviour
         if (response.tips.Length != 3)
         {
             return "La leccion debe incluir exactamente 3 recomendaciones.";
+        }
+
+        if (string.IsNullOrEmpty(response.minigame))
+        {
+            return "La leccion no incluye minijuego.";
+        }
+
+        if (response.key_concepts == null)
+        {
+            return "La leccion no incluye conceptos clave.";
+        }
+
+        if (response.key_concepts.Length < 2 || response.key_concepts.Length > 4)
+        {
+            return "La leccion debe incluir entre 2 y 4 conceptos clave.";
+        }
+
+        for (int i = 0; i < response.key_concepts.Length; i++)
+        {
+            LessonConcept concept = response.key_concepts[i];
+
+            if (concept == null ||
+                string.IsNullOrEmpty(concept.term) ||
+                string.IsNullOrEmpty(concept.definition))
+            {
+                return "Cada concepto clave debe incluir termino y definicion.";
+            }
+        }
+
+        if (response.practical_example == null)
+        {
+            return "La leccion no incluye ejemplo practico.";
+        }
+
+        if (string.IsNullOrEmpty(response.practical_example.title))
+        {
+            return "El ejemplo practico no incluye titulo.";
+        }
+
+        if (response.practical_example.steps == null ||
+            response.practical_example.steps.Length < 3 ||
+            response.practical_example.steps.Length > 5)
+        {
+            return "El ejemplo practico debe incluir entre 3 y 5 pasos.";
+        }
+
+        if (response.common_mistake == null)
+        {
+            return "La leccion no incluye error frecuente.";
+        }
+
+        if (string.IsNullOrEmpty(response.common_mistake.title) ||
+            string.IsNullOrEmpty(response.common_mistake.explanation))
+        {
+            return "El error frecuente no esta completo.";
+        }
+
+        if (response.quick_check == null)
+        {
+            return "La leccion no incluye comprobacion rapida.";
+        }
+
+        if (string.IsNullOrEmpty(response.quick_check.question) ||
+            string.IsNullOrEmpty(response.quick_check.explanation))
+        {
+            return "La comprobacion rapida no esta completa.";
+        }
+
+        if (response.quick_check.options == null ||
+            response.quick_check.options.Length != 3)
+        {
+            return "La comprobacion rapida debe incluir exactamente 3 opciones.";
+        }
+
+        if (response.quick_check.correct_option < 0 ||
+            response.quick_check.correct_option > 2)
+        {
+            return "La comprobacion rapida tiene una respuesta correcta invalida.";
+        }
+
+        if (string.IsNullOrEmpty(response.visual_key))
+        {
+            return "La leccion no incluye clave visual.";
         }
 
         return "";
