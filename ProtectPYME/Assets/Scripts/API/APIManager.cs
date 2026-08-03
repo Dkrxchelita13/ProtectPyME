@@ -391,7 +391,9 @@ public class APIManager : MonoBehaviour
     {
         if (minigameLessonRequestInProgress)
         {
-            onError?.Invoke("Ya hay una consulta de leccion en curso.");
+            Debug.LogWarning(
+                "Lesson: se ignoro una solicitud duplicada mientras la leccion esta cargando."
+            );
             yield break;
         }
 
@@ -425,14 +427,27 @@ public class APIManager : MonoBehaviour
 
             yield return request.SendWebRequest();
 
-            minigameLessonRequestInProgress = false;
+            FinishMinigameLessonRequest();
 
             if (request.result == UnityWebRequest.Result.Success)
             {
-                MinigameLessonResponse response =
-                    JsonUtility.FromJson<MinigameLessonResponse>(
-                        request.downloadHandler.text
+                MinigameLessonResponse response = null;
+
+                try
+                {
+                    response =
+                        JsonUtility.FromJson<MinigameLessonResponse>(
+                            request.downloadHandler.text
+                        );
+                }
+                catch (Exception exception)
+                {
+                    onError?.Invoke(
+                        "La respuesta de la leccion no se pudo leer: " +
+                        exception.Message
                     );
+                    yield break;
+                }
 
                 string validationError = ValidateMinigameLesson(response);
 
@@ -765,6 +780,11 @@ public class APIManager : MonoBehaviour
         return "HTTP_" + request.responseCode;
     }
 
+    private void FinishMinigameLessonRequest()
+    {
+        minigameLessonRequestInProgress = false;
+    }
+
     private string ValidateMinigameLesson(MinigameLessonResponse response)
     {
         if (response == null)
@@ -780,6 +800,16 @@ public class APIManager : MonoBehaviour
         if (string.IsNullOrEmpty(response.explanation))
         {
             return "La leccion no incluye explicacion.";
+        }
+
+        if (string.IsNullOrEmpty(response.learning_objective))
+        {
+            return "La leccion no incluye objetivo de aprendizaje.";
+        }
+
+        if (string.IsNullOrEmpty(response.recommended_action))
+        {
+            return "La leccion no incluye accion recomendada.";
         }
 
         if (response.tips == null)
@@ -813,9 +843,11 @@ public class APIManager : MonoBehaviour
 
             if (concept == null ||
                 string.IsNullOrEmpty(concept.term) ||
-                string.IsNullOrEmpty(concept.definition))
+                string.IsNullOrEmpty(concept.definition) ||
+                string.IsNullOrEmpty(concept.why_it_matters) ||
+                string.IsNullOrEmpty(concept.example))
             {
-                return "Cada concepto clave debe incluir termino y definicion.";
+                return "Cada concepto clave debe estar completo.";
             }
         }
 

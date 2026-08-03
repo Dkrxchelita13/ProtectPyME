@@ -26,6 +26,7 @@ public class MinigameLessonController : MonoBehaviour
 
     private bool isLoading;
     private bool lessonLoaded;
+    private bool lessonLoadInProgress;
     private bool layoutRebuildPending;
     private Coroutine rebuildCoroutine;
     private MinigameLessonResponse currentLesson;
@@ -59,6 +60,14 @@ public class MinigameLessonController : MonoBehaviour
     {
         Debug.Log("Lesson: inicio LoadLesson");
 
+        if (lessonLoadInProgress)
+        {
+            Debug.LogWarning(
+                "Lesson: se ignoro una solicitud duplicada mientras la leccion esta cargando."
+            );
+            return;
+        }
+
         if (isLoading)
         {
             return;
@@ -71,6 +80,7 @@ public class MinigameLessonController : MonoBehaviour
         }
 
         isLoading = true;
+        lessonLoadInProgress = true;
         lessonLoaded = false;
         currentLesson = null;
         SetButtonInteractable(btnStart, false);
@@ -109,6 +119,11 @@ public class MinigameLessonController : MonoBehaviour
 
     public void OnRetry()
     {
+        if (lessonLoadInProgress)
+        {
+            return;
+        }
+
         LoadLesson();
     }
 
@@ -122,6 +137,7 @@ public class MinigameLessonController : MonoBehaviour
     {
         Debug.Log("Lesson: respuesta recibida");
         isLoading = false;
+        lessonLoadInProgress = false;
 
         if (!IsValidLesson(response))
         {
@@ -139,12 +155,13 @@ public class MinigameLessonController : MonoBehaviour
 
         SetText(txtTitle, response.title);
         SetText(txtVulnerability, response.vulnerability);
-        SetText(txtLearningObjective, response.learning_objective);
-        SetText(txtExplanation, BuildExtendedExplanation(response));
-        SetText(txtTip1, FormatTip(response.tips[0]));
-        SetText(txtTip2, FormatTip(response.tips[1]));
-        SetText(txtTip3, FormatTip(response.tips[2]));
-        SetText(txtRecommendedAction, response.recommended_action);
+        SetText(txtLearningObjective, "");
+        SetText(txtExplanation, BuildCompleteLessonBody(response));
+        SetText(txtTip1, "");
+        SetText(txtTip2, "");
+        SetText(txtTip3, "");
+        SetText(txtRecommendedAction, "");
+        HideRedundantSections();
 
         Debug.Log("Lesson: textos asignados");
 
@@ -161,6 +178,7 @@ public class MinigameLessonController : MonoBehaviour
     private void OnLessonError(string error)
     {
         isLoading = false;
+        lessonLoadInProgress = false;
         lessonLoaded = false;
         currentLesson = null;
         ShowError(error);
@@ -266,13 +284,31 @@ public class MinigameLessonController : MonoBehaviour
             yield break;
         }
 
+        RectTransform contentRect = lessonScrollRect.content;
+        RectTransform explanationSection = GetParentSection(txtExplanation);
+
+        ConfigureContentFitter(contentRect);
+        DisableSectionFitter(explanationSection);
+        HideStaticExplanationLabel(explanationSection);
+
+        ApplyPreferredTextHeight(txtExplanation, 40f);
+
+        ApplyPreferredSectionHeight(explanationSection, 36f);
+
         Canvas.ForceUpdateCanvases();
-        LayoutRebuilder.ForceRebuildLayoutImmediate(lessonScrollRect.content);
+
+        LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
+        lessonScrollRect.StopMovement();
         lessonScrollRect.verticalNormalizedPosition = 1f;
+
+        Debug.Log(
+            $"Lesson: layout final texto={GetRectHeight(txtExplanation != null ? txtExplanation.rectTransform : null)} "
+            + $"seccion={GetRectHeight(explanationSection)} "
+            + $"content={GetRectHeight(contentRect)}"
+        );
 
         layoutRebuildPending = false;
         rebuildCoroutine = null;
-        Debug.Log("Lesson: rebuild completado");
     }
 
     private void CancelPendingLayoutRebuild()
@@ -303,11 +339,19 @@ public class MinigameLessonController : MonoBehaviour
         Debug.LogWarning("MinigameLessonController: " + message);
     }
 
-    private string BuildExtendedExplanation(MinigameLessonResponse lesson)
+    private string BuildCompleteLessonBody(MinigameLessonResponse lesson)
     {
         StringBuilder builder = new StringBuilder();
 
+        builder.AppendLine("QU\u00c9 APRENDER\u00c1S");
+        builder.AppendLine();
+        builder.AppendLine(SanitizeText(lesson.learning_objective));
+        builder.AppendLine();
+        builder.AppendLine();
+        builder.AppendLine("EXPLICACI\u00d3N");
+        builder.AppendLine();
         builder.AppendLine(SanitizeText(lesson.explanation));
+        builder.AppendLine();
         builder.AppendLine();
         builder.AppendLine("CONCEPTOS CLAVE");
         builder.AppendLine();
@@ -322,12 +366,10 @@ public class MinigameLessonController : MonoBehaviour
             }
 
             builder.AppendLine(SanitizeText(concept.term));
-            builder.AppendLine();
             builder.AppendLine("Definicion: " + SanitizeText(concept.definition));
-            builder.AppendLine();
             builder.AppendLine("\u00bfPor qu\u00e9 importa?: " + SanitizeText(concept.why_it_matters));
-            builder.AppendLine();
             builder.AppendLine("Ejemplo: " + SanitizeText(concept.example));
+            builder.AppendLine();
             builder.AppendLine();
         }
 
@@ -344,11 +386,19 @@ public class MinigameLessonController : MonoBehaviour
         }
 
         builder.AppendLine();
+        builder.AppendLine();
         builder.AppendLine("ERROR FRECUENTE");
         builder.AppendLine();
         builder.AppendLine(SanitizeText(lesson.common_mistake.title));
-        builder.AppendLine();
         builder.AppendLine(SanitizeText(lesson.common_mistake.explanation));
+        builder.AppendLine();
+        builder.AppendLine();
+        builder.AppendLine("RECOMENDACIONES");
+        builder.AppendLine();
+        builder.AppendLine(FormatTip(lesson.tips[0]));
+        builder.AppendLine(FormatTip(lesson.tips[1]));
+        builder.AppendLine(FormatTip(lesson.tips[2]));
+        builder.AppendLine();
         builder.AppendLine();
         builder.AppendLine("COMPROBACI\u00d3N R\u00c1PIDA");
         builder.AppendLine();
@@ -358,9 +408,210 @@ public class MinigameLessonController : MonoBehaviour
         builder.AppendLine("B) " + SanitizeText(lesson.quick_check.options[1]));
         builder.AppendLine("C) " + SanitizeText(lesson.quick_check.options[2]));
         builder.AppendLine();
-        builder.Append("\u201cPiensa tu respuesta antes de comenzar el minijuego.\u201d");
+        builder.Append("Piensa tu respuesta antes de comenzar el minijuego.");
+        builder.AppendLine();
+        builder.AppendLine();
+        builder.AppendLine("ANTES DE COMENZAR");
+        builder.AppendLine();
+        builder.Append(SanitizeText(lesson.recommended_action));
 
         return builder.ToString();
+    }
+
+    private void HideRedundantSections()
+    {
+        SetActive(GetParentGameObject(txtLearningObjective), false);
+        SetActive(GetParentGameObject(txtTip1), false);
+        SetActive(GetParentGameObject(txtRecommendedAction), false);
+    }
+
+    private float ApplyPreferredTextHeight(TMP_Text textComponent, float extraPadding)
+    {
+        if (textComponent == null)
+        {
+            return 0f;
+        }
+
+        RectTransform textRect = textComponent.rectTransform;
+        if (textRect == null)
+        {
+            return 0f;
+        }
+
+        float availableWidth = textRect.rect.width;
+
+        if (availableWidth <= 10f && textRect.parent is RectTransform parentRect)
+        {
+            availableWidth = parentRect.rect.width;
+        }
+
+        availableWidth = Mathf.Max(10f, availableWidth - 8f);
+
+        Vector2 preferredSize = textComponent.GetPreferredValues(
+            textComponent.text,
+            availableWidth,
+            Mathf.Infinity
+        );
+
+        LayoutElement layoutElement =
+            textComponent.GetComponent<LayoutElement>();
+
+        if (layoutElement == null)
+        {
+            layoutElement =
+                textComponent.gameObject.AddComponent<LayoutElement>();
+        }
+
+        layoutElement.ignoreLayout = false;
+        layoutElement.minHeight = 0;
+        layoutElement.preferredHeight =
+            Mathf.Ceil(preferredSize.y + extraPadding);
+        layoutElement.flexibleHeight = 0;
+
+        textComponent.richText = false;
+        textComponent.enableWordWrapping = true;
+        textComponent.overflowMode = TextOverflowModes.Overflow;
+
+        return layoutElement.preferredHeight;
+    }
+
+    private float ApplyPreferredSectionHeight(RectTransform section, float extraMargin)
+    {
+        if (section == null)
+        {
+            return 0f;
+        }
+
+        VerticalLayoutGroup layoutGroup =
+            section.GetComponent<VerticalLayoutGroup>();
+
+        float calculatedHeight = 0f;
+        int activeChildren = 0;
+
+        if (layoutGroup != null)
+        {
+            calculatedHeight += layoutGroup.padding.top;
+            calculatedHeight += layoutGroup.padding.bottom;
+        }
+
+        for (int i = 0; i < section.childCount; i++)
+        {
+            RectTransform child =
+                section.GetChild(i) as RectTransform;
+
+            if (child == null || !child.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
+            calculatedHeight += LayoutUtility.GetPreferredHeight(child);
+            activeChildren++;
+        }
+
+        if (layoutGroup != null && activeChildren > 1)
+        {
+            calculatedHeight += layoutGroup.spacing * (activeChildren - 1);
+        }
+
+        calculatedHeight += extraMargin;
+
+        LayoutElement sectionLayout =
+            section.GetComponent<LayoutElement>();
+
+        if (sectionLayout == null)
+        {
+            sectionLayout = section.gameObject.AddComponent<LayoutElement>();
+        }
+
+        sectionLayout.ignoreLayout = false;
+        sectionLayout.minHeight = 0;
+        sectionLayout.preferredHeight = Mathf.Ceil(calculatedHeight);
+        sectionLayout.flexibleHeight = 0;
+
+        return sectionLayout.preferredHeight;
+    }
+
+    private void ConfigureContentFitter(RectTransform contentRect)
+    {
+        if (contentRect == null)
+        {
+            return;
+        }
+
+        ContentSizeFitter contentFitter =
+            contentRect.GetComponent<ContentSizeFitter>();
+
+        if (contentFitter == null)
+        {
+            return;
+        }
+
+        contentFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+        contentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+    }
+
+    private void DisableSectionFitter(RectTransform section)
+    {
+        if (section == null)
+        {
+            return;
+        }
+
+        ContentSizeFitter sectionFitter =
+            section.GetComponent<ContentSizeFitter>();
+
+        if (sectionFitter != null && sectionFitter.enabled)
+        {
+            sectionFitter.enabled = false;
+        }
+    }
+
+    private void HideStaticExplanationLabel(RectTransform explanationSection)
+    {
+        if (explanationSection == null || txtExplanation == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < explanationSection.childCount; i++)
+        {
+            TMP_Text childText =
+                explanationSection.GetChild(i).GetComponent<TMP_Text>();
+
+            if (childText == null || childText == txtExplanation)
+            {
+                continue;
+            }
+
+            childText.gameObject.SetActive(false);
+            return;
+        }
+    }
+
+    private float GetRectHeight(RectTransform rectTransform)
+    {
+        return rectTransform != null
+            ? rectTransform.rect.height
+            : 0f;
+    }
+
+    private RectTransform GetParentSection(TMP_Text textComponent)
+    {
+        if (textComponent == null ||
+            textComponent.rectTransform == null)
+        {
+            return null;
+        }
+
+        return textComponent.rectTransform.parent as RectTransform;
+    }
+
+    private GameObject GetParentGameObject(TMP_Text textComponent)
+    {
+        RectTransform section = GetParentSection(textComponent);
+        return section != null
+            ? section.gameObject
+            : null;
     }
 
     private string FormatTip(string tip)
