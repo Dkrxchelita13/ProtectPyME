@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 using TMPro;
@@ -52,6 +53,8 @@ public class ProgresoController : MonoBehaviour
     [SerializeField] private Sprite spriteBotonContinuar;
 
     private int recommendedScenario;
+    private Coroutine progressLayoutCoroutine;
+    private bool progressLayoutRebuildPending;
 
 
 
@@ -574,6 +577,8 @@ public class ProgresoController : MonoBehaviour
             imagenBotonPracticar.sprite = spriteBotonContinuar;
 
         }
+
+        ScheduleProgressLayoutRebuild();
 
     }
 
@@ -1245,9 +1250,470 @@ public class ProgresoController : MonoBehaviour
 
         );
 
+        ScheduleProgressLayoutRebuild();
+
     }
 
+    private void ScheduleProgressLayoutRebuild()
+    {
+        if (!this || !isActiveAndEnabled || !gameObject.activeInHierarchy)
+        {
+            return;
+        }
 
+        if (progressLayoutRebuildPending && progressLayoutCoroutine != null)
+        {
+            StopCoroutine(progressLayoutCoroutine);
+        }
+
+        progressLayoutRebuildPending = true;
+        progressLayoutCoroutine = StartCoroutine(RebuildProgressLayoutCoroutine());
+    }
+
+    private IEnumerator RebuildProgressLayoutCoroutine()
+    {
+        yield return null;
+
+        if (!this || !isActiveAndEnabled || !gameObject.activeInHierarchy)
+        {
+            FinishProgressLayoutRebuild();
+            yield break;
+        }
+
+        ScrollRect scrollRect = ResolveProgressScrollRect();
+
+        if (scrollRect == null || scrollRect.content == null)
+        {
+            Debug.LogWarning("MiPerfil layout: rebuild cancelado porque el ScrollRect ya no esta disponible.");
+            FinishProgressLayoutRebuild();
+            yield break;
+        }
+
+        RectTransform contentRect = scrollRect.content;
+        RectTransform resultadosRect = ResolveResultsContainer();
+        RectTransform contenidoBtnRect = ResolveButtonContainer();
+        RectTransform contenidoIARect =
+            GetCommonAncestor(resultadosRect, contenidoBtnRect);
+
+        if (contenidoIARect == null || !IsAncestorOrSelf(contentRect, contenidoIARect))
+        {
+            Debug.LogError("MiPerfil layout: el content del ScrollRect no contiene el bloque IA esperado.");
+            FinishProgressLayoutRebuild();
+            yield break;
+        }
+
+        float previousVerticalPosition = scrollRect.verticalNormalizedPosition;
+
+        ConfigureRootContent(contentRect);
+        ConfigureDynamicVerticalGroup(resultadosRect);
+        ConfigureDynamicVerticalGroup(contenidoIARect);
+
+        ApplyPreferredTextHeight(txtEscenarioSugerido, 10f);
+        ApplyPreferredTextHeight(txtAreaVulnerable, 10f);
+        ApplyPreferredTextHeight(txtRecomendacion, 28f);
+
+        ApplyDirectChildrenPreferredHeight(resultadosRect, 0f);
+        ApplyDirectChildrenPreferredHeight(
+            resultadosRect != null ? resultadosRect.parent as RectTransform : null,
+            0f
+        );
+        ApplyButtonContainerHeight(contenidoBtnRect, 30f, 50f);
+
+        DisableFitterIfChildOfLayoutGroup(contenidoIARect);
+        ApplyDirectChildrenPreferredHeight(contenidoIARect, 0f);
+
+        Canvas.ForceUpdateCanvases();
+
+        LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
+        scrollRect.StopMovement();
+        scrollRect.verticalNormalizedPosition =
+            Mathf.Clamp01(previousVerticalPosition);
+
+        Debug.Log(
+            $"MiPerfil layout: content={GetRectHeight(contentRect)} "
+            + $"ia={GetRectHeight(contenidoIARect)} "
+            + $"results={GetRectHeight(resultadosRect)} "
+            + $"button={GetRectHeight(contenidoBtnRect)}"
+        );
+
+        FinishProgressLayoutRebuild();
+    }
+
+    private void FinishProgressLayoutRebuild()
+    {
+        progressLayoutRebuildPending = false;
+        progressLayoutCoroutine = null;
+    }
+
+    private void OnDisable()
+    {
+        if (progressLayoutCoroutine != null)
+        {
+            StopCoroutine(progressLayoutCoroutine);
+            progressLayoutCoroutine = null;
+        }
+
+        progressLayoutRebuildPending = false;
+    }
+
+    private ScrollRect ResolveProgressScrollRect()
+    {
+        if (txtRecomendacion != null)
+        {
+            return txtRecomendacion.GetComponentInParent<ScrollRect>(true);
+        }
+
+        if (txtAreaVulnerable != null)
+        {
+            return txtAreaVulnerable.GetComponentInParent<ScrollRect>(true);
+        }
+
+        if (txtEscenarioSugerido != null)
+        {
+            return txtEscenarioSugerido.GetComponentInParent<ScrollRect>(true);
+        }
+
+        return imagenBotonPracticar != null
+            ? imagenBotonPracticar.GetComponentInParent<ScrollRect>(true)
+            : null;
+    }
+
+    private RectTransform ResolveResultsContainer()
+    {
+        return GetCommonAncestor(
+            GetTextRect(txtEscenarioSugerido),
+            GetTextRect(txtAreaVulnerable),
+            GetTextRect(txtRecomendacion)
+        );
+    }
+
+    private RectTransform ResolveButtonContainer()
+    {
+        return imagenBotonPracticar != null
+            ? imagenBotonPracticar.rectTransform.parent as RectTransform
+            : null;
+    }
+
+    private void ConfigureRootContent(RectTransform contentRect)
+    {
+        if (contentRect == null)
+        {
+            return;
+        }
+
+        ContentSizeFitter rootFitter =
+            contentRect.GetComponent<ContentSizeFitter>();
+
+        if (rootFitter != null)
+        {
+            rootFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            rootFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        }
+
+        VerticalLayoutGroup rootLayout =
+            contentRect.GetComponent<VerticalLayoutGroup>();
+
+        if (rootLayout == null)
+        {
+            return;
+        }
+
+        rootLayout.childControlWidth = true;
+        rootLayout.childControlHeight = true;
+        rootLayout.childForceExpandWidth = true;
+        rootLayout.childForceExpandHeight = false;
+        rootLayout.padding.bottom = Mathf.Max(rootLayout.padding.bottom, 50);
+    }
+
+    private void ConfigureDynamicVerticalGroup(RectTransform container)
+    {
+        if (container == null)
+        {
+            return;
+        }
+
+        VerticalLayoutGroup layoutGroup =
+            container.GetComponent<VerticalLayoutGroup>();
+
+        if (layoutGroup == null)
+        {
+            return;
+        }
+
+        layoutGroup.childControlWidth = true;
+        layoutGroup.childControlHeight = true;
+        layoutGroup.childForceExpandWidth = true;
+        layoutGroup.childForceExpandHeight = false;
+    }
+
+    private float ApplyPreferredTextHeight(
+        TMP_Text textComponent,
+        float extraPadding
+    )
+    {
+        if (textComponent == null || textComponent.rectTransform == null)
+        {
+            return 0f;
+        }
+
+        RectTransform textRect = textComponent.rectTransform;
+        float availableWidth = textRect.rect.width;
+
+        if (availableWidth <= 10f && textRect.parent is RectTransform parentRect)
+        {
+            availableWidth =
+                parentRect.rect.width - GetHorizontalPadding(parentRect);
+        }
+
+        availableWidth = Mathf.Max(10f, availableWidth - 8f);
+
+        Vector2 preferred =
+            textComponent.GetPreferredValues(
+                textComponent.text,
+                availableWidth,
+                Mathf.Infinity
+            );
+
+        LayoutElement layoutElement =
+            textComponent.GetComponent<LayoutElement>();
+
+        if (layoutElement == null)
+        {
+            layoutElement =
+                textComponent.gameObject.AddComponent<LayoutElement>();
+        }
+
+        layoutElement.ignoreLayout = false;
+        layoutElement.minHeight = 0;
+        layoutElement.preferredHeight = Mathf.Ceil(preferred.y + extraPadding);
+        layoutElement.flexibleHeight = 0;
+
+        textComponent.richText = false;
+        textComponent.enableWordWrapping = true;
+        textComponent.overflowMode = TextOverflowModes.Overflow;
+
+        return layoutElement.preferredHeight;
+    }
+
+    private float ApplyDirectChildrenPreferredHeight(
+        RectTransform container,
+        float extraPadding
+    )
+    {
+        if (container == null)
+        {
+            return 0f;
+        }
+
+        HorizontalOrVerticalLayoutGroup layoutGroup =
+            container.GetComponent<HorizontalOrVerticalLayoutGroup>();
+
+        float calculatedHeight = extraPadding;
+        int activeChildren = 0;
+
+        if (layoutGroup != null)
+        {
+            calculatedHeight += layoutGroup.padding.top;
+            calculatedHeight += layoutGroup.padding.bottom;
+        }
+
+        for (int i = 0; i < container.childCount; i++)
+        {
+            RectTransform child =
+                container.GetChild(i) as RectTransform;
+
+            if (child == null || !child.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
+            calculatedHeight += GetPreferredOrRectHeight(child);
+            activeChildren++;
+        }
+
+        if (layoutGroup != null && activeChildren > 1)
+        {
+            calculatedHeight += layoutGroup.spacing * (activeChildren - 1);
+        }
+
+        return ApplyLayoutElementHeight(container, calculatedHeight);
+    }
+
+    private float ApplyButtonContainerHeight(
+        RectTransform buttonContainer,
+        float topMargin,
+        float bottomMargin
+    )
+    {
+        if (buttonContainer == null)
+        {
+            return 0f;
+        }
+
+        VerticalLayoutGroup layoutGroup =
+            buttonContainer.GetComponent<VerticalLayoutGroup>();
+
+        if (layoutGroup != null)
+        {
+            layoutGroup.padding.top = Mathf.RoundToInt(topMargin);
+            layoutGroup.padding.bottom = Mathf.RoundToInt(bottomMargin);
+            layoutGroup.childControlWidth = false;
+            layoutGroup.childControlHeight = false;
+            layoutGroup.childForceExpandWidth = false;
+            layoutGroup.childForceExpandHeight = false;
+        }
+
+        RectTransform buttonRect = imagenBotonPracticar != null
+            ? imagenBotonPracticar.rectTransform
+            : null;
+
+        float buttonHeight = GetPreferredOrRectHeight(buttonRect);
+        float preferredHeight = buttonHeight + topMargin + bottomMargin;
+
+        return ApplyLayoutElementHeight(buttonContainer, preferredHeight);
+    }
+
+    private float ApplyLayoutElementHeight(RectTransform rectTransform, float height)
+    {
+        if (rectTransform == null)
+        {
+            return 0f;
+        }
+
+        LayoutElement layoutElement =
+            rectTransform.GetComponent<LayoutElement>();
+
+        if (layoutElement == null)
+        {
+            layoutElement =
+                rectTransform.gameObject.AddComponent<LayoutElement>();
+        }
+
+        layoutElement.ignoreLayout = false;
+        layoutElement.minHeight = 0;
+        layoutElement.preferredHeight = Mathf.Ceil(height);
+        layoutElement.flexibleHeight = 0;
+
+        return layoutElement.preferredHeight;
+    }
+
+    private void DisableFitterIfChildOfLayoutGroup(RectTransform rectTransform)
+    {
+        if (rectTransform == null || rectTransform.parent == null)
+        {
+            return;
+        }
+
+        if (rectTransform.parent.GetComponent<LayoutGroup>() == null)
+        {
+            return;
+        }
+
+        ContentSizeFitter fitter =
+            rectTransform.GetComponent<ContentSizeFitter>();
+
+        if (fitter != null && fitter.enabled)
+        {
+            fitter.enabled = false;
+        }
+    }
+
+    private float GetPreferredOrRectHeight(RectTransform rectTransform)
+    {
+        if (rectTransform == null)
+        {
+            return 0f;
+        }
+
+        float preferredHeight = LayoutUtility.GetPreferredHeight(rectTransform);
+
+        if (preferredHeight > 0f)
+        {
+            return preferredHeight;
+        }
+
+        return Mathf.Max(0f, rectTransform.rect.height);
+    }
+
+    private float GetHorizontalPadding(RectTransform rectTransform)
+    {
+        if (rectTransform == null)
+        {
+            return 0f;
+        }
+
+        HorizontalOrVerticalLayoutGroup layoutGroup =
+            rectTransform.GetComponent<HorizontalOrVerticalLayoutGroup>();
+
+        if (layoutGroup == null)
+        {
+            return 0f;
+        }
+
+        return layoutGroup.padding.left + layoutGroup.padding.right;
+    }
+
+    private RectTransform GetTextRect(TMP_Text textComponent)
+    {
+        return textComponent != null
+            ? textComponent.rectTransform
+            : null;
+    }
+
+    private RectTransform GetCommonAncestor(
+        RectTransform first,
+        RectTransform second,
+        RectTransform third
+    )
+    {
+        return GetCommonAncestor(GetCommonAncestor(first, second), third);
+    }
+
+    private RectTransform GetCommonAncestor(
+        RectTransform first,
+        RectTransform second
+    )
+    {
+        if (first == null)
+        {
+            return second;
+        }
+
+        if (second == null)
+        {
+            return first;
+        }
+
+        for (Transform candidate = first; candidate != null; candidate = candidate.parent)
+        {
+            if (IsAncestorOrSelf(candidate, second))
+            {
+                return candidate as RectTransform;
+            }
+        }
+
+        return null;
+    }
+
+    private bool IsAncestorOrSelf(Transform ancestor, Transform child)
+    {
+        for (Transform current = child; current != null; current = current.parent)
+        {
+            if (current == ancestor)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private float GetRectHeight(RectTransform rectTransform)
+    {
+        return rectTransform != null
+            ? rectTransform.rect.height
+            : 0f;
+    }
 
     public void PracticarEscenarioIA()
 
