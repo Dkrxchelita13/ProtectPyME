@@ -1,12 +1,33 @@
 import copy
+from datetime import datetime
 import uuid
+
+from sqlalchemy.exc import IntegrityError
 
 from app.services import learning_content_service
 from app.services import minigame_service
 from app.services.concept_catalog import get_concepts
 
 
-def create_minigame_session(topic: str, risk: str, minigame: str) -> dict:
+class MinigameSessionNotFoundError(Exception):
+    pass
+
+
+class MinigameSessionConflictError(Exception):
+    pass
+
+
+class MinigameSessionValidationError(Exception):
+    pass
+
+
+def create_minigame_session(
+    topic: str,
+    risk: str,
+    minigame: str,
+    db=None,
+    user_id=None,
+) -> dict:
     normalized_topic = minigame_service.normalize_topic(topic)
     normalized_risk = minigame_service.normalize_risk(risk)
     normalized_minigame = learning_content_service.normalize_minigame(minigame)
@@ -25,18 +46,114 @@ def create_minigame_session(topic: str, risk: str, minigame: str) -> dict:
         normalized_minigame,
         concept_ids,
     )
-
-    return {
-        "session_id": str(uuid.uuid4()),
+    session_id = str(uuid.uuid4())
+    session_items = [
+        _normalize_session_item(item, normalized_minigame)
+        for item in items
+    ]
+    response = {
+        "session_id": session_id,
         "topic": normalized_topic,
         "risk": normalized_risk,
         "minigame": normalized_minigame,
         "lesson": lesson,
-        "items": [
-            _normalize_session_item(item, normalized_minigame)
-            for item in items
-        ],
+        "items": session_items,
     }
+
+    if db is not None and user_id is not None:
+        _persist_session_record(
+            db=db,
+            user_id=user_id,
+            session_id=session_id,
+            topic=normalized_topic,
+            risk=normalized_risk,
+            minigame=normalized_minigame,
+            item_ids=[
+                item["item_id"]
+                for item in session_items
+            ],
+            concept_ids=concept_ids,
+        )
+
+    return response
+
+
+def record_minigame_attempt(db, user_id: int, request) -> dict:
+    models = _models()
+    session = _get_owned_session(db, user_id, request.session_id)
+
+    if session.status != "started":
+        raise MinigameSessionConflictError("Minigame session is not started.")
+
+    item_metadata = _get_backend_item_metadata(request.item_id)
+
+    if request.item_id not in (session.item_ids or []):
+        raise MinigameSessionValidationError(
+            "Item does not belong to this session."
+        )
+
+    _validate_item_matches_session(item_metadata, session)
+
+    item = item_metadata["item"]
+    attempt = models.MinigameAttempt(
+        session_id=session.id,
+        user_id=user_id,
+        item_id=request.item_id,
+        concept_ids=minigame_service.get_item_concept_ids(item),
+        difficulty=item["difficulty"],
+        correct=request.correct,
+        response_time_ms=request.response_time_ms,
+        attempt_number=request.attempt_number,
+        points_delta=request.points_delta,
+    )
+
+    db.add(attempt)
+
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise MinigameSessionConflictError(
+            "Attempt already exists for this item and attempt number."
+        ) from exc
+
+    db.refresh(attempt)
+    return _attempt_to_response(attempt)
+
+
+def complete_minigame_session(db, user_id: int, session_id: str) -> dict:
+    models = _models()
+    _validate_uuid(session_id)
+    session = _get_owned_session(db, user_id, session_id)
+
+    if session.status == "completed":
+        raise MinigameSessionConflictError("Minigame session is already completed.")
+
+    if session.status != "started":
+        raise MinigameSessionConflictError("Minigame session is not started.")
+
+    attempts = (
+        db.query(models.MinigameAttempt)
+        .filter(
+            models.MinigameAttempt.session_id == session.id,
+            models.MinigameAttempt.user_id == user_id,
+        )
+        .all()
+    )
+
+    session.status = "completed"
+    session.completed_at = datetime.utcnow()
+
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise MinigameSessionConflictError(
+            "Minigame session could not be completed."
+        ) from exc
+
+    db.refresh(session)
+    return _build_session_summary(session, attempts)
 
 
 def _get_bank_items(topic: str, risk: str, minigame: str) -> list:
@@ -66,16 +183,7 @@ def _extract_concept_ids(items: list) -> list:
 
 
 def _item_concept_ids(item: dict) -> list:
-    concept_ids = item.get("concept_ids")
-
-    if concept_ids is None:
-        concept_id = item.get("concept_id")
-        concept_ids = [concept_id] if concept_id else []
-
-    if not concept_ids:
-        raise ValueError(f"Minigame item has no concept ids: {item.get('item_id')}")
-
-    return list(concept_ids)
+    return minigame_service.get_item_concept_ids(item)
 
 
 def _normalize_session_item(item: dict, minigame: str) -> dict:
@@ -99,3 +207,155 @@ def _normalize_session_item(item: dict, minigame: str) -> dict:
         normalized["answer_text"] = str(item["answer"])
 
     return normalized
+
+
+def _persist_session_record(
+    db,
+    user_id: int,
+    session_id: str,
+    topic: str,
+    risk: str,
+    minigame: str,
+    item_ids: list,
+    concept_ids: list,
+):
+    models = _models()
+    existing = (
+        db.query(models.MinigameSessionRecord)
+        .filter(models.MinigameSessionRecord.id == session_id)
+        .first()
+    )
+
+    if existing:
+        return existing
+
+    record = models.MinigameSessionRecord(
+        id=session_id,
+        user_id=user_id,
+        topic=topic,
+        risk=risk,
+        minigame=minigame,
+        item_ids=list(item_ids),
+        concept_ids=list(concept_ids),
+        status="started",
+    )
+
+    db.add(record)
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise
+
+    db.refresh(record)
+    return record
+
+
+def _get_owned_session(db, user_id: int, session_id: str):
+    models = _models()
+    _validate_uuid(session_id)
+    session = (
+        db.query(models.MinigameSessionRecord)
+        .filter(
+            models.MinigameSessionRecord.id == session_id,
+            models.MinigameSessionRecord.user_id == user_id,
+        )
+        .first()
+    )
+
+    if session is None:
+        raise MinigameSessionNotFoundError("Minigame session not found.")
+
+    return session
+
+
+def _validate_uuid(value: str):
+    try:
+        uuid.UUID(str(value))
+    except ValueError as exc:
+        raise MinigameSessionValidationError(
+            "session_id must be a valid UUID."
+        ) from exc
+
+
+def _get_backend_item_metadata(item_id: str):
+    try:
+        return minigame_service.get_item_by_id(item_id)
+    except KeyError as exc:
+        raise MinigameSessionNotFoundError("Minigame item not found.") from exc
+
+
+def _validate_item_matches_session(item_metadata: dict, session):
+    item = item_metadata["item"]
+    concept_ids = minigame_service.get_item_concept_ids(item)
+
+    if item_metadata["topic"] != session.topic:
+        raise MinigameSessionConflictError("Item topic does not match session.")
+
+    if item_metadata["risk"] != session.risk:
+        raise MinigameSessionConflictError("Item risk does not match session.")
+
+    if item_metadata["minigame"] != session.minigame:
+        raise MinigameSessionConflictError("Item minigame does not match session.")
+
+    if item["difficulty"] != session.risk:
+        raise MinigameSessionConflictError("Item difficulty does not match session.")
+
+    for concept_id in concept_ids:
+        if concept_id not in (session.concept_ids or []):
+            raise MinigameSessionConflictError(
+                "Item concepts do not match session."
+            )
+
+
+def _attempt_to_response(attempt) -> dict:
+    return {
+        "id": attempt.id,
+        "session_id": attempt.session_id,
+        "item_id": attempt.item_id,
+        "concept_ids": list(attempt.concept_ids or []),
+        "difficulty": attempt.difficulty,
+        "correct": attempt.correct,
+        "response_time_ms": attempt.response_time_ms,
+        "attempt_number": attempt.attempt_number,
+        "points_delta": attempt.points_delta,
+        "created_at": attempt.created_at,
+    }
+
+
+def _build_session_summary(session, attempts: list) -> dict:
+    total_attempts = len(attempts)
+    correct_attempts = sum(1 for attempt in attempts if attempt.correct)
+    incorrect_attempts = total_attempts - correct_attempts
+    points_earned = sum(attempt.points_delta for attempt in attempts)
+    total_response_time_ms = sum(attempt.response_time_ms for attempt in attempts)
+    attempted_items = len({attempt.item_id for attempt in attempts})
+    accuracy = 0 if total_attempts == 0 else round(
+        correct_attempts / total_attempts * 100,
+        2
+    )
+
+    return {
+        "session_id": session.id,
+        "status": session.status,
+        "topic": session.topic,
+        "risk": session.risk,
+        "minigame": session.minigame,
+        "total_items": len(session.item_ids or []),
+        "attempted_items": attempted_items,
+        "total_attempts": total_attempts,
+        "correct_attempts": correct_attempts,
+        "incorrect_attempts": incorrect_attempts,
+        "points_earned": points_earned,
+        "accuracy": accuracy,
+        "total_response_time_ms": total_response_time_ms,
+        "started_at": session.started_at,
+        "completed_at": session.completed_at,
+    }
+
+
+def _models():
+    from app import models
+
+    return models

@@ -10,8 +10,10 @@ from sqlalchemy import Column, String
 
 
 from sqlalchemy import (
+    Boolean,
     Column,
     Integer,
+    JSON,
     String,
     Text,
     ForeignKey,
@@ -217,6 +219,70 @@ class SurveyAnswer(Base):
             "submission_id",
             "question_id",
             name="uq_survey_answers_submission_question"
+        ),
+    )
+
+# -------- MINIGAME LEARNING SESSIONS --------
+class MinigameSessionRecord(Base):
+    __tablename__ = "minigame_session_records"
+
+    id = Column(String(36), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    topic = Column(String(50), nullable=False)
+    risk = Column(String(20), nullable=False)
+    minigame = Column(String(30), nullable=False)
+    item_ids = Column(JSON, nullable=False)
+    concept_ids = Column(JSON, nullable=False)
+    status = Column(String(20), nullable=False, default="started")
+    started_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=datetime.utcnow
+    )
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    attempts = relationship(
+        "MinigameAttempt",
+        back_populates="session",
+        cascade="all, delete-orphan"
+    )
+
+
+class MinigameAttempt(Base):
+    __tablename__ = "minigame_attempts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(
+        String(36),
+        ForeignKey("minigame_session_records.id"),
+        nullable=False,
+        index=True
+    )
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    item_id = Column(String(150), nullable=False, index=True)
+    concept_ids = Column(JSON, nullable=False)
+    difficulty = Column(String(20), nullable=False)
+    correct = Column(Boolean, nullable=False)
+    response_time_ms = Column(Integer, nullable=False)
+    attempt_number = Column(Integer, nullable=False, default=1)
+    points_delta = Column(Integer, nullable=False, default=0)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=datetime.utcnow
+    )
+
+    session = relationship(
+        "MinigameSessionRecord",
+        back_populates="attempts"
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "session_id",
+            "item_id",
+            "attempt_number",
+            name="uq_minigame_attempt_session_item_number"
         ),
     )
 

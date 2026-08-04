@@ -5,7 +5,7 @@ import types
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -65,15 +65,33 @@ def minigame_client():
 
     from app.routes.auth import get_current_user
     from app.routes.minigames import router
+    from app import models
+    from app.database import engine, SessionLocal
+
+    models.Base.metadata.drop_all(bind=engine)
+    models.Base.metadata.create_all(bind=engine)
+
+    db = SessionLocal()
+    current_user = models.User(
+        name="Minigame User",
+        email="minigame@example.com",
+        password="not-used",
+    )
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    db.close()
 
     app = FastAPI()
     app.include_router(router)
-    app.dependency_overrides[get_current_user] = lambda: object()
+    app.dependency_overrides[get_current_user] = lambda: current_user
     client = TestClient(app)
 
     try:
         yield client, router
     finally:
+        models.Base.metadata.drop_all(bind=engine)
+
         for name, module in previous_modules.items():
             if module is None:
                 sys.modules.pop(name, None)
@@ -408,3 +426,511 @@ def test_old_lesson_route_still_works(minigame_client):
 
     assert response.status_code == 200
     assert response.json()["minigame"] == "crossword"
+
+
+def get_db_session():
+    from app.database import SessionLocal
+
+    return SessionLocal()
+
+
+def get_current_test_user():
+    from app import models
+
+    db = get_db_session()
+
+    try:
+        return db.query(models.User).filter(
+            models.User.email == "minigame@example.com"
+        ).first()
+    finally:
+        db.close()
+
+
+def create_other_user(email="other-minigame@example.com"):
+    from app import models
+
+    db = get_db_session()
+    user = models.User(
+        name="Other User",
+        email=email,
+        password="not-used",
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    db.close()
+
+    return user
+
+
+def create_persisted_session(
+    client,
+    topic="passwords",
+    risk="bajo",
+    minigame="crossword",
+):
+    response = client.post(
+        "/minigames/session",
+        json={
+            "topic": topic,
+            "risk": risk,
+            "minigame": minigame,
+        },
+    )
+
+    assert response.status_code == 200
+    return response.json()
+
+
+def record_attempt(
+    client,
+    session_id,
+    item_id,
+    *,
+    correct=True,
+    response_time_ms=500,
+    attempt_number=1,
+    points_delta=10,
+    extra_payload=None,
+):
+    payload = {
+        "session_id": session_id,
+        "item_id": item_id,
+        "correct": correct,
+        "response_time_ms": response_time_ms,
+        "attempt_number": attempt_number,
+        "points_delta": points_delta,
+    }
+
+    if extra_payload:
+        payload.update(extra_payload)
+
+    return client.post("/minigames/attempts", json=payload)
+
+
+def get_session_record(session_id):
+    from app import models
+
+    db = get_db_session()
+
+    try:
+        return db.query(models.MinigameSessionRecord).filter(
+            models.MinigameSessionRecord.id == session_id
+        ).first()
+    finally:
+        db.close()
+
+
+def test_minigame_session_table_is_created(minigame_client):
+    from app import models
+    from app.database import engine
+
+    assert "minigame_session_records" in models.Base.metadata.tables
+    assert inspect(engine).has_table("minigame_session_records")
+
+
+def test_minigame_attempt_table_is_created(minigame_client):
+    from app import models
+    from app.database import engine
+
+    assert "minigame_attempts" in models.Base.metadata.tables
+    assert inspect(engine).has_table("minigame_attempts")
+
+
+def test_session_record_uses_generated_session_id(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    record = get_session_record(session["session_id"])
+
+    assert record is not None
+    assert record.id == session["session_id"]
+
+
+def test_session_record_stores_selected_items(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    record = get_session_record(session["session_id"])
+
+    assert record.item_ids == [
+        item["item_id"]
+        for item in session["items"]
+    ]
+
+
+def test_session_record_stores_unique_concepts(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    record = get_session_record(session["session_id"])
+
+    all_concepts = [
+        concept_id
+        for item in session["items"]
+        for concept_id in item["concept_ids"]
+    ]
+
+    assert record.concept_ids == list(dict.fromkeys(all_concepts))
+
+
+def test_create_session_persists_authenticated_user(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    record = get_session_record(session["session_id"])
+    user = get_current_test_user()
+
+    assert record.user_id == user.id
+
+
+def test_create_session_persists_topic_risk_minigame(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(
+        client,
+        topic="wifi",
+        risk="medio",
+        minigame="quiz",
+    )
+    record = get_session_record(session["session_id"])
+
+    assert record.topic == "wifi"
+    assert record.risk == "medio"
+    assert record.minigame == "quiz"
+
+
+def test_create_session_starts_with_started_status(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    record = get_session_record(session["session_id"])
+
+    assert record.status == "started"
+    assert record.completed_at is None
+
+
+def test_session_response_contract_is_unchanged(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+
+    assert_session_contract(session)
+
+
+def test_session_does_not_store_full_lesson(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    record = get_session_record(session["session_id"])
+
+    assert not hasattr(record, "lesson")
+    assert "lesson" not in record.__table__.columns
+
+
+def test_record_correct_attempt(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    response = record_attempt(
+        client,
+        session["session_id"],
+        "passwords_bajo_crossword_argon2id",
+        correct=True,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["correct"] is True
+
+
+def test_record_incorrect_attempt(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    response = record_attempt(
+        client,
+        session["session_id"],
+        "passwords_bajo_crossword_argon2id",
+        correct=False,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["correct"] is False
+
+
+def test_attempt_metadata_is_derived_from_backend(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    response = record_attempt(
+        client,
+        session["session_id"],
+        "passwords_bajo_crossword_argon2id",
+        extra_payload={
+            "concept_ids": ["client.fake"],
+            "difficulty": "alto",
+        },
+    )
+
+    assert response.status_code == 422
+
+    response = record_attempt(
+        client,
+        session["session_id"],
+        "passwords_bajo_crossword_argon2id",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["concept_ids"] == ["passwords.argon2id"]
+    assert response.json()["difficulty"] == "bajo"
+
+
+def test_attempt_rejects_unknown_session(minigame_client):
+    client, _ = minigame_client
+    response = record_attempt(
+        client,
+        "00000000-0000-0000-0000-000000000000",
+        "passwords_bajo_crossword_argon2id",
+    )
+
+    assert response.status_code == 404
+
+
+def test_attempt_rejects_session_from_another_user(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    other_user = create_other_user()
+
+    from app.routes.auth import get_current_user
+
+    client.app.dependency_overrides[get_current_user] = lambda: other_user
+    response = record_attempt(
+        client,
+        session["session_id"],
+        "passwords_bajo_crossword_argon2id",
+    )
+
+    assert response.status_code == 404
+
+
+def test_attempt_rejects_item_not_in_session(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    response = record_attempt(
+        client,
+        session["session_id"],
+        "phishing_alto_crossword_phishing",
+    )
+
+    assert response.status_code == 400
+
+
+def test_attempt_rejects_unknown_item(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    response = record_attempt(
+        client,
+        session["session_id"],
+        "not_a_real_item",
+    )
+
+    assert response.status_code == 404
+
+
+def test_attempt_rejects_duplicate_attempt_number(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    first = record_attempt(
+        client,
+        session["session_id"],
+        "passwords_bajo_crossword_argon2id",
+    )
+    second = record_attempt(
+        client,
+        session["session_id"],
+        "passwords_bajo_crossword_argon2id",
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 409
+
+
+def test_attempt_rejects_completed_session(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    complete = client.post(f"/minigames/session/{session['session_id']}/complete")
+    response = record_attempt(
+        client,
+        session["session_id"],
+        "passwords_bajo_crossword_argon2id",
+    )
+
+    assert complete.status_code == 200
+    assert response.status_code == 409
+
+
+def test_attempt_validates_response_time(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    response = record_attempt(
+        client,
+        session["session_id"],
+        "passwords_bajo_crossword_argon2id",
+        response_time_ms=3_600_001,
+    )
+
+    assert response.status_code == 422
+
+
+def test_attempt_does_not_accept_client_concept_ids(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    response = record_attempt(
+        client,
+        session["session_id"],
+        "passwords_bajo_crossword_argon2id",
+        extra_payload={"concept_ids": ["passwords.fake"]},
+    )
+
+    assert response.status_code == 422
+
+
+def test_passwords_bajo_crossword_argon2id_attempt_stores_backend_metadata(
+    minigame_client,
+):
+    from app import models
+
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    response = record_attempt(
+        client,
+        session["session_id"],
+        "passwords_bajo_crossword_argon2id",
+    )
+
+    db = get_db_session()
+
+    try:
+        attempt = db.query(models.MinigameAttempt).filter(
+            models.MinigameAttempt.item_id == "passwords_bajo_crossword_argon2id"
+        ).first()
+    finally:
+        db.close()
+
+    assert response.status_code == 200
+    assert attempt.item_id == "passwords_bajo_crossword_argon2id"
+    assert attempt.concept_ids == ["passwords.argon2id"]
+    assert attempt.difficulty == "bajo"
+
+
+def test_complete_session_returns_summary(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    record_attempt(
+        client,
+        session["session_id"],
+        "passwords_bajo_crossword_salt",
+        correct=True,
+        response_time_ms=500,
+        points_delta=10,
+    )
+    record_attempt(
+        client,
+        session["session_id"],
+        "passwords_bajo_crossword_hash",
+        correct=False,
+        response_time_ms=700,
+        points_delta=-2,
+    )
+    response = client.post(f"/minigames/session/{session['session_id']}/complete")
+    summary = response.json()
+
+    assert response.status_code == 200
+    assert summary["session_id"] == session["session_id"]
+    assert summary["total_items"] == len(session["items"])
+    assert summary["attempted_items"] == 2
+    assert summary["total_attempts"] == 2
+    assert summary["correct_attempts"] == 1
+    assert summary["incorrect_attempts"] == 1
+    assert summary["points_earned"] == 8
+    assert summary["accuracy"] == 50.0
+    assert summary["total_response_time_ms"] == 1200
+
+
+def test_complete_session_marks_completed(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    response = client.post(f"/minigames/session/{session['session_id']}/complete")
+    record = get_session_record(session["session_id"])
+
+    assert response.status_code == 200
+    assert record.status == "completed"
+    assert record.completed_at is not None
+
+
+def test_complete_session_accuracy(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    record_attempt(
+        client,
+        session["session_id"],
+        "passwords_bajo_crossword_salt",
+        correct=True,
+    )
+    record_attempt(
+        client,
+        session["session_id"],
+        "passwords_bajo_crossword_hash",
+        correct=False,
+    )
+    response = client.post(f"/minigames/session/{session['session_id']}/complete")
+
+    assert response.status_code == 200
+    assert response.json()["accuracy"] == 50.0
+
+
+def test_complete_session_points_sum(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    record_attempt(
+        client,
+        session["session_id"],
+        "passwords_bajo_crossword_salt",
+        points_delta=10,
+    )
+    record_attempt(
+        client,
+        session["session_id"],
+        "passwords_bajo_crossword_hash",
+        attempt_number=1,
+        points_delta=5,
+    )
+    response = client.post(f"/minigames/session/{session['session_id']}/complete")
+
+    assert response.status_code == 200
+    assert response.json()["points_earned"] == 15
+
+
+def test_complete_empty_session(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    response = client.post(f"/minigames/session/{session['session_id']}/complete")
+    summary = response.json()
+
+    assert response.status_code == 200
+    assert summary["total_attempts"] == 0
+    assert summary["attempted_items"] == 0
+    assert summary["accuracy"] == 0
+
+
+def test_complete_session_from_another_user_is_rejected(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    other_user = create_other_user()
+
+    from app.routes.auth import get_current_user
+
+    client.app.dependency_overrides[get_current_user] = lambda: other_user
+    response = client.post(f"/minigames/session/{session['session_id']}/complete")
+
+    assert response.status_code == 404
+
+
+def test_completed_session_cannot_be_completed_twice(minigame_client):
+    client, _ = minigame_client
+    session = create_persisted_session(client)
+    first = client.post(f"/minigames/session/{session['session_id']}/complete")
+    second = client.post(f"/minigames/session/{session['session_id']}/complete")
+
+    assert first.status_code == 200
+    assert second.status_code == 409

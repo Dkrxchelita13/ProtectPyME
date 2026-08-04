@@ -1,5 +1,7 @@
 # backend/app/services/minigame_service.py
 
+from copy import deepcopy
+
 
 # ============================================================
 # HELPERS
@@ -840,6 +842,19 @@ def _set_concept_metadata(item, concept_ids):
         item.pop("concept_id", None)
 
 
+def get_item_concept_ids(item):
+    concept_ids = item.get("concept_ids")
+
+    if concept_ids is None:
+        concept_id = item.get("concept_id")
+        concept_ids = [concept_id] if concept_id else []
+
+    if not concept_ids:
+        raise ValueError(f"Minigame item has no concept ids: {item.get('item_id')}")
+
+    return list(concept_ids)
+
+
 def _annotate_quiz_bank():
     for topic, risks in QUIZ.items():
         for risk, items in risks.items():
@@ -868,6 +883,46 @@ def _annotate_banks():
 
 
 _annotate_banks()
+
+ITEM_INDEX = {}
+
+
+def _build_item_index():
+    index = {}
+
+    banks = (
+        ("quiz", QUIZ),
+        ("crossword", CROSSWORD),
+        ("wordsearch", WORDSEARCH),
+    )
+
+    for minigame, bank in banks:
+        for topic, risks in bank.items():
+            for risk, items in risks.items():
+                for item in items:
+                    item_id = item["item_id"]
+
+                    if item_id in index:
+                        raise ValueError(f"Duplicated minigame item_id: {item_id}")
+
+                    index[item_id] = {
+                        "topic": topic,
+                        "risk": risk,
+                        "minigame": minigame,
+                        "item": deepcopy(item),
+                    }
+
+    return index
+
+
+def get_item_by_id(item_id):
+    if not ITEM_INDEX:
+        ITEM_INDEX.update(_build_item_index())
+
+    try:
+        return deepcopy(ITEM_INDEX[item_id])
+    except KeyError as exc:
+        raise KeyError(f"Minigame item not found: {item_id}") from exc
 
 
 def get_quiz(topic, risk):

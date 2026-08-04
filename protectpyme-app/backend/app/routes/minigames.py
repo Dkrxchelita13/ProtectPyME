@@ -1,5 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 from app import schemas
+from app.database import get_db
 from app.services import learning_content_service
 from app.services import minigame_service
 from app.services import minigame_session_service
@@ -59,18 +62,82 @@ def get_lesson(
 )
 def create_minigame_session(
     request: schemas.MinigameSessionRequest,
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     try:
         return minigame_session_service.create_minigame_session(
             topic=request.topic,
             risk=request.risk,
             minigame=request.minigame,
+            db=db,
+            user_id=current_user.id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except KeyError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except IntegrityError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail="Minigame session could not be persisted."
+        ) from exc
+
+
+@router.post(
+    "/attempts",
+    response_model=schemas.MinigameAttemptResponse,
+    summary="Registrar intento individual de un item de minijuego",
+    description=(
+        "Guarda el resultado de un item contestado y deriva conceptos y "
+        "dificultad desde los bancos del backend."
+    ),
+)
+def record_minigame_attempt(
+    request: schemas.MinigameAttemptRequest,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        return minigame_session_service.record_minigame_attempt(
+            db=db,
+            user_id=current_user.id,
+            request=request,
+        )
+    except minigame_session_service.MinigameSessionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except minigame_session_service.MinigameSessionValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except minigame_session_service.MinigameSessionConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.post(
+    "/session/{session_id}/complete",
+    response_model=schemas.MinigameSessionSummaryResponse,
+    summary="Cerrar sesion pedagogica de minijuego",
+    description=(
+        "Marca la sesion como completada y devuelve un resumen calculado "
+        "desde los intentos persistidos."
+    ),
+)
+def complete_minigame_session(
+    session_id: str,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        return minigame_session_service.complete_minigame_session(
+            db=db,
+            user_id=current_user.id,
+            session_id=session_id,
+        )
+    except minigame_session_service.MinigameSessionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except minigame_session_service.MinigameSessionValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except minigame_session_service.MinigameSessionConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.get("/crossword")

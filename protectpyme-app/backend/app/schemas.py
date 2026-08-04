@@ -66,7 +66,8 @@ class Score(ScoreBase):
  """
 
 from typing import Dict, List, Optional
-from pydantic import BaseModel, EmailStr
+from uuid import UUID
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from typing import Literal
 
 class RoleUpdate(BaseModel):
@@ -309,3 +310,53 @@ class MinigameSessionResponse(BaseModel):
     minigame: str
     lesson: MinigameLessonResponse
     items: List[MinigameSessionItem]
+
+
+class MinigameAttemptRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    session_id: str
+    item_id: str = Field(..., min_length=1, max_length=150)
+    correct: bool
+    response_time_ms: int = Field(..., ge=0, le=3_600_000)
+    attempt_number: int = Field(1, ge=1, le=100)
+    points_delta: int = Field(0, ge=-1000, le=1000)
+
+    @field_validator("session_id")
+    @classmethod
+    def session_id_must_be_uuid(cls, value):
+        try:
+            return str(UUID(str(value)))
+        except ValueError as exc:
+            raise ValueError("session_id must be a valid UUID") from exc
+
+
+class MinigameAttemptResponse(BaseModel):
+    id: int
+    session_id: str
+    item_id: str
+    concept_ids: List[str]
+    difficulty: str
+    correct: bool
+    response_time_ms: int
+    attempt_number: int
+    points_delta: int
+    created_at: datetime
+
+
+class MinigameSessionSummaryResponse(BaseModel):
+    session_id: str
+    status: str
+    topic: str
+    risk: str
+    minigame: str
+    total_items: int
+    attempted_items: int
+    total_attempts: int
+    correct_attempts: int
+    incorrect_attempts: int
+    points_earned: int
+    accuracy: float
+    total_response_time_ms: int
+    started_at: datetime
+    completed_at: Optional[datetime]
