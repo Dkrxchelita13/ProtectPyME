@@ -482,8 +482,11 @@ public class QuizController : MonoBehaviour
         if (!ganoElJuego)
         {
             textoPregunta.text = "¡Juego Terminado!";
-            if (gamificacion != null && gamificacion.canvasGameOver != null)
-                gamificacion.canvasGameOver.SetActive(true);
+            if (gamificacion != null && gamificacion.canvasGameOver != null)
+            {
+                gamificacion.canvasGameOver.SetActive(true);
+                BeginFeedbackUiForCurrentSession(gamificacion.canvasGameOver);
+            }
         }
         else
         {
@@ -494,15 +497,38 @@ public class QuizController : MonoBehaviour
                 if (textoVidasFinal != null) textoVidasFinal.text = gamificacion.ObtenerVidas().ToString();
 
                 float segFinal = ObtenerSeguridadPersistente();
-                if (textoSeguridadFinal != null) textoSeguridadFinal.text = Mathf.RoundToInt(segFinal).ToString() + "%";
+                if (textoSeguridadFinal != null) textoSeguridadFinal.text = Mathf.RoundToInt(segFinal).ToString() + "%";
 
-                canvasGanador.SetActive(true); 
-            }
-        }
+                canvasGanador.SetActive(true);
+                BeginFeedbackUiForCurrentSession(canvasGanador);
+            }
+        }
 
-        yield return new WaitForEndOfFrame();
-        Time.timeScale = 0f; 
-    }
+        yield return new WaitForEndOfFrame();
+        Time.timeScale = 0f;
+    }
+
+    private void BeginFeedbackUiForCurrentSession(GameObject finalPanel)
+    {
+        if (!usingSessionItems || !MinigameLessonState.HasValidSession)
+        {
+            Debug.Log("Feedback UI: omitido porque el flujo es legacy");
+            return;
+        }
+
+        if (finalPanel == null)
+        {
+            return;
+        }
+
+        MinigameFeedbackPresenter presenter =
+            MinigameFeedbackPresenter.AttachOrGet(finalPanel.transform);
+
+        if (presenter != null)
+        {
+            presenter.BeginWaitingForFeedback(MinigameLessonState.SessionId);
+        }
+    }
 
     private void RegistrarIntentoActual(bool correcto, int pointsDelta)
     {

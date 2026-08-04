@@ -926,7 +926,11 @@ public class CrosswordController : MonoBehaviour
                 if (txtVidasFinal != null) txtVidasFinal.text = gamificacion.ObtenerVidas().ToString();
                 if (txtSeguridadFinal != null) txtSeguridadFinal.text = gamificacion.progresoSeguridad.ToString("0") + "%";
             }
-            if (canvasGanador != null) canvasGanador.SetActive(true);
+            if (canvasGanador != null)
+            {
+                canvasGanador.SetActive(true);
+                BeginFeedbackUiForCurrentSession(canvasGanador);
+            }
         }
         else
         {
@@ -934,6 +938,7 @@ public class CrosswordController : MonoBehaviour
             {
                 gamificacion.ReproducirDerrota();
                 gamificacion.canvasGameOver.SetActive(true);
+                BeginFeedbackUiForCurrentSession(gamificacion.canvasGameOver);
             }
             else
             {
@@ -943,6 +948,28 @@ public class CrosswordController : MonoBehaviour
 
         yield return new WaitForEndOfFrame();
         Time.timeScale = 0f;
+    }
+
+    private void BeginFeedbackUiForCurrentSession(GameObject finalPanel)
+    {
+        if (!usingSessionItems || !MinigameLessonState.HasValidSession)
+        {
+            Debug.Log("Feedback UI: omitido porque el flujo es legacy");
+            return;
+        }
+
+        if (finalPanel == null)
+        {
+            return;
+        }
+
+        MinigameFeedbackPresenter presenter =
+            MinigameFeedbackPresenter.AttachOrGet(finalPanel.transform);
+
+        if (presenter != null)
+        {
+            presenter.BeginWaitingForFeedback(MinigameLessonState.SessionId);
+        }
     }
 
     public void DetenerJuegoPorGameOver()
