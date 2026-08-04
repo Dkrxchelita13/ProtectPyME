@@ -15,6 +15,7 @@ public class APIManager : MonoBehaviour
     private bool surveyStatusRequestInProgress;
     private bool surveySubmitRequestInProgress;
     private bool minigameLessonRequestInProgress;
+    private bool minigameSessionRequestInProgress;
 
 
 
@@ -378,6 +379,111 @@ public class APIManager : MonoBehaviour
             Debug.LogError(request.error);
 
             callback?.Invoke("ERROR");
+        }
+    }
+
+    public IEnumerator CreateMinigameSession(
+        string topic,
+        string risk,
+        string minigame,
+        Action<MinigameSessionResponse> onSuccess,
+        Action<string> onError
+    )
+    {
+        if (minigameSessionRequestInProgress)
+        {
+            Debug.LogWarning(
+                "Minigame session: se ignoro una solicitud duplicada mientras la sesion esta cargando."
+            );
+            yield break;
+        }
+
+        string parameterError = ValidateMinigameSessionParameters(
+            topic,
+            risk,
+            minigame
+        );
+
+        if (!string.IsNullOrEmpty(parameterError))
+        {
+            onError?.Invoke(parameterError);
+            yield break;
+        }
+
+        if (string.IsNullOrEmpty(token))
+        {
+            onError?.Invoke("NO_TOKEN");
+            yield break;
+        }
+
+        MinigameSessionRequest payload =
+            new MinigameSessionRequest(topic, risk, minigame);
+        string json = JsonUtility.ToJson(payload);
+        byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
+
+        minigameSessionRequestInProgress = true;
+
+        MinigameSessionResponse parsedResponse = null;
+        string error = "";
+
+        using (UnityWebRequest request =
+            new UnityWebRequest(baseUrl + "/minigames/session", "POST"))
+        {
+            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader("Content-Type", "application/json");
+            request.SetRequestHeader(
+                "Authorization",
+                "Bearer " + token
+            );
+
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                try
+                {
+                    parsedResponse =
+                        JsonUtility.FromJson<MinigameSessionResponse>(
+                            request.downloadHandler.text
+                        );
+                }
+                catch (Exception exception)
+                {
+                    error =
+                        "La respuesta de la sesion no se pudo leer: " +
+                        exception.Message;
+                }
+
+                if (string.IsNullOrEmpty(error))
+                {
+                    error = ValidateMinigameSessionResponse(
+                        parsedResponse,
+                        topic,
+                        risk,
+                        minigame
+                    );
+                }
+            }
+            else if (request.responseCode == 401)
+            {
+                error = "HTTP_401: Sesion expirada. Inicia sesion nuevamente.";
+            }
+            else
+            {
+                error = BuildRequestError(request);
+            }
+        }
+
+        minigameSessionRequestInProgress = false;
+
+        if (string.IsNullOrEmpty(error))
+        {
+            onSuccess?.Invoke(parsedResponse);
+        }
+        else
+        {
+            onError?.Invoke(error);
         }
     }
 
@@ -759,6 +865,192 @@ public class APIManager : MonoBehaviour
                 onError?.Invoke(BuildRequestError(request));
             }
         }
+    }
+
+    private string ValidateMinigameSessionParameters(
+        string topic,
+        string risk,
+        string minigame
+    )
+    {
+        if (!IsValidTopic(topic))
+        {
+            return "Topic de minijuego invalido.";
+        }
+
+        if (!IsValidRisk(risk))
+        {
+            return "Risk de minijuego invalido.";
+        }
+
+        if (!IsValidMinigame(minigame))
+        {
+            return "Minigame invalido.";
+        }
+
+        return "";
+    }
+
+    private string ValidateMinigameSessionResponse(
+        MinigameSessionResponse response,
+        string expectedTopic,
+        string expectedRisk,
+        string expectedMinigame
+    )
+    {
+        if (response == null)
+        {
+            return "La respuesta de la sesion esta vacia.";
+        }
+
+        if (string.IsNullOrEmpty(response.session_id))
+        {
+            return "La sesion no incluye session_id.";
+        }
+
+        if (!ValuesMatch(response.topic, expectedTopic) ||
+            !ValuesMatch(response.risk, expectedRisk) ||
+            !ValuesMatch(response.minigame, expectedMinigame))
+        {
+            return "La sesion no coincide con el minijuego solicitado.";
+        }
+
+        if (response.items == null || response.items.Length == 0)
+        {
+            return "La sesion no incluye items.";
+        }
+
+        string lessonError = ValidateMinigameLesson(response.lesson);
+
+        if (!string.IsNullOrEmpty(lessonError))
+        {
+            return lessonError;
+        }
+
+        for (int i = 0; i < response.items.Length; i++)
+        {
+            MinigameSessionItem item = response.items[i];
+
+            if (item == null)
+            {
+                return "La sesion incluye un item vacio.";
+            }
+
+            if (string.IsNullOrEmpty(item.item_id))
+            {
+                return "Cada item de sesion debe incluir item_id.";
+            }
+
+            if (item.concept_ids == null || item.concept_ids.Length == 0)
+            {
+                return "Cada item de sesion debe incluir concept_ids.";
+            }
+
+            if (!ValuesMatch(item.difficulty, expectedRisk))
+            {
+                return "La dificultad de un item no coincide con el riesgo.";
+            }
+
+            string itemTypeError = ValidateMinigameSessionItemType(
+                item,
+                expectedMinigame
+            );
+
+            if (!string.IsNullOrEmpty(itemTypeError))
+            {
+                return itemTypeError;
+            }
+
+            for (int conceptIndex = 0;
+                conceptIndex < item.concept_ids.Length;
+                conceptIndex++)
+            {
+                if (string.IsNullOrEmpty(item.concept_ids[conceptIndex]))
+                {
+                    return "La sesion incluye un concept_id vacio.";
+                }
+            }
+        }
+
+        return "";
+    }
+
+    private string ValidateMinigameSessionItemType(
+        MinigameSessionItem item,
+        string expectedMinigame
+    )
+    {
+        if (ValuesMatch(expectedMinigame, "quiz"))
+        {
+            if (string.IsNullOrEmpty(item.question))
+            {
+                return "Cada item de quiz debe incluir question.";
+            }
+
+            if (item.options == null || item.options.Length == 0)
+            {
+                return "Cada item de quiz debe incluir options.";
+            }
+
+            if (item.correct_option < 0 ||
+                item.correct_option >= item.options.Length)
+            {
+                return "El correct_option de quiz esta fuera de rango.";
+            }
+
+            return "";
+        }
+
+        if (string.IsNullOrEmpty(item.clue))
+        {
+            return "Cada item de sopa o crucigrama debe incluir clue.";
+        }
+
+        if (string.IsNullOrEmpty(item.answer_text))
+        {
+            return "Cada item de sopa o crucigrama debe incluir answer_text.";
+        }
+
+        if (item.correct_option != -1)
+        {
+            return "Sopa y crucigrama deben usar correct_option = -1.";
+        }
+
+        return "";
+    }
+
+    private bool IsValidTopic(string topic)
+    {
+        string value = (topic ?? "").Trim().ToLowerInvariant();
+        return value == "phishing"
+            || value == "passwords"
+            || value == "malware"
+            || value == "wifi";
+    }
+
+    private bool IsValidRisk(string risk)
+    {
+        string value = (risk ?? "").Trim().ToLowerInvariant();
+        return value == "alto"
+            || value == "medio"
+            || value == "bajo";
+    }
+
+    private bool IsValidMinigame(string minigame)
+    {
+        string value = (minigame ?? "").Trim().ToLowerInvariant();
+        return value == "quiz"
+            || value == "wordsearch"
+            || value == "crossword";
+    }
+
+    private bool ValuesMatch(string left, string right)
+    {
+        return string.Equals(
+            (left ?? "").Trim(),
+            (right ?? "").Trim(),
+            StringComparison.OrdinalIgnoreCase
+        );
     }
 
     private string BuildRequestError(UnityWebRequest request)

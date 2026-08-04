@@ -1,18 +1,24 @@
 using UnityEngine;
 using TMPro;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class MinijuegosMenuUI : MonoBehaviour
 {
     [Header("Referencias UI")]
     public TextMeshProUGUI txtTituloReforzamiento;
+    [SerializeField] private GameObject loadingPanel;
 
     private const string LessonSceneName = "LeccionMinijuego";
     private bool lessonRiskRequestInProgress;
+    private bool minigameSessionRequestInProgress;
+    private Button[] menuButtons;
 
     void Start()
     {
+        menuButtons = GetComponentsInChildren<Button>(true);
         ActualizarTituloMinijuegos();
+        SetLoadingVisible(false);
     }
 
     public void OpenQuizLesson()
@@ -95,7 +101,15 @@ public class MinijuegosMenuUI : MonoBehaviour
 
     private void OpenLesson(string minigameKey, string targetScene)
     {
-        if (TryOpenLessonWithCurrentState(minigameKey, targetScene))
+        if (minigameSessionRequestInProgress)
+        {
+            Debug.LogWarning(
+                "No se creara otra sesion porque ya hay una solicitud en curso."
+            );
+            return;
+        }
+
+        if (TryCreateLessonSessionWithCurrentState(minigameKey, targetScene))
         {
             return;
         }
@@ -123,7 +137,7 @@ public class MinijuegosMenuUI : MonoBehaviour
             {
                 lessonRiskRequestInProgress = false;
 
-                if (!TryOpenLessonWithCurrentState(minigameKey, targetScene))
+                if (!TryCreateLessonSessionWithCurrentState(minigameKey, targetScene))
                 {
                     Debug.LogError(
                         "No se puede abrir la leccion: /ai/risk/me no devolvio topic/risk validos."
@@ -133,7 +147,7 @@ public class MinijuegosMenuUI : MonoBehaviour
             onError: (error) =>
             {
                 lessonRiskRequestInProgress = false;
-                MinigameLessonState.Clear();
+                MinigameLessonState.ClearSession();
                 Debug.LogError(
                     "No se pudo recuperar el estado de riesgo para abrir la leccion: "
                     + error
@@ -142,7 +156,7 @@ public class MinijuegosMenuUI : MonoBehaviour
         ));
     }
 
-    private bool TryOpenLessonWithCurrentState(string minigameKey, string targetScene)
+    private bool TryCreateLessonSessionWithCurrentState(string minigameKey, string targetScene)
     {
         string topic = NormalizeTopic(AIState.RecommendedTraining);
         string risk = NormalizeRisk(AIState.RiskLevel);
@@ -177,18 +191,90 @@ public class MinijuegosMenuUI : MonoBehaviour
                 risk
             );
 
-            SceneManager.LoadScene(LessonSceneName);
+            CreateSessionAndOpenLesson(
+                minigameKey,
+                targetScene,
+                topic,
+                risk
+            );
             return true;
         }
         catch (System.Exception exception)
         {
-            MinigameLessonState.Clear();
+            MinigameLessonState.ClearSession();
             Debug.LogError(
                 "No se pudo preparar la leccion del minijuego: "
                 + exception.Message
             );
             return true;
         }
+    }
+
+    private void CreateSessionAndOpenLesson(
+        string minigameKey,
+        string targetScene,
+        string topic,
+        string risk
+    )
+    {
+        if (APIManager.Instance == null)
+        {
+            MinigameLessonState.ClearSession();
+            Debug.LogError("No se puede crear la sesion: APIManager no esta disponible.");
+            return;
+        }
+
+        minigameSessionRequestInProgress = true;
+        SetMenuButtonsInteractable(false);
+        SetLoadingVisible(true);
+
+        StartCoroutine(APIManager.Instance.CreateMinigameSession(
+            topic,
+            risk,
+            minigameKey,
+            onSuccess: (session) =>
+            {
+                minigameSessionRequestInProgress = false;
+                SetLoadingVisible(false);
+
+                try
+                {
+                    MinigameLessonState.PrepareWithSession(
+                        minigameKey,
+                        targetScene,
+                        topic,
+                        risk,
+                        session
+                    );
+
+                    Debug.Log(
+                        "Minigame session: creada "
+                        + MinigameLessonState.SessionId
+                    );
+                    SceneManager.LoadScene(LessonSceneName);
+                }
+                catch (System.Exception exception)
+                {
+                    MinigameLessonState.ClearSession();
+                    SetMenuButtonsInteractable(true);
+                    Debug.LogError(
+                        "No se pudo guardar la sesion del minijuego: "
+                        + exception.Message
+                    );
+                }
+            },
+            onError: (error) =>
+            {
+                minigameSessionRequestInProgress = false;
+                MinigameLessonState.ClearSession();
+                SetLoadingVisible(false);
+                SetMenuButtonsInteractable(true);
+                Debug.LogError(
+                    "No se pudo crear la sesion del minijuego: "
+                    + error
+                );
+            }
+        ));
     }
 
     private string NormalizeTopic(string topic)
@@ -233,5 +319,29 @@ public class MinijuegosMenuUI : MonoBehaviour
     private string SafeLogValue(string value)
     {
         return string.IsNullOrEmpty(value) ? "<vacio>" : value;
+    }
+
+    private void SetMenuButtonsInteractable(bool interactable)
+    {
+        if (menuButtons == null)
+        {
+            menuButtons = GetComponentsInChildren<Button>(true);
+        }
+
+        for (int i = 0; i < menuButtons.Length; i++)
+        {
+            if (menuButtons[i] != null)
+            {
+                menuButtons[i].interactable = interactable;
+            }
+        }
+    }
+
+    private void SetLoadingVisible(bool visible)
+    {
+        if (loadingPanel != null)
+        {
+            loadingPanel.SetActive(visible);
+        }
     }
 }

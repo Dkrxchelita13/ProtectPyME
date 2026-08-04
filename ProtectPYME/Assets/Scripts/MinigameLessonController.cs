@@ -35,12 +35,6 @@ public class MinigameLessonController : MonoBehaviour
     {
         SetButtonInteractable(btnStart, false);
 
-        if (APIManager.Instance == null)
-        {
-            ShowError("No se encontro APIManager.");
-            return;
-        }
-
         if (!MinigameLessonState.IsPending)
         {
             ShowError("No hay una leccion pendiente para mostrar.");
@@ -87,6 +81,24 @@ public class MinigameLessonController : MonoBehaviour
 
         ShowLoading();
 
+        if (MinigameLessonState.HasValidSession)
+        {
+            Debug.Log(
+                "Lesson: usando sesion "
+                + MinigameLessonState.SessionId
+            );
+            OnLessonLoaded(MinigameLessonState.GetLesson());
+            return;
+        }
+
+        if (APIManager.Instance == null)
+        {
+            ShowError("No se encontro APIManager.");
+            return;
+        }
+
+        Debug.Log("Lesson: usando fallback GET /minigames/lesson");
+
         StartCoroutine(
             APIManager.Instance.GetMinigameLesson(
                 MinigameLessonState.Topic,
@@ -113,7 +125,6 @@ public class MinigameLessonController : MonoBehaviour
         }
 
         string targetScene = MinigameLessonState.TargetScene;
-        MinigameLessonState.Clear();
         SceneManager.LoadScene(targetScene);
     }
 
@@ -129,7 +140,7 @@ public class MinigameLessonController : MonoBehaviour
 
     public void OnBack()
     {
-        MinigameLessonState.Clear();
+        MinigameLessonState.ClearSession();
         SceneManager.LoadScene(backSceneName);
     }
 
