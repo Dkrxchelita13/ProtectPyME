@@ -299,14 +299,17 @@ def test_quiz_session_uses_numeric_correct_option(minigame_client):
         },
     )
     session = response.json()
-    bank = minigame_service.get_quiz("passwords", "bajo")
+    bank_by_item_id = {
+        item["item_id"]: item
+        for item in minigame_service.get_quiz("passwords", "bajo")
+    }
 
     assert response.status_code == 200
 
-    for index, item in enumerate(session["items"]):
+    for item in session["items"]:
         assert "answer" not in item
         assert item["answer_text"] == ""
-        assert item["correct_option"] == bank[index]["answer"]
+        assert item["correct_option"] == bank_by_item_id[item["item_id"]]["answer"]
         assert isinstance(item["correct_option"], int)
 
 
@@ -321,13 +324,16 @@ def test_wordsearch_session_uses_text_answer(minigame_client):
         },
     )
     session = response.json()
-    bank = minigame_service.get_wordsearch("passwords", "bajo")
+    bank_by_item_id = {
+        item["item_id"]: item
+        for item in minigame_service.get_wordsearch("passwords", "bajo")
+    }
 
     assert response.status_code == 200
 
-    for index, item in enumerate(session["items"]):
+    for item in session["items"]:
         assert "answer" not in item
-        assert item["answer_text"] == bank[index]["answer"]
+        assert item["answer_text"] == bank_by_item_id[item["item_id"]]["answer"]
         assert item["correct_option"] == -1
 
 
@@ -342,13 +348,16 @@ def test_crossword_session_uses_text_answer(minigame_client):
         },
     )
     session = response.json()
-    bank = minigame_service.get_crossword("passwords", "bajo")
+    bank_by_item_id = {
+        item["item_id"]: item
+        for item in minigame_service.get_crossword("passwords", "bajo")
+    }
 
     assert response.status_code == 200
 
-    for index, item in enumerate(session["items"]):
+    for item in session["items"]:
         assert "answer" not in item
-        assert item["answer_text"] == bank[index]["answer"]
+        assert item["answer_text"] == bank_by_item_id[item["item_id"]]["answer"]
         assert item["correct_option"] == -1
 
 

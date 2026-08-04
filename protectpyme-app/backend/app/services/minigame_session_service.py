@@ -1,12 +1,18 @@
 import copy
 from datetime import datetime
+import logging
 import uuid
 
 from sqlalchemy.exc import IntegrityError
 
+from app.services import adaptive_selection_service
 from app.services import learning_content_service
+from app.services import concept_mastery_service
 from app.services import minigame_service
 from app.services.concept_catalog import get_concepts
+
+
+logger = logging.getLogger("protectpyme")
 
 
 class MinigameSessionNotFoundError(Exception):
@@ -37,7 +43,17 @@ def create_minigame_session(
         normalized_risk,
         normalized_minigame,
     )
-    concept_ids = _extract_concept_ids(items)
+    session_id = str(uuid.uuid4())
+    selected_items = _select_session_items(
+        db=db,
+        user_id=user_id,
+        topic=normalized_topic,
+        risk=normalized_risk,
+        minigame=normalized_minigame,
+        candidates=items,
+        session_id=session_id,
+    )
+    concept_ids = _extract_concept_ids(selected_items)
     get_concepts(concept_ids)
 
     lesson = learning_content_service.get_learning_content_for_concepts(
@@ -46,10 +62,9 @@ def create_minigame_session(
         normalized_minigame,
         concept_ids,
     )
-    session_id = str(uuid.uuid4())
     session_items = [
         _normalize_session_item(item, normalized_minigame)
-        for item in items
+        for item in selected_items
     ]
     response = {
         "session_id": session_id,
@@ -76,6 +91,42 @@ def create_minigame_session(
         )
 
     return response
+
+
+def _select_session_items(
+    db,
+    user_id,
+    topic: str,
+    risk: str,
+    minigame: str,
+    candidates: list,
+    session_id: str,
+) -> list:
+    if db is None or user_id is None:
+        return candidates
+
+    limit = adaptive_selection_service.get_session_item_limit(minigame)
+    selected_items = adaptive_selection_service.select_adaptive_items(
+        db=db,
+        user_id=user_id,
+        topic=topic,
+        risk=risk,
+        minigame=minigame,
+        candidates=candidates,
+        session_id=session_id,
+        limit=limit,
+    )
+    logger.info(
+        "Adaptive selection: user=%s topic=%s risk=%s minigame=%s "
+        "candidates=%s selected=%s",
+        user_id,
+        topic,
+        risk,
+        minigame,
+        len(candidates),
+        len(selected_items),
+    )
+    return selected_items
 
 
 def record_minigame_attempt(db, user_id: int, request) -> dict:
@@ -145,7 +196,16 @@ def complete_minigame_session(db, user_id: int, session_id: str) -> dict:
     session.completed_at = datetime.utcnow()
 
     try:
+        if attempts:
+            concept_mastery_service.update_user_mastery_from_attempts(
+                db=db,
+                user_id=user_id,
+                attempts=attempts,
+            )
         db.commit()
+    except (KeyError, ValueError) as exc:
+        db.rollback()
+        raise MinigameSessionValidationError(str(exc)) from exc
     except IntegrityError as exc:
         db.rollback()
         raise MinigameSessionConflictError(

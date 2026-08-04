@@ -1,8 +1,11 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app import schemas
 from app.database import get_db
+from app.services import concept_mastery_service
 from app.services import learning_content_service
 from app.services import minigame_service
 from app.services import minigame_session_service
@@ -138,6 +141,32 @@ def complete_minigame_session(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except minigame_session_service.MinigameSessionConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get(
+    "/mastery",
+    response_model=schemas.ConceptMasteryListResponse,
+    summary="Consultar dominio pedagogico por concepto",
+    description=(
+        "Devuelve el dominio del usuario autenticado por concepto evaluado "
+        "en minijuegos."
+    ),
+)
+def get_concept_mastery(
+    topic: Optional[str] = Query(None),
+    include_unpracticed: bool = Query(True),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        return concept_mastery_service.get_user_mastery(
+            db=db,
+            user_id=current_user.id,
+            topic=topic,
+            include_unpracticed=include_unpracticed,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/crossword")

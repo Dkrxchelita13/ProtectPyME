@@ -19,6 +19,7 @@ from sqlalchemy import (
     ForeignKey,
     TIMESTAMP,
     DateTime,
+    Float,
     UniqueConstraint,
     func
 )
@@ -283,6 +284,42 @@ class MinigameAttempt(Base):
             "item_id",
             "attempt_number",
             name="uq_minigame_attempt_session_item_number"
+        ),
+    )
+
+
+class UserConceptMastery(Base):
+    __tablename__ = "user_concept_mastery"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    concept_id = Column(String(150), nullable=False, index=True)
+    topic = Column(String(50), nullable=False)
+    alpha = Column(Float, nullable=False, default=2.0)
+    beta = Column(Float, nullable=False, default=2.0)
+    mastery_score = Column(Float, nullable=False, default=50.0)
+    attempt_count = Column(Integer, nullable=False, default=0)
+    correct_count = Column(Integer, nullable=False, default=0)
+    incorrect_count = Column(Integer, nullable=False, default=0)
+    evidence_weight = Column(Float, nullable=False, default=0.0)
+    last_practiced_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=datetime.utcnow
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "concept_id",
+            name="uq_user_concept_mastery_user_concept"
         ),
     )
 

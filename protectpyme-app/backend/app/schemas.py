@@ -360,3 +360,27 @@ class MinigameSessionSummaryResponse(BaseModel):
     total_response_time_ms: int
     started_at: datetime
     completed_at: Optional[datetime]
+
+
+class ConceptMasteryResponse(BaseModel):
+    concept_id: str
+    topic: str
+    term: str
+    mastery_score: float
+    mastery_level: str
+    attempt_count: int
+    correct_count: int
+    incorrect_count: int
+    evidence_weight: float
+    last_practiced_at: Optional[datetime]
+    updated_at: Optional[datetime]
+
+
+class ConceptMasteryListResponse(BaseModel):
+    topic_filter: Optional[str]
+    total_concepts: int
+    practiced_concepts: int
+    needs_reinforcement_count: int
+    developing_count: int
+    mastered_count: int
+    concepts: List[ConceptMasteryResponse]
