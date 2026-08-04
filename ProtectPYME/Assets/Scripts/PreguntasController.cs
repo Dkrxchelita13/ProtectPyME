@@ -43,6 +43,8 @@ public class PreguntasController : MonoBehaviour
     private bool corriendoTiempo = false;
     private bool bloqueado = false;
     private bool cambiandoPregunta = false;
+    private bool firstQuestionStarted = false;
+    private GeneradorSopa generadorSopa;
 
     private float seguridadInicial = 0f;
     private int contadorErroresPalabra = 0;
@@ -54,6 +56,7 @@ public class PreguntasController : MonoBehaviour
     {
         Time.timeScale = 1f;
         gamificacion = GetComponent<GamificacionController>();
+        generadorSopa = GetComponent<GeneradorSopa>();
 
         if (gamificacion != null)
         {
@@ -71,7 +74,7 @@ public class PreguntasController : MonoBehaviour
 
         if (TryLoadWordsearchItemsFromSession())
         {
-            MostrarPregunta();
+            StartCoroutine(StartFirstQuestionWhenGridReady());
             return;
         }
 
@@ -168,6 +171,46 @@ public class PreguntasController : MonoBehaviour
             );
     }
 
+    private IEnumerator StartFirstQuestionWhenGridReady()
+    {
+        if (firstQuestionStarted)
+        {
+            yield break;
+        }
+
+        yield return null;
+
+        if (!EnsureWordsearchGridReady())
+        {
+            if (txtPreguntaDisplay != null)
+            {
+                txtPreguntaDisplay.text = "No se pudo preparar la sopa de letras.";
+            }
+            yield break;
+        }
+
+        firstQuestionStarted = true;
+        MostrarPregunta();
+        Debug.Log("Wordsearch: primera pregunta iniciada");
+    }
+
+    private bool EnsureWordsearchGridReady()
+    {
+        if (generadorSopa == null)
+        {
+            generadorSopa = GetComponent<GeneradorSopa>();
+        }
+
+        if (generadorSopa == null)
+        {
+            Debug.LogError("Wordsearch: no se encontro GeneradorSopa.");
+            return false;
+        }
+
+        return generadorSopa.EnsureGridInitialized() &&
+            generadorSopa.IsGridReady;
+    }
+
     void OnCrosswordLoaded(string json)
     {
         indicePreguntaActual = 0;
@@ -189,7 +232,7 @@ public class PreguntasController : MonoBehaviour
                 }
             }
         }
-        MostrarPregunta();
+        StartCoroutine(StartFirstQuestionWhenGridReady());
     }
 
     void MostrarPregunta()
@@ -204,14 +247,29 @@ public class PreguntasController : MonoBehaviour
 
         if (indicePreguntaActual < bancoDePreguntas.Length)
         {
+            if (!EnsureWordsearchGridReady())
+            {
+                bloqueado = true;
+                corriendoTiempo = false;
+                Debug.LogError("Wordsearch: grid no listo; no se inicia la pregunta.");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(bancoDePreguntas[indicePreguntaActual].respuestaCorrecta))
+            {
+                bloqueado = true;
+                corriendoTiempo = false;
+                Debug.LogError("Wordsearch: respuesta vacia; no se inicia la pregunta.");
+                return;
+            }
+
             tiempoRestante = TIEMPO_MAX;
             corriendoTiempo = true;
             txtPreguntaDisplay.text = bancoDePreguntas[indicePreguntaActual].textoPregunta;
-            
-            var generador = GetComponent<GeneradorSopa>();
-            if (generador != null)
+
+            if (generadorSopa != null)
             {
-                generador.GenerarLetras(bancoDePreguntas[indicePreguntaActual].respuestaCorrecta);
+                generadorSopa.GenerarLetras(bancoDePreguntas[indicePreguntaActual].respuestaCorrecta);
             }
         }
     }

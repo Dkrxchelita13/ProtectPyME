@@ -6,6 +6,9 @@ using TMPro;
 
 public class GeneradorSopa : MonoBehaviour
 {
+    private const int GridSize = 10;
+    private const int ExpectedCellCount = GridSize * GridSize;
+
     public GameObject casillaPrefab;
     public GameObject contenedorSopa;
 
@@ -14,10 +17,67 @@ public class GeneradorSopa : MonoBehaviour
 
     private PreguntasController ctrl;
 
-    void Start()
+    public bool IsGridReady
+    {
+        get
+        {
+            return todasLasCasillas != null &&
+                todasLasCasillas.Count == ExpectedCellCount;
+        }
+    }
+
+    void Awake()
     {
         ctrl = GetComponent<PreguntasController>();
+    }
+
+    void Start()
+    {
+        EnsureGridInitialized();
+    }
+
+    public bool EnsureGridInitialized()
+    {
+        if (IsGridReady)
+        {
+            Debug.Log(
+                "GeneradorSopa: grid listo con "
+                + todasLasCasillas.Count
+                + " celdas"
+            );
+            return true;
+        }
+
+        if (casillaPrefab == null || contenedorSopa == null)
+        {
+            Debug.LogError("GeneradorSopa: faltan referencias para crear el grid.");
+            return false;
+        }
+
         CrearSopa();
+
+        if (!IsGridReady)
+        {
+            Debug.LogError(
+                "GeneradorSopa: grid incompleto. Celdas="
+                + GetCellCount()
+                + ", esperadas="
+                + ExpectedCellCount
+            );
+            return false;
+        }
+
+        Debug.Log(
+            "GeneradorSopa: grid listo con "
+            + todasLasCasillas.Count
+            + " celdas"
+        );
+        return true;
+    }
+
+    private int GetCellCount()
+    {
+        return todasLasCasillas != null ? todasLasCasillas.Count : 0;
     }
 
     void CrearSopa()
@@ -38,7 +98,7 @@ public class GeneradorSopa : MonoBehaviour
         }
 
         // 🔥 crear nuevas casillas
-        for (int i = 0; i < 100; i++)
+        for (int i = 0; i < ExpectedCellCount; i++)
         {
             GameObject nuevaCasilla = Instantiate(casillaPrefab, contenedorSopa.transform);
 
@@ -51,8 +111,8 @@ public class GeneradorSopa : MonoBehaviour
 
             var casilla = nuevaCasilla.GetComponent<CasillaController>();
 
-            int fila = i / 10;
-            int columna = i % 10;
+            int fila = i / GridSize;
+            int columna = i % GridSize;
 
             casilla.fila = fila;
             casilla.columna = columna;
@@ -65,7 +125,39 @@ public class GeneradorSopa : MonoBehaviour
     }
     public void GenerarLetras(string palabra)
     {
+        if (string.IsNullOrEmpty(palabra))
+        {
+            Debug.LogError("GeneradorSopa: palabra vacia.");
+            return;
+        }
+
         palabra = palabra.Trim().ToUpper();
+
+        if (string.IsNullOrEmpty(palabra))
+        {
+            Debug.LogError("GeneradorSopa: palabra vacia.");
+            return;
+        }
+
+        if (!EnsureGridInitialized())
+        {
+            Debug.LogError(
+                "GeneradorSopa: grid incompleto. Celdas="
+                + GetCellCount()
+                + ", esperadas="
+                + ExpectedCellCount
+            );
+            return;
+        }
+
+        if (palabra.Length > GridSize)
+        {
+            Debug.LogError(
+                "GeneradorSopa: la palabra no cabe en el grid. Largo="
+                + palabra.Length
+            );
+            return;
+        }
 
         // Llenar con letras aleatorias
         foreach (var c in todasLasCasillas)
@@ -77,11 +169,22 @@ public class GeneradorSopa : MonoBehaviour
         }
 
         // Colocar palabra horizontal
-        int fila = Random.Range(0, 10);
-        int col = Random.Range(0, Mathf.Max(1, 10 - palabra.Length + 1));
+        int fila = Random.Range(0, GridSize);
+        int col = Random.Range(0, Mathf.Max(1, GridSize - palabra.Length + 1));
         for (int i = 0; i < palabra.Length; i++)
         {
-            int index = (fila * 10) + col + i;
+            int index = (fila * GridSize) + col + i;
+
+            if (index < 0 || index >= todasLasCasillas.Count)
+            {
+                Debug.LogError(
+                    "GeneradorSopa: indice fuera de rango. Index="
+                    + index
+                    + ", celdas="
+                    + todasLasCasillas.Count
+                );
+                return;
+            }
 
             todasLasCasillas[index].letraDeEsteBoton = palabra[i].ToString();
             todasLasCasillas[index].miTexto.text = palabra[i].ToString();

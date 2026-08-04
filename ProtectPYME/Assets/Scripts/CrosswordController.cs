@@ -60,6 +60,7 @@ public class CrosswordController : MonoBehaviour
     // ➕ AGREGADO: Referencia al controlador de gamificación
     private GamificacionController gamificacion;
     private HashSet<CrosswordWordData> palabrasPuntuadas = new HashSet<CrosswordWordData>();
+    private bool crosswordInitialized = false;
 
     void Start()
     {
@@ -88,23 +89,14 @@ public class CrosswordController : MonoBehaviour
             }
         }
 
-        if (TryLoadCrosswordItemsFromSession())
-        {
-            return;
-        }
-
-        Debug.Log("Crossword: usando endpoint legacy");
-
-        // ➕ MODIFICADO: Usar los parámetros de AIState igual que en Sopa de Letras
-        string token = APIManager.Instance.GetToken();
-        if (string.IsNullOrEmpty(token)) return;
-
-        StartCoroutine(APIManager.Instance.GetCrossword(AIState.RecommendedTraining, AIState.RiskLevel, OnData));
+        StartCoroutine(InitializeCrosswordFlow());
     }
 
     void Update()
     {
         if (juegoTerminado) return;
+
+        if (!crosswordInitialized) return;
 
         if (gamificacion != null && gamificacion.ObtenerVidas() <= 0)
         {
@@ -156,6 +148,50 @@ public class CrosswordController : MonoBehaviour
         }
     }
 
+    private IEnumerator InitializeCrosswordFlow()
+    {
+        if (TryLoadCrosswordItemsFromSession())
+        {
+            yield break;
+        }
+
+        Debug.Log("Crossword: usando endpoint legacy");
+
+        if (APIManager.Instance == null)
+        {
+            Debug.LogError("Crossword: APIManager no disponible para endpoint legacy.");
+            yield break;
+        }
+
+        string token = APIManager.Instance.GetToken();
+        if (string.IsNullOrEmpty(token))
+        {
+            Debug.LogError("Crossword: no hay token para endpoint legacy.");
+            yield break;
+        }
+
+        bool legacyCompleted = false;
+        string legacyJson = "";
+
+        StartCoroutine(APIManager.Instance.GetCrossword(
+            AIState.RecommendedTraining,
+            AIState.RiskLevel,
+            (json) =>
+            {
+                legacyJson = json;
+                legacyCompleted = true;
+            }
+        ));
+
+        while (!legacyCompleted)
+        {
+            yield return null;
+        }
+
+        Debug.Log("Crossword: datos legacy recibidos");
+        OnData(legacyJson);
+    }
+
     private bool TryLoadCrosswordItemsFromSession()
     {
         if (MinigameLessonState.Session != null &&
@@ -190,9 +226,7 @@ public class CrosswordController : MonoBehaviour
             + MinigameLessonState.SessionId
         );
 
-        model = generator.Generate(sessionWords);
-        ShowClues();
-        CreateGrid();
+        InitializeGameFromWords(sessionWords);
         return true;
     }
 
@@ -266,10 +300,35 @@ public class CrosswordController : MonoBehaviour
             Debug.Log("➡️ " + w.clue + " | " + w.answer);
         }
 
+        InitializeGameFromWords(words);
+    }
+
+    private void InitializeGameFromWords(List<CrosswordWordData> words)
+    {
+        if (crosswordInitialized)
+        {
+            Debug.LogWarning("Crossword: inicializacion duplicada ignorada.");
+            return;
+        }
+
+        if (words == null || words.Count == 0)
+        {
+            Debug.LogError("Crossword: no hay palabras validas para inicializar.");
+            return;
+        }
+
         model = generator.Generate(words);
+
+        if (model == null || model.words == null || model.words.Count == 0)
+        {
+            Debug.LogError("Crossword: el generador no produjo un modelo valido.");
+            return;
+        }
 
         ShowClues();
         CreateGrid();
+        crosswordInitialized = true;
+        Debug.Log("Crossword: inicializado con " + words.Count + " palabras");
     }
 
     void CreateGrid()
