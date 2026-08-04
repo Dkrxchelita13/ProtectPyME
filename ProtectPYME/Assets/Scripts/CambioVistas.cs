@@ -70,8 +70,12 @@ public class CambioVistas : MonoBehaviour
             yield break;
         }
 
-        scrollRect.horizontal = false;
+        scrollRect.horizontal = true;
         scrollRect.vertical = true;
+        scrollRect.movementType = ScrollRect.MovementType.Clamped;
+        scrollRect.inertia = true;
+        scrollRect.decelerationRate = 0.12f;
+        scrollRect.scrollSensitivity = 30f;
         scrollRect.StopMovement();
         scrollRect.horizontalNormalizedPosition = 0f;
         scrollRect.verticalNormalizedPosition = 1f;

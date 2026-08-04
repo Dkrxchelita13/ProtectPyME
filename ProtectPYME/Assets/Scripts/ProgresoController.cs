@@ -57,7 +57,8 @@ public class ProgresoController : MonoBehaviour
     private Button botonPracticar;
     private Coroutine progressLayoutCoroutine;
     private bool progressLayoutRebuildPending;
-    private const float ProgressContentHorizontalPadding = 0f;
+    private bool progressScrollInitialized;
+    private bool autoScenarioLaunchInProgress;
 
 
 
@@ -261,16 +262,6 @@ public class ProgresoController : MonoBehaviour
         );
 
 
-
-        if (DebeMostrarResultadoDiagnostico())
-
-        {
-
-            ShowSurveyDiagnosticResult();
-
-        }
-
-        AIState.SurveyResultPending = false;
 
         SetPracticeButtonLoadingState();
 
@@ -1337,6 +1328,16 @@ public class ProgresoController : MonoBehaviour
 
         }
 
+        if (recommendationReady && AIState.SurveyResultPending)
+
+        {
+
+            TryLaunchSurveyRecommendedScenario();
+
+            return;
+
+        }
+
 
 
         Debug.Log(
@@ -1407,6 +1408,11 @@ public class ProgresoController : MonoBehaviour
         }
 
         RectTransform contentRect = scrollRect.content;
+        bool resetScrollPosition = !progressScrollInitialized;
+        float previousHorizontalPosition =
+            resetScrollPosition ? 0f : scrollRect.horizontalNormalizedPosition;
+        float previousVerticalPosition =
+            resetScrollPosition ? 1f : scrollRect.verticalNormalizedPosition;
         RectTransform resultadosRect = ResolveResultsContainer();
         RectTransform contenidoBtnRect = ResolveButtonContainer();
         RectTransform contenidoIARect =
@@ -1424,7 +1430,10 @@ public class ProgresoController : MonoBehaviour
             contentRect,
             resultadosRect,
             contenidoIARect,
-            contenidoBtnRect
+            contenidoBtnRect,
+            resetScrollPosition,
+            previousHorizontalPosition,
+            previousVerticalPosition
         );
 
         yield return null;
@@ -1440,8 +1449,13 @@ public class ProgresoController : MonoBehaviour
             contentRect,
             resultadosRect,
             contenidoIARect,
-            contenidoBtnRect
+            contenidoBtnRect,
+            resetScrollPosition,
+            previousHorizontalPosition,
+            previousVerticalPosition
         );
+
+        progressScrollInitialized = true;
 
         Debug.Log(
             $"MiPerfil layout: content={GetRectHeight(contentRect)} "
@@ -1458,7 +1472,10 @@ public class ProgresoController : MonoBehaviour
         RectTransform contentRect,
         RectTransform resultadosRect,
         RectTransform contenidoIARect,
-        RectTransform contenidoBtnRect
+        RectTransform contenidoBtnRect,
+        bool resetScrollPosition,
+        float horizontalPosition,
+        float verticalPosition
     )
     {
         ConfigureProgressScrollRect(scrollRect, contentRect);
@@ -1482,10 +1499,13 @@ public class ProgresoController : MonoBehaviour
 
         Canvas.ForceUpdateCanvases();
 
+        RecalculateProgressContentSize(scrollRect, contentRect);
         LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
         scrollRect.StopMovement();
-        scrollRect.horizontalNormalizedPosition = 0f;
-        scrollRect.verticalNormalizedPosition = 1f;
+        scrollRect.horizontalNormalizedPosition =
+            resetScrollPosition ? 0f : Mathf.Clamp01(horizontalPosition);
+        scrollRect.verticalNormalizedPosition =
+            resetScrollPosition ? 1f : Mathf.Clamp01(verticalPosition);
     }
 
     private void ConfigureProgressScrollRect(
@@ -1498,19 +1518,212 @@ public class ProgresoController : MonoBehaviour
             return;
         }
 
-        scrollRect.horizontal = false;
+        scrollRect.horizontal = true;
         scrollRect.vertical = true;
+        scrollRect.movementType = ScrollRect.MovementType.Clamped;
+        scrollRect.inertia = true;
+        scrollRect.decelerationRate = 0.12f;
+        scrollRect.scrollSensitivity = 30f;
 
-        contentRect.anchorMin = new Vector2(0f, contentRect.anchorMin.y);
-        contentRect.anchorMax = new Vector2(1f, contentRect.anchorMax.y);
-        contentRect.pivot = new Vector2(0.5f, contentRect.pivot.y);
+        EnsureHorizontalScrollbar(scrollRect);
+
+        contentRect.anchorMin = new Vector2(0f, 1f);
+        contentRect.anchorMax = new Vector2(0f, 1f);
+        contentRect.pivot = new Vector2(0f, 1f);
         contentRect.anchoredPosition =
             new Vector2(0f, contentRect.anchoredPosition.y);
-        contentRect.offsetMin =
-            new Vector2(ProgressContentHorizontalPadding, contentRect.offsetMin.y);
-        contentRect.offsetMax =
-            new Vector2(-ProgressContentHorizontalPadding, contentRect.offsetMax.y);
-        contentRect.sizeDelta = new Vector2(0f, contentRect.sizeDelta.y);
+    }
+
+    private void EnsureHorizontalScrollbar(ScrollRect scrollRect)
+    {
+        if (scrollRect == null)
+        {
+            return;
+        }
+
+        Scrollbar horizontalScrollbar =
+            scrollRect.horizontalScrollbar != null
+                ? scrollRect.horizontalScrollbar
+                : FindProgressHorizontalScrollbar(scrollRect);
+
+        if (horizontalScrollbar == null && scrollRect.verticalScrollbar != null)
+        {
+            GameObject scrollbarObject = Instantiate(
+                scrollRect.verticalScrollbar.gameObject,
+                scrollRect.transform
+            );
+            scrollbarObject.name = "MiProgresoHorizontalScrollbar";
+            horizontalScrollbar = scrollbarObject.GetComponent<Scrollbar>();
+        }
+
+        if (horizontalScrollbar == null)
+        {
+            return;
+        }
+
+        RectTransform scrollbarRect =
+            horizontalScrollbar.transform as RectTransform;
+
+        if (scrollbarRect != null)
+        {
+            scrollbarRect.SetParent(scrollRect.transform, false);
+            scrollbarRect.anchorMin = new Vector2(0f, 0f);
+            scrollbarRect.anchorMax = new Vector2(1f, 0f);
+            scrollbarRect.pivot = new Vector2(0.5f, 0f);
+            scrollbarRect.anchoredPosition = Vector2.zero;
+            scrollbarRect.sizeDelta = new Vector2(0f, GetScrollbarThickness(horizontalScrollbar));
+        }
+
+        horizontalScrollbar.direction = Scrollbar.Direction.LeftToRight;
+        scrollRect.horizontalScrollbar = horizontalScrollbar;
+        scrollRect.horizontalScrollbarVisibility =
+            ScrollRect.ScrollbarVisibility.AutoHideAndExpandViewport;
+        scrollRect.verticalScrollbarVisibility =
+            ScrollRect.ScrollbarVisibility.AutoHideAndExpandViewport;
+    }
+
+    private Scrollbar FindProgressHorizontalScrollbar(ScrollRect scrollRect)
+    {
+        Transform found = scrollRect.transform.Find("MiProgresoHorizontalScrollbar");
+
+        return found != null ? found.GetComponent<Scrollbar>() : null;
+    }
+
+    private float GetScrollbarThickness(Scrollbar scrollbar)
+    {
+        RectTransform scrollbarRect =
+            scrollbar != null ? scrollbar.transform as RectTransform : null;
+
+        if (scrollbarRect == null)
+        {
+            return 0f;
+        }
+
+        return Mathf.Max(
+            0f,
+            Mathf.Min(scrollbarRect.rect.width, scrollbarRect.rect.height)
+        );
+    }
+
+    private void RecalculateProgressContentSize(
+        ScrollRect scrollRect,
+        RectTransform contentRect
+    )
+    {
+        if (scrollRect == null || contentRect == null)
+        {
+            return;
+        }
+
+        RectTransform viewportRect = scrollRect.viewport != null
+            ? scrollRect.viewport
+            : scrollRect.transform as RectTransform;
+
+        float viewportWidth =
+            viewportRect != null ? Mathf.Max(0f, viewportRect.rect.width) : 0f;
+        float viewportHeight =
+            viewportRect != null ? Mathf.Max(0f, viewportRect.rect.height) : 0f;
+
+        Bounds childBounds =
+            RectTransformUtility.CalculateRelativeRectTransformBounds(contentRect);
+
+        float requiredWidth = Mathf.Max(
+            viewportWidth,
+            LayoutUtility.GetPreferredWidth(contentRect),
+            GetRightEdgeWidth(childBounds, contentRect),
+            GetPreferredChildrenRightEdge(contentRect)
+        );
+
+        float requiredHeight = Mathf.Max(
+            viewportHeight,
+            LayoutUtility.GetPreferredHeight(contentRect),
+            GetBoundsHeight(childBounds),
+            contentRect.rect.height
+        );
+
+        contentRect.SetSizeWithCurrentAnchors(
+            RectTransform.Axis.Horizontal,
+            requiredWidth
+        );
+        contentRect.SetSizeWithCurrentAnchors(
+            RectTransform.Axis.Vertical,
+            requiredHeight
+        );
+    }
+
+    private float GetRightEdgeWidth(Bounds bounds, RectTransform contentRect)
+    {
+        float rightPadding = 0f;
+        HorizontalOrVerticalLayoutGroup layoutGroup =
+            contentRect != null
+                ? contentRect.GetComponent<HorizontalOrVerticalLayoutGroup>()
+                : null;
+
+        if (layoutGroup != null)
+        {
+            rightPadding = layoutGroup.padding.right;
+        }
+
+        return Mathf.Max(0f, bounds.max.x) + rightPadding;
+    }
+
+    private float GetPreferredChildrenRightEdge(RectTransform contentRect)
+    {
+        if (contentRect == null)
+        {
+            return 0f;
+        }
+
+        float rightEdge = 0f;
+
+        for (int i = 0; i < contentRect.childCount; i++)
+        {
+            RectTransform child = contentRect.GetChild(i) as RectTransform;
+            rightEdge = Mathf.Max(
+                rightEdge,
+                GetPreferredRightEdgeRecursive(contentRect, child)
+            );
+        }
+
+        return rightEdge;
+    }
+
+    private float GetPreferredRightEdgeRecursive(
+        RectTransform contentRect,
+        RectTransform child
+    )
+    {
+        if (contentRect == null ||
+            child == null ||
+            !child.gameObject.activeInHierarchy)
+        {
+            return 0f;
+        }
+
+        Bounds bounds =
+            RectTransformUtility.CalculateRelativeRectTransformBounds(
+                contentRect,
+                child
+            );
+        float preferredWidth =
+            Mathf.Max(child.rect.width, LayoutUtility.GetPreferredWidth(child));
+        float rightEdge = bounds.min.x + preferredWidth;
+
+        for (int i = 0; i < child.childCount; i++)
+        {
+            RectTransform grandchild = child.GetChild(i) as RectTransform;
+            rightEdge = Mathf.Max(
+                rightEdge,
+                GetPreferredRightEdgeRecursive(contentRect, grandchild)
+            );
+        }
+
+        return Mathf.Max(0f, rightEdge);
+    }
+
+    private float GetBoundsHeight(Bounds bounds)
+    {
+        return Mathf.Max(0f, bounds.size.y);
     }
 
     private void FinishProgressLayoutRebuild()
@@ -1946,31 +2159,68 @@ public class ProgresoController : MonoBehaviour
 
 
 
-        switch (recommendedScenario)
+        OpenRecommendedScenario(recommendedScenario);
+
+    }
+
+    private void TryLaunchSurveyRecommendedScenario()
+
+    {
+
+        if (autoScenarioLaunchInProgress ||
+            !AIState.SurveyResultPending ||
+            !recommendationReady ||
+            !AIState.IsValidPracticeScenario(recommendedScenario))
+
+        {
+
+            return;
+
+        }
+
+        autoScenarioLaunchInProgress = true;
+        AIState.SurveyResultPending = false;
+        SetPracticeButtonInteractable(false);
+
+        if (txtEscenarioSugerido != null)
+
+        {
+
+            txtEscenarioSugerido.text = "ABRIENDO...";
+
+        }
+
+        ScheduleProgressLayoutRebuild();
+        OpenRecommendedScenario(recommendedScenario);
+
+    }
+
+    private bool OpenRecommendedScenario(int scenarioId)
+
+    {
+
+        switch (scenarioId)
 
         {
 
             case 1:
 
                 SceneManager.LoadScene("Escenario");
-
-                break;
+                return true;
 
 
 
             case 2:
 
                 SceneManager.LoadScene("Escenario2_Acceso");
-
-                break;
+                return true;
 
 
 
             case 3:
 
                 SceneManager.LoadScene("Escenario 3 (USB sospechoso)");
-
-                break;
+                return true;
 
 
 
@@ -1982,7 +2232,7 @@ public class ProgresoController : MonoBehaviour
 
                 );
 
-                break;
+                return false;
 
         }
 
