@@ -1,6 +1,8 @@
 import copy
 import logging
 
+from app.services.concept_catalog import get_concepts
+
 
 logger = logging.getLogger("protectpyme")
 
@@ -960,6 +962,139 @@ MINIGAME_SUPPLEMENTS = {
 
 
 LEARNING_CONTENT = BASE_CONTENT
+
+
+def get_learning_content_for_concepts(
+    topic: str,
+    risk: str,
+    minigame: str,
+    concept_ids: list,
+) -> dict:
+    normalized_minigame = normalize_minigame(minigame)
+    concepts = get_concepts(concept_ids)
+
+    if not concepts:
+        raise ValueError("At least one concept_id is required.")
+
+    for concept in concepts:
+        if concept["topic"] != topic:
+            raise ValueError(
+                f"Concept {concept['concept_id']} does not belong to topic {topic}."
+            )
+
+    if topic not in BASE_CONTENT or risk not in BASE_CONTENT[topic]:
+        raise ValueError(f"Unsupported topic/risk combination: {topic}/{risk}.")
+
+    lesson = copy.deepcopy(BASE_CONTENT[topic][risk])
+    concept_terms = [concept["term"] for concept in concepts]
+    concept_summary = ", ".join(concept_terms)
+
+    lesson["explanation"] = (
+        f"Esta microleccion prepara exactamente los conceptos que evaluara el "
+        f"{_minigame_label(normalized_minigame)}: {concept_summary}. "
+        f"{_build_concept_relation(concepts)}"
+    )
+    lesson["key_concepts"] = [
+        _lesson_concept_from_catalog(concept, normalized_minigame)
+        for concept in concepts
+    ]
+    lesson["practical_example"] = _build_catalog_practical_example(concepts)
+    lesson["common_mistake"] = _build_catalog_common_mistake(concepts)
+    lesson["quick_check"] = _build_catalog_quick_check(concepts)
+    lesson["visual_key"] = (
+        f"{topic}_{risk}_{normalized_minigame}_session_concepts"
+    )
+    lesson["topic"] = topic
+    lesson["risk"] = risk
+    lesson["minigame"] = normalized_minigame
+
+    return lesson
+
+
+def _minigame_label(minigame: str) -> str:
+    labels = {
+        "quiz": "quiz",
+        "wordsearch": "sopa de letras",
+        "crossword": "crucigrama",
+    }
+    return labels[minigame]
+
+
+def _build_concept_relation(concepts: list) -> str:
+    if len(concepts) == 1:
+        return (
+            "El objetivo es reconocer el concepto, entender para que sirve y "
+            "aplicarlo en una situacion real de trabajo."
+        )
+
+    terms = ", ".join(concept["term"] for concept in concepts)
+    return (
+        f"Estos conceptos se estudian juntos porque las pistas o preguntas "
+        f"pueden diferenciarlos por su funcion: {terms}."
+    )
+
+
+def _lesson_concept_from_catalog(concept: dict, minigame: str) -> dict:
+    note = MINIGAME_CONCEPT_NOTES[minigame]
+    return {
+        "term": concept["term"],
+        "definition": concept["definition"],
+        "why_it_matters": f"{concept['explanation']} {note}",
+        "example": (
+            f"{concept['practical_example']} "
+            f"Pista de reconocimiento: {concept['recognition_clue']} "
+            f"Error frecuente: {concept['common_mistake']}"
+        ),
+    }
+
+
+def _build_catalog_practical_example(concepts: list) -> dict:
+    steps = [
+        f"{concept['term']}: {concept['practical_example']}"
+        for concept in concepts[:4]
+    ]
+
+    while len(steps) < 3:
+        steps.append(
+            "Relaciona cada pista con el significado del concepto antes de responder."
+        )
+
+    return {
+        "title": "Aplicar los conceptos seleccionados en una PYME",
+        "steps": steps,
+    }
+
+
+def _build_catalog_common_mistake(concepts: list) -> dict:
+    mistakes = [
+        f"{concept['term']}: {concept['common_mistake']}"
+        for concept in concepts
+    ]
+
+    return {
+        "title": "Errores frecuentes al reconocer estos conceptos",
+        "explanation": " ".join(mistakes),
+    }
+
+
+def _build_catalog_quick_check(concepts: list) -> dict:
+    concept = concepts[0]
+    return {
+        "question": (
+            f"Si la pista dice: '{concept['recognition_clue']}', "
+            "que concepto debes reconocer?"
+        ),
+        "options": [
+            concept["term"],
+            "Una accion no relacionada",
+            "Un dato sin verificar",
+        ],
+        "correct_option": 0,
+        "explanation": (
+            f"La pista corresponde a {concept['term']}: "
+            f"{concept['definition']}"
+        ),
+    }
 
 
 def get_learning_content(topic: str, risk: str, minigame: str) -> dict:

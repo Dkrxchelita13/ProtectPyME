@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app import schemas
 from app.services import learning_content_service
 from app.services import minigame_service
+from app.services import minigame_session_service
 from app.routes.auth import get_current_user
 
 router = APIRouter(prefix="/minigames", tags=["Minigames"])
@@ -45,6 +46,31 @@ def get_lesson(
         normalized_risk,
         normalized_minigame
     )
+
+
+@router.post(
+    "/session",
+    response_model=schemas.MinigameSessionResponse,
+    summary="Crear sesion pedagogica de minijuego",
+    description=(
+        "Selecciona los items del minijuego y construye la microleccion "
+        "con los concept_id exactos evaluados en esa sesion."
+    ),
+)
+def create_minigame_session(
+    request: schemas.MinigameSessionRequest,
+    current_user=Depends(get_current_user)
+):
+    try:
+        return minigame_session_service.create_minigame_session(
+            topic=request.topic,
+            risk=request.risk,
+            minigame=request.minigame,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.get("/crossword")

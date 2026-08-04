@@ -722,6 +722,154 @@ WORDSEARCH = {
 # SERVICE FUNCTIONS
 # ============================================================
 
+ANSWER_CONCEPT_IDS = {
+    "PHISHING": ["phishing.phishing"],
+    "REPORTAR": ["phishing.reportar"],
+    "ENLACE": ["phishing.enlace"],
+    "DOMINIO": ["phishing.dominio"],
+    "URL": ["phishing.url"],
+    "SPAM": ["phishing.spam"],
+    "DMARC": ["phishing.dmarc"],
+    "SPF": ["phishing.spf"],
+    "DKIM": ["phishing.dkim"],
+    "PASSWORD": ["passwords.password"],
+    "SECRETO": ["passwords.secreto"],
+    "LARGA": ["passwords.larga"],
+    "MFA": ["passwords.mfa"],
+    "GESTOR": ["passwords.gestor"],
+    "PASSPHRASE": ["passwords.passphrase"],
+    "SALT": ["passwords.salt"],
+    "HASH": ["passwords.hash"],
+    "ARGON2ID": ["passwords.argon2id"],
+    "MALWARE": ["malware.malware"],
+    "VIRUS": ["malware.virus"],
+    "ANTIVIRUS": ["malware.antivirus"],
+    "USB": ["malware.usb"],
+    "RANSOMWARE": ["malware.ransomware"],
+    "SPYWARE": ["malware.spyware"],
+    "BOTNET": ["malware.botnet"],
+    "ROOTKIT": ["malware.rootkit"],
+    "SANDBOX": ["malware.sandbox"],
+    "PERSISTENCIA": ["malware.persistencia"],
+    "WIFI": ["wifi.wifi_publica"],
+    "VPN": ["wifi.vpn"],
+    "HTTPS": ["wifi.https"],
+    "SSID": ["wifi.ssid"],
+    "HOTSPOT": ["wifi.hotspot"],
+    "WPA2": ["wifi.wpa2"],
+    "EVILTWIN": ["wifi.evil_twin"],
+    "ROGUEAP": ["wifi.rogue_ap"],
+    "WPA3": ["wifi.wpa3"],
+}
+
+
+QUIZ_CONCEPT_IDS = {
+    "phishing": {
+        "alto": [
+            ["phishing.phishing"],
+            ["phishing.reportar"],
+        ],
+        "medio": [
+            ["phishing.dominio"],
+            ["phishing.enlace", "phishing.url"],
+        ],
+        "bajo": [
+            ["phishing.dmarc", "phishing.spf", "phishing.dkim"],
+            ["phishing.spear_phishing"],
+        ],
+    },
+    "passwords": {
+        "alto": [
+            ["passwords.password", "passwords.larga"],
+            ["passwords.reutilizacion"],
+        ],
+        "medio": [
+            ["passwords.mfa"],
+            ["passwords.gestor"],
+        ],
+        "bajo": [
+            ["passwords.salt", "passwords.hash"],
+            ["passwords.password_spraying"],
+        ],
+    },
+    "malware": {
+        "alto": [
+            ["malware.malware"],
+            ["malware.usb"],
+        ],
+        "medio": [
+            ["malware.ransomware"],
+            ["malware.spyware"],
+        ],
+        "bajo": [
+            ["malware.rootkit"],
+            ["malware.sandbox"],
+        ],
+    },
+    "wifi": {
+        "alto": [
+            ["wifi.wifi_publica"],
+            ["wifi.datos_sensibles"],
+        ],
+        "medio": [
+            ["wifi.vpn"],
+            ["wifi.hotspot"],
+        ],
+        "bajo": [
+            ["wifi.evil_twin"],
+            ["wifi.wpa3"],
+        ],
+    },
+}
+
+
+def _slug(value):
+    return "".join(
+        character.lower()
+        for character in str(value)
+        if character.isalnum()
+    )
+
+
+def _set_concept_metadata(item, concept_ids):
+    if len(concept_ids) == 1:
+        item["concept_id"] = concept_ids[0]
+        item.pop("concept_ids", None)
+    else:
+        item["concept_ids"] = list(concept_ids)
+        item.pop("concept_id", None)
+
+
+def _annotate_quiz_bank():
+    for topic, risks in QUIZ.items():
+        for risk, items in risks.items():
+            for index, item in enumerate(items):
+                concept_ids = QUIZ_CONCEPT_IDS[topic][risk][index]
+                item["item_id"] = f"{topic}_{risk}_quiz_{index + 1}"
+                item["difficulty"] = risk
+                _set_concept_metadata(item, concept_ids)
+
+
+def _annotate_word_bank(bank, minigame):
+    for topic, risks in bank.items():
+        for risk, items in risks.items():
+            for item in items:
+                answer = item["answer"]
+                concept_ids = ANSWER_CONCEPT_IDS[answer]
+                item["item_id"] = f"{topic}_{risk}_{minigame}_{_slug(answer)}"
+                item["difficulty"] = risk
+                _set_concept_metadata(item, concept_ids)
+
+
+def _annotate_banks():
+    _annotate_quiz_bank()
+    _annotate_word_bank(CROSSWORD, "crossword")
+    _annotate_word_bank(WORDSEARCH, "wordsearch")
+
+
+_annotate_banks()
+
+
 def get_quiz(topic, risk):
     topic = normalize_topic(topic)
     risk = normalize_risk(risk)

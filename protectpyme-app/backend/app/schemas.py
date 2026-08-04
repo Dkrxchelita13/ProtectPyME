@@ -65,7 +65,7 @@ class Score(ScoreBase):
         from_attributes = True
  """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 from pydantic import BaseModel, EmailStr
 from typing import Literal
 
@@ -283,3 +283,28 @@ class MinigameLessonResponse(BaseModel):
     common_mistake: LessonCommonMistake
     quick_check: LessonQuickCheck
     visual_key: str
+
+
+class MinigameSessionRequest(BaseModel):
+    topic: Literal["phishing", "passwords", "malware", "wifi"]
+    risk: Literal["alto", "medio", "bajo"]
+    minigame: Literal["quiz", "wordsearch", "crossword"]
+
+
+class MinigameSessionItem(BaseModel):
+    item_id: str
+    concept_ids: List[str]
+    difficulty: Literal["alto", "medio", "bajo"]
+    answer: Union[int, str]
+    question: Optional[str] = None
+    options: Optional[List[str]] = None
+    clue: Optional[str] = None
+
+
+class MinigameSessionResponse(BaseModel):
+    session_id: str
+    topic: str
+    risk: str
+    minigame: str
+    lesson: MinigameLessonResponse
+    items: List[MinigameSessionItem]

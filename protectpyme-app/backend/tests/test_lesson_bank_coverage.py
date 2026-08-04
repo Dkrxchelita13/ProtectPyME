@@ -4,6 +4,7 @@ import unicodedata
 import pytest
 
 from app.services import learning_content_service, minigame_service
+from app.services.concept_catalog import CONCEPT_CATALOG
 
 
 TOPICS = ("phishing", "passwords", "malware", "wifi")
@@ -76,6 +77,94 @@ def is_answer_covered(answer, terms):
 
     alias = PEDAGOGICAL_ALIASES.get(normalized_answer)
     return alias in terms if alias else False
+
+
+def all_bank_items():
+    banks = {
+        "quiz": minigame_service.QUIZ,
+        "wordsearch": minigame_service.WORDSEARCH,
+        "crossword": minigame_service.CROSSWORD,
+    }
+
+    for minigame, bank in banks.items():
+        for topic, risks in bank.items():
+            for risk, items in risks.items():
+                for item in items:
+                    yield minigame, topic, risk, item
+
+
+def item_concept_ids(item):
+    if "concept_ids" in item:
+        return list(item["concept_ids"])
+    if "concept_id" in item:
+        return [item["concept_id"]]
+    return []
+
+
+def test_all_minigame_items_have_unique_item_id():
+    item_ids = [
+        item.get("item_id")
+        for _, _, _, item in all_bank_items()
+    ]
+
+    assert all(item_ids)
+    assert len(item_ids) == len(set(item_ids))
+
+
+def test_all_minigame_items_have_concept_ids():
+    missing = [
+        item.get("item_id", item)
+        for _, _, _, item in all_bank_items()
+        if not item_concept_ids(item)
+    ]
+
+    assert not missing
+
+
+def test_all_item_concept_ids_exist_in_catalog():
+    missing = []
+
+    for _, _, _, item in all_bank_items():
+        for concept_id in item_concept_ids(item):
+            if concept_id not in CONCEPT_CATALOG:
+                missing.append((item["item_id"], concept_id))
+
+    assert not missing
+
+
+def test_item_difficulty_matches_bank_risk():
+    mismatches = [
+        (item["item_id"], risk, item.get("difficulty"))
+        for _, _, risk, item in all_bank_items()
+        if item.get("difficulty") != risk
+    ]
+
+    assert not mismatches
+
+
+def test_passwords_bajo_puzzles_reference_argon2id():
+    for minigame, getter in (
+        ("wordsearch", minigame_service.get_wordsearch),
+        ("crossword", minigame_service.get_crossword),
+    ):
+        concepts = {
+            concept_id
+            for item in getter("passwords", "bajo")
+            for concept_id in item_concept_ids(item)
+        }
+
+        assert "passwords.argon2id" in concepts, minigame
+
+
+def test_no_item_uses_legacy_argon_concept():
+    legacy = [
+        item["item_id"]
+        for _, _, _, item in all_bank_items()
+        for concept_id in item_concept_ids(item)
+        if concept_id == "passwords.argon"
+    ]
+
+    assert not legacy
 
 
 @pytest.mark.parametrize("minigame", ("wordsearch", "crossword"))
