@@ -23,6 +23,10 @@ public class APIManager : MonoBehaviour
         new HashSet<string>();
     private readonly HashSet<string> completedSessionIds =
         new HashSet<string>();
+    private readonly HashSet<string> feedbackRequestsInProgress =
+        new HashSet<string>();
+    private readonly HashSet<string> feedbackLoadedSessionIds =
+        new HashSet<string>();
 
 
 
@@ -732,6 +736,149 @@ public class APIManager : MonoBehaviour
             completedSessionIds.Add(sessionId);
             MinigameLessonState.SetLastSummary(parsedResponse);
             onSuccess?.Invoke(parsedResponse);
+
+            if (ShouldFetchFeedbackForSession(sessionId))
+            {
+                StartCoroutine(
+                    GetMinigameSessionFeedback(
+                        sessionId,
+                        (feedback) =>
+                        {
+                            Debug.Log(
+                                "Feedback recibido id=" +
+                                feedback.session_id +
+                                " level=" +
+                                feedback.performance_level +
+                                " recommended=" +
+                                feedback.recommended_minigame
+                            );
+                        },
+                        (message) =>
+                        {
+                            Debug.LogWarning(
+                                "Feedback no disponible id=" +
+                                sessionId +
+                                ": " +
+                                message
+                            );
+                        }
+                    )
+                );
+            }
+            else
+            {
+                Debug.Log("Feedback: omitido porque el flujo es legacy");
+            }
+        }
+        else
+        {
+            onError?.Invoke(error);
+        }
+    }
+
+    public IEnumerator GetMinigameSessionFeedback(
+        string sessionId,
+        Action<MinigameFeedbackResponse> onSuccess,
+        Action<string> onError
+    )
+    {
+        if (string.IsNullOrEmpty(sessionId))
+        {
+            onError?.Invoke("Feedback: session_id vacio.");
+            yield break;
+        }
+
+        if (string.IsNullOrEmpty(token))
+        {
+            onError?.Invoke("NO_TOKEN");
+            yield break;
+        }
+
+        if (feedbackRequestsInProgress.Contains(sessionId))
+        {
+            Debug.LogWarning(
+                "Feedback: solicitud duplicada/en curso ignorada id=" +
+                sessionId
+            );
+            yield break;
+        }
+
+        if (feedbackLoadedSessionIds.Contains(sessionId))
+        {
+            if (MinigameLessonState.HasLastFeedback &&
+                ValuesMatch(MinigameLessonState.LastFeedback.session_id, sessionId))
+            {
+                onSuccess?.Invoke(MinigameLessonState.LastFeedback);
+            }
+            else
+            {
+                Debug.LogWarning(
+                    "Feedback: solicitud duplicada/en curso ignorada id=" +
+                    sessionId
+                );
+            }
+
+            yield break;
+        }
+
+        feedbackRequestsInProgress.Add(sessionId);
+
+        MinigameFeedbackResponse parsedResponse = null;
+        string error = "";
+
+        using (UnityWebRequest request =
+            UnityWebRequest.Get(
+                baseUrl +
+                "/minigames/session/" +
+                UnityWebRequest.EscapeURL(sessionId) +
+                "/feedback"
+            ))
+        {
+            request.SetRequestHeader(
+                "Authorization",
+                "Bearer " + token
+            );
+
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                try
+                {
+                    parsedResponse =
+                        JsonUtility.FromJson<MinigameFeedbackResponse>(
+                            request.downloadHandler.text
+                        );
+                    NormalizeMinigameFeedback(parsedResponse);
+                }
+                catch (Exception exception)
+                {
+                    error =
+                        "La respuesta de feedback no se pudo leer: " +
+                        exception.Message;
+                }
+
+                if (string.IsNullOrEmpty(error))
+                {
+                    error = ValidateMinigameFeedback(
+                        parsedResponse,
+                        sessionId
+                    );
+                }
+            }
+            else
+            {
+                error = BuildRequestError(request);
+            }
+        }
+
+        feedbackRequestsInProgress.Remove(sessionId);
+
+        if (string.IsNullOrEmpty(error))
+        {
+            MinigameLessonState.SetLastFeedback(parsedResponse);
+            feedbackLoadedSessionIds.Add(sessionId);
+            onSuccess?.Invoke(parsedResponse);
         }
         else
         {
@@ -1292,6 +1439,189 @@ public class APIManager : MonoBehaviour
         return "";
     }
 
+    private bool ShouldFetchFeedbackForSession(string sessionId)
+    {
+        return MinigameLessonState.HasValidSession &&
+            ValuesMatch(MinigameLessonState.SessionId, sessionId);
+    }
+
+    private void NormalizeMinigameFeedback(MinigameFeedbackResponse response)
+    {
+        if (response == null)
+        {
+            return;
+        }
+
+        if (response.strengths == null)
+        {
+            response.strengths = Array.Empty<ConceptFeedbackResponse>();
+        }
+
+        if (response.reinforcement == null)
+        {
+            response.reinforcement = Array.Empty<ConceptFeedbackResponse>();
+        }
+
+        if (response.recommended_concept_ids == null)
+        {
+            response.recommended_concept_ids = Array.Empty<string>();
+        }
+    }
+
+    private string ValidateMinigameFeedback(
+        MinigameFeedbackResponse feedback,
+        string expectedSessionId
+    )
+    {
+        if (feedback == null)
+        {
+            return "Feedback: respuesta vacia.";
+        }
+
+        if (!ValuesMatch(feedback.session_id, expectedSessionId))
+        {
+            return "Feedback: session_id no coincide.";
+        }
+
+        if (string.IsNullOrEmpty(feedback.topic))
+        {
+            return "Feedback: topic vacio.";
+        }
+
+        if (string.IsNullOrEmpty(feedback.risk))
+        {
+            return "Feedback: risk vacio.";
+        }
+
+        if (string.IsNullOrEmpty(feedback.minigame))
+        {
+            return "Feedback: minigame vacio.";
+        }
+
+        if (feedback.accuracy < 0f || feedback.accuracy > 100f)
+        {
+            return "Feedback: accuracy invalida.";
+        }
+
+        if (feedback.total_attempts < 0 ||
+            feedback.correct_attempts < 0 ||
+            feedback.incorrect_attempts < 0)
+        {
+            return "Feedback: contadores invalidos.";
+        }
+
+        if (feedback.correct_attempts + feedback.incorrect_attempts >
+            feedback.total_attempts)
+        {
+            return "Feedback: total_attempts no coincide.";
+        }
+
+        if (!IsValidPerformanceLevel(feedback.performance_level))
+        {
+            return "Feedback: performance_level invalido.";
+        }
+
+        if (string.IsNullOrEmpty(feedback.title))
+        {
+            return "Feedback: title vacio.";
+        }
+
+        if (string.IsNullOrEmpty(feedback.message))
+        {
+            return "Feedback: message vacio.";
+        }
+
+        if (string.IsNullOrEmpty(feedback.next_step))
+        {
+            return "Feedback: next_step vacio.";
+        }
+
+        if (feedback.strengths == null)
+        {
+            return "Feedback: strengths no debe ser null.";
+        }
+
+        if (feedback.reinforcement == null)
+        {
+            return "Feedback: reinforcement no debe ser null.";
+        }
+
+        if (feedback.recommended_concept_ids == null)
+        {
+            return "Feedback: recommended_concept_ids no debe ser null.";
+        }
+
+        for (int i = 0; i < feedback.strengths.Length; i++)
+        {
+            string conceptError = ValidateConceptFeedback(feedback.strengths[i]);
+
+            if (!string.IsNullOrEmpty(conceptError))
+            {
+                return conceptError;
+            }
+        }
+
+        for (int i = 0; i < feedback.reinforcement.Length; i++)
+        {
+            string conceptError =
+                ValidateConceptFeedback(feedback.reinforcement[i]);
+
+            if (!string.IsNullOrEmpty(conceptError))
+            {
+                return conceptError;
+            }
+        }
+
+        return "";
+    }
+
+    private string ValidateConceptFeedback(ConceptFeedbackResponse concept)
+    {
+        if (concept == null)
+        {
+            return "Feedback: concepto vacio.";
+        }
+
+        if (string.IsNullOrEmpty(concept.concept_id))
+        {
+            return "Feedback: concept_id vacio.";
+        }
+
+        if (string.IsNullOrEmpty(concept.term))
+        {
+            return "Feedback: term vacio.";
+        }
+
+        if (concept.mastery_score < 0f || concept.mastery_score > 100f)
+        {
+            return "Feedback: mastery_score invalido.";
+        }
+
+        if (concept.session_attempts < 0 ||
+            concept.session_correct < 0 ||
+            concept.session_incorrect < 0)
+        {
+            return "Feedback: contadores de concepto invalidos.";
+        }
+
+        if (!IsValidConceptFeedbackStatus(concept.status))
+        {
+            return "Feedback: status de concepto invalido.";
+        }
+
+        if (string.IsNullOrEmpty(concept.message))
+        {
+            return "Feedback: message de concepto vacio.";
+        }
+
+        if (string.IsNullOrEmpty(concept.recommendation))
+        {
+            return "Feedback: recommendation de concepto vacia.";
+        }
+
+        return "";
+    }
+
     private string BuildMinigameAttemptKey(MinigameAttemptRequest request)
     {
         return request.session_id
@@ -1368,6 +1698,25 @@ public class APIManager : MonoBehaviour
         return value == "quiz"
             || value == "wordsearch"
             || value == "crossword";
+    }
+
+    private bool IsValidPerformanceLevel(string performanceLevel)
+    {
+        string value = (performanceLevel ?? "").Trim().ToLowerInvariant();
+        return value == "sin_evidencia"
+            || value == "excelente"
+            || value == "buen_progreso"
+            || value == "en_desarrollo"
+            || value == "necesita_refuerzo";
+    }
+
+    private bool IsValidConceptFeedbackStatus(string status)
+    {
+        string value = (status ?? "").Trim().ToLowerInvariant();
+        return value == "fortaleza"
+            || value == "avance"
+            || value == "refuerzo"
+            || value == "dificultad_puntual";
     }
 
     private bool ValuesMatch(string left, string right)

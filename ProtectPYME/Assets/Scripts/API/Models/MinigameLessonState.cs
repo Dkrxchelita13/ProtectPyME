@@ -9,6 +9,7 @@ public static class MinigameLessonState
     public static string Risk = "";
     public static MinigameSessionResponse Session;
     public static MinigameSessionSummaryResponse LastSummary;
+    public static MinigameFeedbackResponse LastFeedback;
 
     public static bool HasLastSummary
     {
@@ -16,6 +17,14 @@ public static class MinigameLessonState
         {
             return LastSummary != null &&
                 !string.IsNullOrEmpty(LastSummary.session_id);
+        }
+    }
+
+    public static bool HasLastFeedback
+    {
+        get
+        {
+            return LastFeedback != null;
         }
     }
 
@@ -112,6 +121,7 @@ public static class MinigameLessonState
     {
         Prepare(minigameKey, targetScene, topic, risk);
         ClearLastSummary();
+        ClearLastFeedback();
         Session = session;
 
         if (!HasValidSession)
@@ -156,6 +166,18 @@ public static class MinigameLessonState
     public static void ClearLastSummary()
     {
         LastSummary = null;
+    }
+
+    public static void SetLastFeedback(
+        MinigameFeedbackResponse feedback
+    )
+    {
+        LastFeedback = feedback;
+    }
+
+    public static void ClearLastFeedback()
+    {
+        LastFeedback = null;
     }
 
     private static bool IsValidMinigameKey(string minigameKey)
