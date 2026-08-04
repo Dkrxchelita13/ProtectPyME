@@ -41,7 +41,11 @@ public class MinijuegosMenuUI : MonoBehaviour
         if (txtTituloReforzamiento == null) return;
 
         // Leemos la sugerencia almacenada en la memoria global de la IA
-        string temaReforzamiento = AIState.RecommendedTraining;
+        string temaReforzamiento = AIState.ResolvePlayableTopic(
+            AIState.RecommendedTraining,
+            AIState.RecommendedScenario,
+            AIState.SurveyPrimaryWeakness
+        );
 
         if (!string.IsNullOrEmpty(temaReforzamiento))
         {
@@ -64,20 +68,21 @@ public class MinijuegosMenuUI : MonoBehaviour
             {
                 if (txtTituloReforzamiento != null)
                 {
-                    txtTituloReforzamiento.text = FormatearTitulo(data.recommended_training);
+                    txtTituloReforzamiento.text =
+                        FormatearTitulo(AIState.RecommendedTraining);
                 }
             },
             onError: (error) =>
             {
                 // Título por defecto en caso de no tener internet/error
-                txtTituloReforzamiento.text = "REFORZAMIENTO GENERAL";
+                txtTituloReforzamiento.text = "REFORZAMIENTO NO DISPONIBLE";
             }
         ));
     }
 
     private string FormatearTitulo(string tema)
     {
-        if (string.IsNullOrEmpty(tema)) return "REFORZAMIENTO GENERAL";
+        if (string.IsNullOrEmpty(tema)) return "REFORZAMIENTO NO DISPONIBLE";
 
         string temaLiso = tema.ToLower().Trim();
 
@@ -96,6 +101,11 @@ public class MinijuegosMenuUI : MonoBehaviour
         }
 
         // Si la IA devuelve la categoría directamente (ej. "Phishing"), la ponemos en mayúsculas
+        else if (temaLiso.Contains("wifi") || temaLiso.Contains("network"))
+        {
+            return "REFORZAMIENTO: REDES WIFI SEGURAS";
+        }
+
         return "REFORZAMIENTO: " + tema.ToUpper();
     }
 
@@ -139,7 +149,7 @@ public class MinijuegosMenuUI : MonoBehaviour
 
                 if (!TryCreateLessonSessionWithCurrentState(minigameKey, targetScene))
                 {
-                    Debug.LogError(
+                    Debug.LogWarning(
                         "No se puede abrir la leccion: /ai/risk/me no devolvio topic/risk validos."
                     );
                 }
@@ -148,7 +158,7 @@ public class MinijuegosMenuUI : MonoBehaviour
             {
                 lessonRiskRequestInProgress = false;
                 MinigameLessonState.ClearSession();
-                Debug.LogError(
+                Debug.LogWarning(
                     "No se pudo recuperar el estado de riesgo para abrir la leccion: "
                     + error
                 );
@@ -158,12 +168,28 @@ public class MinijuegosMenuUI : MonoBehaviour
 
     private bool TryCreateLessonSessionWithCurrentState(string minigameKey, string targetScene)
     {
-        string topic = NormalizeTopic(AIState.RecommendedTraining);
+        string rawTopic = AIState.RecommendedTraining;
+        string topic = AIState.ResolvePlayableTopic(
+            rawTopic,
+            AIState.RecommendedScenario,
+            AIState.SurveyPrimaryWeakness
+        );
         string risk = NormalizeRisk(AIState.RiskLevel);
+
+        if (!AIState.IsPlayableTopic(rawTopic))
+        {
+            Debug.LogWarning(
+                "Topic IA no jugable '"
+                + SafeLogValue(rawTopic)
+                + "'; usando fallback '"
+                + topic
+                + "'"
+            );
+        }
 
         if (!IsValidTopic(topic) || !IsValidRisk(risk))
         {
-            Debug.LogError(
+            Debug.LogWarning(
                 "No se abrira la leccion: topic o risk invalido. "
                 + "topic='"
                 + SafeLogValue(topic)
@@ -176,7 +202,7 @@ public class MinijuegosMenuUI : MonoBehaviour
 
         if (LooksLikeInitialAiState(topic, risk))
         {
-            Debug.LogError(
+            Debug.LogWarning(
                 "No se abrira la leccion: AIState parece no estar inicializado; se intentara recuperar /ai/risk/me."
             );
             return false;

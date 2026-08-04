@@ -1,4 +1,6 @@
 using UnityEngine;
+using System.Collections;
+using UnityEngine.UI;
 
 public class CambioVistas : MonoBehaviour
 {
@@ -15,7 +17,10 @@ public class CambioVistas : MonoBehaviour
     public void MostrarProgreso()
     {
         if (scrollViewProgreso != null)
+        {
             scrollViewProgreso.SetActive(true);
+            StartCoroutine(ResetProgressScrollNextFrame());
+        }
 
         if (scrollViewRanking != null)
             scrollViewRanking.SetActive(false);
@@ -46,5 +51,29 @@ public class CambioVistas : MonoBehaviour
 
         if (scrollViewPerfil != null)
             scrollViewPerfil.SetActive(true);
+    }
+
+    private IEnumerator ResetProgressScrollNextFrame()
+    {
+        yield return null;
+
+        if (scrollViewProgreso == null || !scrollViewProgreso.activeInHierarchy)
+        {
+            yield break;
+        }
+
+        ScrollRect scrollRect =
+            scrollViewProgreso.GetComponentInChildren<ScrollRect>(true);
+
+        if (scrollRect == null)
+        {
+            yield break;
+        }
+
+        scrollRect.horizontal = false;
+        scrollRect.vertical = true;
+        scrollRect.StopMovement();
+        scrollRect.horizontalNormalizedPosition = 0f;
+        scrollRect.verticalNormalizedPosition = 1f;
     }
 }

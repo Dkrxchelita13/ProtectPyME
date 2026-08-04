@@ -176,6 +176,24 @@ def stub_predictor(
     )
 
 
+def stub_analytics(app_modules, monkeypatch, *, most_failed_category):
+    def get_analytics(_db, _user_id):
+        return {
+            "total_points": 50,
+            "accuracy": 80.0,
+            "risk_index": 15.0,
+            "awareness_score": 75.0,
+            "decisions_last_7_days": 3,
+            "most_failed_category": most_failed_category,
+        }
+
+    monkeypatch.setattr(
+        app_modules.ai_service,
+        "get_user_analytics",
+        get_analytics,
+    )
+
+
 def assert_base_contract(data):
     existing_fields = {
         "user_id",
@@ -194,6 +212,39 @@ def assert_base_contract(data):
 
     assert existing_fields.issubset(data)
     assert new_fields.issubset(data)
+
+
+def test_playable_topic_accepts_supported_topics(app_modules):
+    assert app_modules.ai_service.normalize_playable_topic("phishing") == "phishing"
+    assert app_modules.ai_service.normalize_playable_topic("passwords") == "passwords"
+    assert app_modules.ai_service.normalize_playable_topic("malware") == "malware"
+    assert app_modules.ai_service.normalize_playable_topic("wifi") == "wifi"
+
+
+def test_playable_topic_normalizes_password(app_modules):
+    assert app_modules.ai_service.normalize_playable_topic("password") == "passwords"
+    assert app_modules.ai_service.normalize_playable_topic("contraseñas") == "passwords"
+
+
+def test_general_is_resolved_to_playable_topic(app_modules):
+    assert (
+        app_modules.ai_service.resolve_playable_topic("general", 1, None)
+        == "phishing"
+    )
+
+
+def test_null_topic_is_resolved_to_playable_topic(app_modules):
+    assert (
+        app_modules.ai_service.resolve_playable_topic(None, None, None)
+        == "phishing"
+    )
+
+
+def test_unknown_topic_is_resolved_to_playable_topic(app_modules):
+    assert (
+        app_modules.ai_service.resolve_playable_topic("unknown", None, "malware")
+        == "malware"
+    )
 
 
 def test_zero_decisions_uses_password_survey_without_predictor(
@@ -329,7 +380,7 @@ def test_more_than_three_decisions_uses_random_forest(
     assert data["probability"] == 0.81
 
 
-def test_survey_primary_weakness_none_maps_to_general(
+def test_survey_primary_weakness_none_maps_to_playable_topic(
     app_modules,
     db,
     monkeypatch,
@@ -347,7 +398,7 @@ def test_survey_primary_weakness_none_maps_to_general(
     data = run_prediction(app_modules, db, user.id)
 
     assert data["risk_source"] == "survey"
-    assert data["recommended_training"] == "general"
+    assert data["recommended_training"] == "phishing"
     assert data["recommended_scenario"] == 1
     assert "no detect" in data["message"].lower()
 
@@ -398,6 +449,85 @@ def test_random_forest_contract_preserves_existing_behavior(
     assert data["risk_source"] == "random_forest"
     assert data["risk_level"] == "ALTO"
     assert data["probability"] == 0.91
-    assert data["recommended_training"] == "general"
+    assert data["recommended_training"] == "phishing"
     assert data["recommended_scenario"] == 1
     assert data["sufficient_behavioral_data"] is True
+
+
+def test_perfect_user_does_not_receive_general_training(
+    app_modules,
+    db,
+    monkeypatch,
+):
+    calls = []
+    stub_predictor(
+        app_modules,
+        monkeypatch,
+        calls,
+        risk_level="BAJO",
+        probability=0.95,
+    )
+    user = create_user(
+        app_modules,
+        db,
+        total_decisions=6,
+        correct_decisions=6,
+        total_points=100,
+    )
+
+    data = run_prediction(app_modules, db, user.id)
+
+    assert len(calls) == 1
+    assert data["risk_source"] == "random_forest"
+    assert data["risk_level"] == "BAJO"
+    assert data["recommended_training"] == "phishing"
+    assert data["recommended_scenario"] == 1
+    assert data["message"] == (
+        "Excelente desempeño. No se detectaron áreas críticas de mejora."
+    )
+
+
+def test_existing_malware_recommendation_is_unchanged(
+    app_modules,
+    db,
+    monkeypatch,
+):
+    calls = []
+    stub_predictor(app_modules, monkeypatch, calls)
+    stub_analytics(app_modules, monkeypatch, most_failed_category="malware")
+    user = create_user(
+        app_modules,
+        db,
+        total_decisions=4,
+        correct_decisions=2,
+        total_points=30,
+    )
+
+    data = run_prediction(app_modules, db, user.id)
+
+    assert len(calls) == 1
+    assert data["recommended_training"] == "malware"
+    assert data["recommended_scenario"] == 3
+
+
+def test_existing_passwords_recommendation_is_unchanged(
+    app_modules,
+    db,
+    monkeypatch,
+):
+    calls = []
+    stub_predictor(app_modules, monkeypatch, calls)
+    stub_analytics(app_modules, monkeypatch, most_failed_category="passwords")
+    user = create_user(
+        app_modules,
+        db,
+        total_decisions=4,
+        correct_decisions=2,
+        total_points=30,
+    )
+
+    data = run_prediction(app_modules, db, user.id)
+
+    assert len(calls) == 1
+    assert data["recommended_training"] == "passwords"
+    assert data["recommended_scenario"] == 2

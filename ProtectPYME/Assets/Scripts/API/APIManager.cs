@@ -1118,9 +1118,32 @@ public class APIManager : MonoBehaviour
                     request.downloadHandler.text
                 );
 
+            string rawRecommendedTraining = response.recommended_training;
+            string effectiveRecommendedTraining =
+                AIState.ResolvePlayableTopic(
+                    rawRecommendedTraining,
+                    response.recommended_scenario,
+                    AIState.SurveyPrimaryWeakness
+                );
+
+            if (!AIState.IsPlayableTopic(rawRecommendedTraining))
+            {
+                Debug.LogWarning(
+                    "Topic IA no jugable '"
+                    + SafeLogValue(rawRecommendedTraining)
+                    + "'; usando fallback '"
+                    + effectiveRecommendedTraining
+                    + "'"
+                );
+            }
+
+            response.recommended_training = effectiveRecommendedTraining;
+
             // NUEVO
+            AIState.RawRecommendedTraining =
+                rawRecommendedTraining;
             AIState.RecommendedTraining =
-                response.recommended_training;
+                effectiveRecommendedTraining;
             AIState.RecommendedScenario =
                 response.recommended_scenario;
             AIState.RiskLevel =
@@ -1135,6 +1158,7 @@ public class APIManager : MonoBehaviour
                     : 3;
             AIState.SufficientBehavioralData =
                 response.sufficient_behavioral_data;
+            AIState.RecommendationLoaded = true;
 
             Debug.Log(
                 "Tema recomendado IA: "
@@ -1745,6 +1769,11 @@ public class APIManager : MonoBehaviour
         }
 
         return "HTTP_" + request.responseCode;
+    }
+
+    private string SafeLogValue(string value)
+    {
+        return string.IsNullOrEmpty(value) ? "<vacio>" : value;
     }
 
     private void FinishMinigameLessonRequest()

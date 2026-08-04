@@ -1,3 +1,5 @@
+import unicodedata
+
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -13,9 +15,75 @@ from app.services.survey_service import DIAGNOSTIC_SURVEY_VERSION
 
 
 MIN_BEHAVIORAL_DECISIONS = 3
+PLAYABLE_TOPICS = ("phishing", "passwords", "malware", "wifi")
+PLAYABLE_TOPIC_ALIASES = {
+    "password": "passwords",
+    "contrasenas": "passwords",
+    "malicious_software": "malware",
+    "redes_wifi": "wifi",
+    "network": "wifi",
+}
+SCENARIO_TOPIC_MAP = {
+    1: "phishing",
+    2: "passwords",
+    3: "malware",
+    4: "wifi",
+}
+FINAL_FALLBACK_PLAYABLE_TOPIC = "phishing"
 
 # Singleton
 predictor = RiskPredictor()
+
+
+def normalize_playable_topic(topic: str) -> str | None:
+    normalized = _normalize_topic_text(topic)
+
+    if normalized in PLAYABLE_TOPICS:
+        return normalized
+
+    return PLAYABLE_TOPIC_ALIASES.get(normalized)
+
+
+def resolve_playable_topic(
+    topic: str | None,
+    recommended_scenario: int | None = None,
+    survey_primary_weakness: str | None = None
+) -> str:
+    playable_topic = normalize_playable_topic(topic)
+
+    if playable_topic:
+        return playable_topic
+
+    scenario_topic = SCENARIO_TOPIC_MAP.get(_safe_int(recommended_scenario))
+
+    if scenario_topic:
+        return scenario_topic
+
+    survey_topic = normalize_playable_topic(survey_primary_weakness)
+
+    if survey_topic:
+        return survey_topic
+
+    # Last defense: scenario 1 and phishing banks are guaranteed to exist.
+    return FINAL_FALLBACK_PLAYABLE_TOPIC
+
+
+def _normalize_topic_text(topic: str | None) -> str:
+    raw = str(topic or "").strip().lower()
+    normalized = unicodedata.normalize("NFKD", raw)
+
+    return "".join(
+        character
+        for character in normalized
+        if not unicodedata.combining(character)
+    )
+
+
+def _safe_int(value) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 
 
 SURVEY_RECOMMENDATIONS = {
@@ -139,6 +207,15 @@ class AIService:
         recommendation = get_recommendation(
             analytics["most_failed_category"]
         )
+        survey_primary_weakness = AIService._get_latest_survey_primary_weakness(
+            db,
+            user_id
+        )
+        playable_training = resolve_playable_topic(
+            recommendation["training"],
+            recommendation["scenario"],
+            survey_primary_weakness
+        )
 
         return {
             "user_id": user_id,
@@ -147,7 +224,7 @@ class AIService:
 
 
             "recommended_training":
-                recommendation["training"],
+                playable_training,
 
             "recommended_scenario":
                 recommendation["scenario"],
@@ -197,12 +274,17 @@ class AIService:
                 "scenario": 1,
             }
         )
+        playable_training = resolve_playable_topic(
+            recommendation["training"],
+            recommendation["scenario"],
+            primary_weakness
+        )
 
         return {
             "user_id": user_id,
             "risk_level": risk_level,
             "probability": 0.0,
-            "recommended_training": recommendation["training"],
+            "recommended_training": playable_training,
             "recommended_scenario": recommendation["scenario"],
             "message": AIService._get_survey_message(
                 primary_weakness,
@@ -222,6 +304,25 @@ class AIService:
             return normalized
 
         return "general"
+
+    @staticmethod
+    def _get_latest_survey_primary_weakness(
+        db: Session,
+        user_id: int
+    ) -> str | None:
+        submission = (
+            db.query(SurveySubmission)
+            .filter(
+                SurveySubmission.user_id == user_id,
+                SurveySubmission.survey_version == DIAGNOSTIC_SURVEY_VERSION
+            )
+            .first()
+        )
+
+        if submission is None:
+            return None
+
+        return submission.primary_weakness
 
     @staticmethod
     def _normalize_survey_risk(risk_level: str) -> str:

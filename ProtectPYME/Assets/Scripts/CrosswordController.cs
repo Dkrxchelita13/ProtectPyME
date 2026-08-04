@@ -109,6 +109,7 @@ public class CrosswordController : MonoBehaviour
         {
             Debug.Log("💀 Sin vidas por errores. Sincronizando y terminando el juego.");
             juegoTerminado = true;
+            RegistrarIntentoTerminalActual();
             StartCoroutine(TerminarJuegoYSincronizar(false));
             return; 
         }
@@ -987,7 +988,28 @@ public class CrosswordController : MonoBehaviour
         if (juegoTerminado) return;
         
         juegoTerminado = true;
+        RegistrarIntentoTerminalActual();
         Debug.Log("💀 Game Over detectado desde GamificacionController. Sincronizando...");
         StartCoroutine(TerminarJuegoYSincronizar(false));
+    }
+
+    private void RegistrarIntentoTerminalActual()
+    {
+        if (model == null ||
+            model.words == null ||
+            indicePreguntaActual < 0 ||
+            indicePreguntaActual >= model.words.Count)
+        {
+            return;
+        }
+
+        CrosswordWordData palabraActual = model.words[indicePreguntaActual];
+
+        if (palabraActual == null || palabrasPuntuadas.Contains(palabraActual))
+        {
+            return;
+        }
+
+        RegistrarIntentoPalabra(palabraActual, false, 0);
     }
 }

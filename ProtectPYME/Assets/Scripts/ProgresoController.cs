@@ -53,8 +53,11 @@ public class ProgresoController : MonoBehaviour
     [SerializeField] private Sprite spriteBotonContinuar;
 
     private int recommendedScenario;
+    private bool recommendationReady;
+    private Button botonPracticar;
     private Coroutine progressLayoutCoroutine;
     private bool progressLayoutRebuildPending;
+    private const float ProgressContentHorizontalPadding = 0f;
 
 
 
@@ -67,6 +70,9 @@ public class ProgresoController : MonoBehaviour
     void Start()
 
     {
+
+        recommendationReady = false;
+        SetPracticeButtonInteractable(false);
 
         // 🟢 Cargar vidas correctamente al iniciar la escena
 
@@ -264,37 +270,43 @@ public class ProgresoController : MonoBehaviour
 
         }
 
-        else
+        AIState.SurveyResultPending = false;
+
+        SetPracticeButtonLoadingState();
+
+        if (APIManager.Instance == null)
 
         {
 
-            AIState.SurveyResultPending = false;
-
-            RestaurarSpriteBotonPracticar();
-
-            StartCoroutine(
-
-                APIManager.Instance.GetAIRisk(
-
-                    OnRiskLoaded,
-
-                    error =>
-
-                    {
-
-                        Debug.LogError(
-
-                            "Error IA: " + error
-
-                        );
-
-                    }
-
-                )
-
-            );
+            SetPracticeButtonUnavailableState();
+            Debug.LogWarning("Error IA: APIManager no disponible");
+            return;
 
         }
+
+        StartCoroutine(
+
+            APIManager.Instance.GetAIRisk(
+
+                OnRiskLoaded,
+
+                error =>
+
+                {
+
+                    SetPracticeButtonUnavailableState();
+
+                    Debug.LogWarning(
+
+                        "Error IA: " + error
+
+                    );
+
+                }
+
+            )
+
+        );
 
     }
 
@@ -577,6 +589,9 @@ public class ProgresoController : MonoBehaviour
             imagenBotonPracticar.sprite = spriteBotonContinuar;
 
         }
+
+        recommendationReady = true;
+        SetPracticeButtonInteractable(true);
 
         ScheduleProgressLayoutRebuild();
 
@@ -968,6 +983,90 @@ public class ProgresoController : MonoBehaviour
 
     }
 
+    private void SetPracticeButtonLoadingState()
+
+    {
+
+        recommendationReady = false;
+        recommendedScenario = 0;
+        RestaurarSpriteBotonPracticar();
+        SetPracticeButtonInteractable(false);
+
+        if (txtEscenarioSugerido != null)
+
+        {
+
+            txtEscenarioSugerido.text = "CARGANDO...";
+
+        }
+
+        ScheduleProgressLayoutRebuild();
+
+    }
+
+    private void SetPracticeButtonUnavailableState()
+
+    {
+
+        recommendationReady = false;
+        recommendedScenario = 0;
+        RestaurarSpriteBotonPracticar();
+        SetPracticeButtonInteractable(false);
+
+        if (txtEscenarioSugerido != null)
+
+        {
+
+            txtEscenarioSugerido.text = "NO DISPONIBLE";
+
+        }
+
+        ScheduleProgressLayoutRebuild();
+
+    }
+
+    private void SetPracticeButtonInteractable(bool interactable)
+
+    {
+
+        Button practiceButton = ResolvePracticeButton();
+
+        if (practiceButton != null)
+
+        {
+
+            practiceButton.interactable = interactable;
+
+        }
+
+    }
+
+    private Button ResolvePracticeButton()
+
+    {
+
+        if (botonPracticar != null)
+
+        {
+
+            return botonPracticar;
+
+        }
+
+        if (imagenBotonPracticar == null)
+
+        {
+
+            return null;
+
+        }
+
+        botonPracticar = imagenBotonPracticar.GetComponentInParent<Button>(true);
+
+        return botonPracticar;
+
+    }
+
 
 
     private string ResolveRiskSource(AIRiskResponse data)
@@ -1220,6 +1319,24 @@ public class ProgresoController : MonoBehaviour
 
             data.recommended_scenario;
 
+        recommendationReady =
+
+            AIState.IsValidPracticeScenario(recommendedScenario);
+
+        SetPracticeButtonInteractable(recommendationReady);
+
+        if (!recommendationReady)
+
+        {
+
+            Debug.LogWarning(
+
+                "Practicar: escenario recomendado no disponible para MiPerfil"
+
+            );
+
+        }
+
 
 
         Debug.Log(
@@ -1302,8 +1419,49 @@ public class ProgresoController : MonoBehaviour
             yield break;
         }
 
-        float previousVerticalPosition = scrollRect.verticalNormalizedPosition;
+        RebuildProgressLayoutPass(
+            scrollRect,
+            contentRect,
+            resultadosRect,
+            contenidoIARect,
+            contenidoBtnRect
+        );
 
+        yield return null;
+
+        if (!this || !isActiveAndEnabled || !gameObject.activeInHierarchy)
+        {
+            FinishProgressLayoutRebuild();
+            yield break;
+        }
+
+        RebuildProgressLayoutPass(
+            scrollRect,
+            contentRect,
+            resultadosRect,
+            contenidoIARect,
+            contenidoBtnRect
+        );
+
+        Debug.Log(
+            $"MiPerfil layout: content={GetRectHeight(contentRect)} "
+            + $"ia={GetRectHeight(contenidoIARect)} "
+            + $"results={GetRectHeight(resultadosRect)} "
+            + $"button={GetRectHeight(contenidoBtnRect)}"
+        );
+
+        FinishProgressLayoutRebuild();
+    }
+
+    private void RebuildProgressLayoutPass(
+        ScrollRect scrollRect,
+        RectTransform contentRect,
+        RectTransform resultadosRect,
+        RectTransform contenidoIARect,
+        RectTransform contenidoBtnRect
+    )
+    {
+        ConfigureProgressScrollRect(scrollRect, contentRect);
         ConfigureRootContent(contentRect);
         ConfigureDynamicVerticalGroup(resultadosRect);
         ConfigureDynamicVerticalGroup(contenidoIARect);
@@ -1326,17 +1484,33 @@ public class ProgresoController : MonoBehaviour
 
         LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
         scrollRect.StopMovement();
-        scrollRect.verticalNormalizedPosition =
-            Mathf.Clamp01(previousVerticalPosition);
+        scrollRect.horizontalNormalizedPosition = 0f;
+        scrollRect.verticalNormalizedPosition = 1f;
+    }
 
-        Debug.Log(
-            $"MiPerfil layout: content={GetRectHeight(contentRect)} "
-            + $"ia={GetRectHeight(contenidoIARect)} "
-            + $"results={GetRectHeight(resultadosRect)} "
-            + $"button={GetRectHeight(contenidoBtnRect)}"
-        );
+    private void ConfigureProgressScrollRect(
+        ScrollRect scrollRect,
+        RectTransform contentRect
+    )
+    {
+        if (scrollRect == null || contentRect == null)
+        {
+            return;
+        }
 
-        FinishProgressLayoutRebuild();
+        scrollRect.horizontal = false;
+        scrollRect.vertical = true;
+
+        contentRect.anchorMin = new Vector2(0f, contentRect.anchorMin.y);
+        contentRect.anchorMax = new Vector2(1f, contentRect.anchorMax.y);
+        contentRect.pivot = new Vector2(0.5f, contentRect.pivot.y);
+        contentRect.anchoredPosition =
+            new Vector2(0f, contentRect.anchoredPosition.y);
+        contentRect.offsetMin =
+            new Vector2(ProgressContentHorizontalPadding, contentRect.offsetMin.y);
+        contentRect.offsetMax =
+            new Vector2(-ProgressContentHorizontalPadding, contentRect.offsetMax.y);
+        contentRect.sizeDelta = new Vector2(0f, contentRect.sizeDelta.y);
     }
 
     private void FinishProgressLayoutRebuild()
@@ -1457,6 +1631,10 @@ public class ProgresoController : MonoBehaviour
         }
 
         RectTransform textRect = textComponent.rectTransform;
+        textRect.anchorMin = new Vector2(0f, textRect.anchorMin.y);
+        textRect.anchorMax = new Vector2(1f, textRect.anchorMax.y);
+        textRect.offsetMin = new Vector2(0f, textRect.offsetMin.y);
+        textRect.offsetMax = new Vector2(0f, textRect.offsetMax.y);
         float availableWidth = textRect.rect.width;
 
         if (availableWidth <= 10f && textRect.parent is RectTransform parentRect)
@@ -1566,6 +1744,14 @@ public class ProgresoController : MonoBehaviour
         RectTransform buttonRect = imagenBotonPracticar != null
             ? imagenBotonPracticar.rectTransform
             : null;
+
+        if (buttonRect != null)
+        {
+            buttonRect.anchorMin = new Vector2(0.5f, buttonRect.anchorMin.y);
+            buttonRect.anchorMax = new Vector2(0.5f, buttonRect.anchorMax.y);
+            buttonRect.anchoredPosition =
+                new Vector2(0f, buttonRect.anchoredPosition.y);
+        }
 
         float buttonHeight = GetPreferredOrRectHeight(buttonRect);
         float preferredHeight = buttonHeight + topMargin + bottomMargin;
@@ -1719,15 +1905,32 @@ public class ProgresoController : MonoBehaviour
 
     {
 
-        if (AIState.SurveyResultPending)
+        if (AIState.SurveyResultPending && !recommendationReady)
 
         {
 
-            AIState.SurveyResultPending = false;
+            Debug.LogWarning(
 
-            RestaurarSpriteBotonPracticar();
+                "Practicar: recomendación todavía no disponible"
 
-            SceneManager.LoadScene("MenuPrincipal");
+            );
+
+            return;
+
+        }
+
+        AIState.SurveyResultPending = false;
+
+        if (!recommendationReady ||
+            !AIState.IsValidPracticeScenario(recommendedScenario))
+
+        {
+
+            Debug.LogWarning(
+
+                "Practicar: recomendación todavía no disponible"
+
+            );
 
             return;
 

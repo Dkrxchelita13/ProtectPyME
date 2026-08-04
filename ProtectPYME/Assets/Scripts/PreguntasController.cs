@@ -603,6 +603,7 @@ public class PreguntasController : MonoBehaviour
     {
         bloqueado = true;
         corriendoTiempo = false;
+        RegistrarIntentoTerminalActual();
 
         foreach (var c in casillasSeleccionadas) if (c != null) c.Resetear();
         casillasSeleccionadas.Clear();
@@ -610,6 +611,16 @@ public class PreguntasController : MonoBehaviour
         txtPreguntaDisplay.text = "Guardando progreso...";
         StartCoroutine(TerminarJuegoYSincronizar());
     }
+
+    private void RegistrarIntentoTerminalActual()
+    {
+        if (!firstQuestionStarted)
+        {
+            return;
+        }
+
+        RegistrarIntentoActual(false, 0);
+    }
 
     private void BeginFeedbackUiForCurrentSession(GameObject finalPanel)
     {
