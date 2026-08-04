@@ -421,8 +421,8 @@ CROSSWORD = {
                 "answer": "HASH"
             },
             {
-                "clue": "Algoritmo moderno para proteger contraseñas",
-                "answer": "ARGON"
+                "clue": "Función moderna y resistente para almacenar contraseñas",
+                "answer": "ARGON2ID"
             }
         ]
     },
@@ -616,8 +616,8 @@ WORDSEARCH = {
                 "answer": "HASH"
             },
             {
-                "clue": "Algoritmo para proteger contraseñas",
-                "answer": "ARGON"
+                "clue": "Función moderna y resistente para almacenar contraseñas",
+                "answer": "ARGON2ID"
             }
         ]
     },

@@ -732,7 +732,7 @@ WORD_PUZZLE_CONCEPT_SETS = {
         "bajo": [
             {"term": "Salt", "definition": "Valor aleatorio único agregado antes de generar el hash.", "why_it_matters": "Hace que contraseñas iguales produzcan hashes distintos.", "example": "Dos empleados con la misma clave no tendrían el mismo hash guardado."},
             {"term": "Hash", "definition": "Resultado de aplicar una función a una contraseña para no guardar el texto original.", "why_it_matters": "Permite verificar la contraseña sin almacenarla en claro; no es cifrado reversible.", "example": "El sistema compara hashes en lugar de guardar la contraseña real."},
-            {"term": "Argon2id", "definition": "Función moderna de la familia Argon2 para almacenar contraseñas con memoria y tiempo.", "why_it_matters": "Dificulta intentos masivos contra hashes robados.", "example": "Temporalmente el ejercicio puede mostrar ARGON como forma abreviada de la familia Argon2."},
+            {"term": "Argon2id", "definition": "Función moderna para almacenar contraseñas usando memoria y tiempo.", "why_it_matters": "Dificulta intentos masivos contra hashes robados.", "example": "Un sistema nuevo puede usar Argon2id para proteger credenciales."},
         ],
     },
     "malware": {
@@ -933,17 +933,6 @@ def _build_key_concepts(topic: str, risk: str, minigame: str) -> list:
 
     for concept in concepts:
         concept["why_it_matters"] = f"{concept['why_it_matters']} {note}"
-
-        if (
-            topic == "passwords"
-            and risk == "bajo"
-            and minigame in ("wordsearch", "crossword")
-            and concept["term"] == "Argon2id"
-        ):
-            concept["definition"] = (
-                concept["definition"]
-                + " Argon2id pertenece a la familia Argon2. En la versión actual del ejercicio puede aparecer la forma abreviada ARGON."
-            )
 
     return concepts
 

@@ -214,12 +214,12 @@ public class CrosswordInput : MonoBehaviour
 
         for (int i = 0; i < text.Length; i++)
         {
-            if (!char.IsLetter(text[i]))
+            if (!char.IsLetterOrDigit(text[i]))
             {
                 continue;
             }
 
-            letters[count] = char.ToUpperInvariant(text[i]);
+            letters[count] = NormalizeInputCharacter(text[i]);
             count++;
         }
 
@@ -248,12 +248,12 @@ public class CrosswordInput : MonoBehaviour
 
     private void HandleTypedCharacter(char character)
     {
-        if (selectedCell == null || !char.IsLetter(character))
+        if (selectedCell == null || !char.IsLetterOrDigit(character))
         {
             return;
         }
 
-        string letter = char.ToUpperInvariant(character).ToString();
+        string letter = NormalizeInputCharacter(character).ToString();
 
         Debug.Log("LETRA DETECTADA: " + letter);
 
@@ -352,12 +352,19 @@ public class CrosswordInput : MonoBehaviour
 
         char character = Event.current.character;
 
-        if (!char.IsLetter(character))
+        if (!char.IsLetterOrDigit(character))
         {
             return;
         }
 
         HandleTypedCharacter(character);
         Event.current.Use();
+    }
+
+    private char NormalizeInputCharacter(char character)
+    {
+        return char.IsLetter(character)
+            ? char.ToUpperInvariant(character)
+            : character;
     }
 }

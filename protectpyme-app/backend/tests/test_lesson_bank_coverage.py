@@ -11,7 +11,6 @@ RISKS = ("alto", "medio", "bajo")
 MINIGAMES = ("quiz", "wordsearch", "crossword")
 
 PEDAGOGICAL_ALIASES = {
-    "ARGON": "ARGON2ID",
     "PASSWORD": "CONTRASENA",
 }
 
@@ -185,3 +184,41 @@ def test_all_valid_combinations_use_specific_supplements_without_fallback():
                 assert lesson["common_mistake"]["title"]
                 assert lesson["quick_check"]["question"]
                 assert lesson["visual_key"]
+
+
+def test_passwords_bajo_wordsearch_uses_argon2id_directly():
+    answers = {
+        item["answer"]
+        for item in minigame_service.get_wordsearch("passwords", "bajo")
+    }
+
+    assert "ARGON2ID" in answers
+    assert "ARGON" not in answers
+
+
+def test_passwords_bajo_crossword_uses_argon2id_directly():
+    answers = {
+        item["answer"]
+        for item in minigame_service.get_crossword("passwords", "bajo")
+    }
+
+    assert "ARGON2ID" in answers
+    assert "ARGON" not in answers
+
+
+def test_argon_alias_is_removed():
+    assert "ARGON" not in PEDAGOGICAL_ALIASES
+
+
+def test_passwords_bajo_word_puzzles_cover_argon2id_directly():
+    expected = {"SALT", "HASH", "ARGON2ID"}
+
+    for minigame in ("wordsearch", "crossword"):
+        lesson = learning_content_service.get_learning_content(
+            "passwords",
+            "bajo",
+            minigame,
+        )
+        terms = concept_terms(lesson)
+
+        assert expected.issubset(terms)
