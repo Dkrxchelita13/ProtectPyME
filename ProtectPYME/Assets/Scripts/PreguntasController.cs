@@ -69,10 +69,103 @@ public class PreguntasController : MonoBehaviour
 
         ActualizarBarraSeguridadVisual();
 
+        if (TryLoadWordsearchItemsFromSession())
+        {
+            MostrarPregunta();
+            return;
+        }
+
+        Debug.Log("Wordsearch: usando endpoint legacy");
+
         string token = APIManager.Instance != null ? APIManager.Instance.GetToken() : "";
         if (string.IsNullOrEmpty(token)) return;
 
         StartCoroutine(APIManager.Instance.GetWords(AIState.RecommendedTraining, AIState.RiskLevel, OnCrosswordLoaded));
+    }
+
+    private bool TryLoadWordsearchItemsFromSession()
+    {
+        if (MinigameLessonState.Session != null &&
+            !IsSessionForMinigame("wordsearch"))
+        {
+            Debug.LogWarning(
+                "Wordsearch: la sesion pertenece a otro minijuego; usando endpoint legacy."
+            );
+            return false;
+        }
+
+        if (!MinigameLessonState.HasValidSession ||
+            !IsSessionForMinigame("wordsearch"))
+        {
+            return false;
+        }
+
+        Pregunta[] sessionQuestions;
+
+        if (!BuildWordsearchItemsFromSession(out sessionQuestions))
+        {
+            bancoDePreguntas = null;
+            Debug.LogWarning(
+                "Wordsearch: la sesion no cumple el contrato; usando endpoint legacy."
+            );
+            return false;
+        }
+
+        bancoDePreguntas = sessionQuestions;
+
+        Debug.Log(
+            "Wordsearch: usando "
+            + bancoDePreguntas.Length
+            + " items de sesion "
+            + MinigameLessonState.SessionId
+        );
+
+        return true;
+    }
+
+    private bool BuildWordsearchItemsFromSession(out Pregunta[] questions)
+    {
+        questions = null;
+        MinigameSessionItem[] items = MinigameLessonState.GetItems();
+
+        if (items == null || items.Length == 0)
+        {
+            return false;
+        }
+
+        Pregunta[] result = new Pregunta[items.Length];
+
+        for (int i = 0; i < items.Length; i++)
+        {
+            MinigameSessionItem item = items[i];
+
+            if (item == null ||
+                string.IsNullOrEmpty(item.clue) ||
+                string.IsNullOrEmpty(item.answer_text) ||
+                item.correct_option != -1)
+            {
+                return false;
+            }
+
+            result[i] = new Pregunta
+            {
+                textoPregunta = item.clue,
+                respuestaCorrecta = item.answer_text
+            };
+        }
+
+        questions = result;
+        return true;
+    }
+
+    private bool IsSessionForMinigame(string minigame)
+    {
+        return MinigameLessonState.Session != null &&
+            string.Equals(
+                MinigameLessonState.Session.minigame,
+                minigame,
+                System.StringComparison.OrdinalIgnoreCase
+            );
     }
 
     void OnCrosswordLoaded(string json)

@@ -79,6 +79,14 @@ public class QuizController : MonoBehaviour
         if (imagenesBotones.Length > 0)
             colorOriginalBotones = imagenesBotones[0].color;
 
+        if (TryLoadQuizItemsFromSession())
+        {
+            CargarPregunta();
+            return;
+        }
+
+        Debug.Log("Quiz: usando endpoint legacy");
+
         // Intentar jalar preguntas del backend
         if (APIManager.Instance != null)
         {
@@ -94,6 +102,95 @@ public class QuizController : MonoBehaviour
         {
             CargarPregunta(); // Si no hay API, carga local
         }
+    }
+
+    private bool TryLoadQuizItemsFromSession()
+    {
+        if (MinigameLessonState.Session != null &&
+            !IsSessionForMinigame("quiz"))
+        {
+            Debug.LogWarning(
+                "Quiz: la sesion pertenece a otro minijuego; usando endpoint legacy."
+            );
+            return false;
+        }
+
+        if (!MinigameLessonState.HasValidSession ||
+            !IsSessionForMinigame("quiz"))
+        {
+            return false;
+        }
+
+        Pregunta[] sessionQuestions;
+
+        if (!BuildQuizItemsFromSession(out sessionQuestions))
+        {
+            bancoDePreguntas = null;
+            Debug.LogWarning(
+                "Quiz: la sesion no cumple el contrato; usando endpoint legacy."
+            );
+            return false;
+        }
+
+        bancoDePreguntas = sessionQuestions;
+        usandoBackend = true;
+
+        Debug.Log(
+            "Quiz: usando "
+            + bancoDePreguntas.Length
+            + " items de sesion "
+            + MinigameLessonState.SessionId
+        );
+
+        return true;
+    }
+
+    private bool BuildQuizItemsFromSession(out Pregunta[] questions)
+    {
+        questions = null;
+        MinigameSessionItem[] items = MinigameLessonState.GetItems();
+
+        if (items == null || items.Length == 0)
+        {
+            return false;
+        }
+
+        Pregunta[] result = new Pregunta[items.Length];
+
+        for (int i = 0; i < items.Length; i++)
+        {
+            MinigameSessionItem item = items[i];
+
+            if (item == null ||
+                string.IsNullOrEmpty(item.question) ||
+                item.options == null ||
+                item.options.Length == 0 ||
+                item.correct_option < 0 ||
+                item.correct_option >= item.options.Length)
+            {
+                return false;
+            }
+
+            result[i] = new Pregunta
+            {
+                enunciado = item.question,
+                opciones = item.options,
+                indiceCorrecto = item.correct_option
+            };
+        }
+
+        questions = result;
+        return true;
+    }
+
+    private bool IsSessionForMinigame(string minigame)
+    {
+        return MinigameLessonState.Session != null &&
+            string.Equals(
+                MinigameLessonState.Session.minigame,
+                minigame,
+                System.StringComparison.OrdinalIgnoreCase
+            );
     }
 
     void OnQuizLoaded(string json)

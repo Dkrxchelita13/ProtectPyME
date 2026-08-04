@@ -88,6 +88,13 @@ public class CrosswordController : MonoBehaviour
             }
         }
 
+        if (TryLoadCrosswordItemsFromSession())
+        {
+            return;
+        }
+
+        Debug.Log("Crossword: usando endpoint legacy");
+
         // ➕ MODIFICADO: Usar los parámetros de AIState igual que en Sopa de Letras
         string token = APIManager.Instance.GetToken();
         if (string.IsNullOrEmpty(token)) return;
@@ -147,6 +154,91 @@ public class CrosswordController : MonoBehaviour
             }
             AvanzarSiguientePregunta();
         }
+    }
+
+    private bool TryLoadCrosswordItemsFromSession()
+    {
+        if (MinigameLessonState.Session != null &&
+            !IsSessionForMinigame("crossword"))
+        {
+            Debug.LogWarning(
+                "Crossword: la sesion pertenece a otro minijuego; usando endpoint legacy."
+            );
+            return false;
+        }
+
+        if (!MinigameLessonState.HasValidSession ||
+            !IsSessionForMinigame("crossword"))
+        {
+            return false;
+        }
+
+        List<CrosswordWordData> sessionWords;
+
+        if (!BuildCrosswordItemsFromSession(out sessionWords))
+        {
+            Debug.LogWarning(
+                "Crossword: la sesion no cumple el contrato; usando endpoint legacy."
+            );
+            return false;
+        }
+
+        Debug.Log(
+            "Crossword: usando "
+            + sessionWords.Count
+            + " items de sesion "
+            + MinigameLessonState.SessionId
+        );
+
+        model = generator.Generate(sessionWords);
+        ShowClues();
+        CreateGrid();
+        return true;
+    }
+
+    private bool BuildCrosswordItemsFromSession(out List<CrosswordWordData> words)
+    {
+        words = null;
+        MinigameSessionItem[] items = MinigameLessonState.GetItems();
+
+        if (items == null || items.Length == 0)
+        {
+            return false;
+        }
+
+        List<CrosswordWordData> result = new List<CrosswordWordData>();
+
+        for (int i = 0; i < items.Length; i++)
+        {
+            MinigameSessionItem item = items[i];
+
+            if (item == null ||
+                string.IsNullOrEmpty(item.clue) ||
+                string.IsNullOrEmpty(item.answer_text) ||
+                item.correct_option != -1)
+            {
+                return false;
+            }
+
+            result.Add(new CrosswordWordData
+            {
+                clue = item.clue,
+                answer = item.answer_text
+            });
+        }
+
+        words = result;
+        return true;
+    }
+
+    private bool IsSessionForMinigame(string minigame)
+    {
+        return MinigameLessonState.Session != null &&
+            string.Equals(
+                MinigameLessonState.Session.minigame,
+                minigame,
+                System.StringComparison.OrdinalIgnoreCase
+            );
     }
 
     void OnData(string json)
