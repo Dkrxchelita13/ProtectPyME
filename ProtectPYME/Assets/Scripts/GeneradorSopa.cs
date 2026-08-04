@@ -40,11 +40,13 @@ public class GeneradorSopa : MonoBehaviour
     {
         if (IsGridReady)
         {
+#if UNITY_EDITOR
             Debug.Log(
                 "GeneradorSopa: grid listo con "
                 + todasLasCasillas.Count
                 + " celdas"
             );
+#endif
             return true;
         }
 
@@ -67,11 +69,13 @@ public class GeneradorSopa : MonoBehaviour
             return false;
         }
 
+#if UNITY_EDITOR
         Debug.Log(
             "GeneradorSopa: grid listo con "
             + todasLasCasillas.Count
             + " celdas"
         );
+#endif
         return true;
     }
 

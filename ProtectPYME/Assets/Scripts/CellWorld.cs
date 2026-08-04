@@ -43,7 +43,9 @@ public class CellWorld : MonoBehaviour
 
         text.text = letter;
 
+#if UNITY_EDITOR
         Debug.Log("LETRA PUESTA: " + letter);
+#endif
 
         controller.OnLetterChanged(x, y, letter);
     }

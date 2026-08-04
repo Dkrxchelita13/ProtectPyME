@@ -72,7 +72,9 @@ public class CrosswordController : MonoBehaviour
         // ➕ AGREGADO: Obtener el GamificacionController de este objeto
         gamificacion = GetComponent<GamificacionController>();
 
+#if UNITY_EDITOR
         Debug.Log("🧹 LIMPIANDO OBJETOS EXTRA");
+#endif
 
         if (gamificacion != null && barraSeguridad != null)
         {
@@ -312,7 +314,9 @@ public class CrosswordController : MonoBehaviour
     void OnData(string json)
     {
         usingSessionItems = false;
+#if UNITY_EDITOR
         Debug.Log("📦 JSON recibido: " + json);
+#endif
 
         List<CrosswordWordData> words;
 
@@ -328,12 +332,14 @@ public class CrosswordController : MonoBehaviour
             );
         }
 
+#if UNITY_EDITOR
         Debug.Log("🧠 Cantidad de palabras: " + words.Count);
 
         foreach (var w in words)
         {
             Debug.Log("➡️ " + w.clue + " | " + w.answer);
         }
+#endif
 
         InitializeGameFromWords(words);
     }
@@ -368,7 +374,9 @@ public class CrosswordController : MonoBehaviour
 
     void CreateGrid()
     {
+#if UNITY_EDITOR
         Debug.Log("🚀 CREANDO GRID DESDE MODEL");
+#endif
 
         foreach (Transform child in gridParent)
         {
@@ -407,7 +415,9 @@ public class CrosswordController : MonoBehaviour
                 if (cellWorld != null)
                 {
                     cellWorld.Init(x, y, this);
+#if UNITY_EDITOR
                     Debug.Log($"✅ CELDA CREADA [{x},{y}]");
+#endif
                 }
 
                 foreach (var word in model.words)

@@ -49,7 +49,9 @@ public class CrosswordInput : MonoBehaviour
         selectedCell = cell;
         HighlightWord(cell, controller);
 
+#if UNITY_EDITOR
         Debug.Log("CELDA SELECCIONADA");
+#endif
 
         if (openKeyboard)
         {
@@ -102,27 +104,37 @@ public class CrosswordInput : MonoBehaviour
         Vector3 worldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         Vector2 mousePos2D = new Vector2(worldPos.x, worldPos.y);
 
+#if UNITY_EDITOR
         Debug.Log("CLICK EN COORDENADAS MUNDO: " + mousePos2D);
+#endif
 
         RaycastHit2D hit = Physics2D.Raycast(mousePos2D, Vector2.zero);
 
         if (hit.collider == null)
         {
+#if UNITY_EDITOR
             Debug.Log("El Raycast no choco con ningun Collider2D en esa posicion.");
+#endif
             return;
         }
 
+#if UNITY_EDITOR
         Debug.Log("TOCO ALGO: " + hit.collider.name);
+#endif
 
         CellWorld cell = hit.collider.GetComponentInParent<CellWorld>();
 
         if (cell == null)
         {
+#if UNITY_EDITOR
             Debug.Log("El objeto tocado no tiene CellWorld en sus componentes.");
+#endif
             return;
         }
 
+#if UNITY_EDITOR
         Debug.Log("CLICK DETECTADO EN CELDA");
+#endif
         SelectCell(cell);
     }
 
@@ -255,7 +267,9 @@ public class CrosswordInput : MonoBehaviour
 
         string letter = NormalizeInputCharacter(character).ToString();
 
+#if UNITY_EDITOR
         Debug.Log("LETRA DETECTADA: " + letter);
+#endif
 
         selectedCell.SetLetter(letter);
         PlaySound(sonidoEscribir);
