@@ -362,6 +362,41 @@ class MinigameSessionSummaryResponse(BaseModel):
     completed_at: Optional[datetime]
 
 
+class ConceptFeedbackResponse(BaseModel):
+    concept_id: str
+    term: str
+    mastery_score: float
+    mastery_level: str
+    session_attempts: int
+    session_correct: int
+    session_incorrect: int
+    status: Literal["fortaleza", "avance", "refuerzo", "dificultad_puntual"]
+    message: str
+    recommendation: str
+
+
+class MinigameFeedbackResponse(BaseModel):
+    session_id: str
+    topic: str
+    risk: str
+    minigame: str
+    accuracy: float
+    points_earned: int
+    total_attempts: int
+    correct_attempts: int
+    incorrect_attempts: int
+    performance_level: str
+    title: str
+    message: str
+    next_step: str
+    strengths: List[ConceptFeedbackResponse]
+    reinforcement: List[ConceptFeedbackResponse]
+    recommended_concept_ids: List[str]
+    recommended_topic: str
+    recommended_minigame: str
+    generated_at: str
+
+
 class ConceptMasteryResponse(BaseModel):
     concept_id: str
     topic: str

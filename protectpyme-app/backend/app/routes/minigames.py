@@ -9,6 +9,7 @@ from app.services import concept_mastery_service
 from app.services import learning_content_service
 from app.services import minigame_service
 from app.services import minigame_session_service
+from app.services import personalized_feedback_service
 from app.routes.auth import get_current_user
 
 router = APIRouter(prefix="/minigames", tags=["Minigames"])
@@ -141,6 +142,35 @@ def complete_minigame_session(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except minigame_session_service.MinigameSessionConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get(
+    "/session/{session_id}/feedback",
+    response_model=schemas.MinigameFeedbackResponse,
+    summary="Obtener retroalimentacion personalizada de una sesion",
+    description=(
+        "Genera retroalimentacion determinista usando los intentos de la "
+        "sesion completada, el dominio actual por concepto y el catalogo "
+        "pedagogico."
+    ),
+)
+def get_minigame_feedback(
+    session_id: str,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        return personalized_feedback_service.get_minigame_feedback(
+            db=db,
+            user_id=current_user.id,
+            session_id=session_id,
+        )
+    except personalized_feedback_service.FeedbackSessionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except personalized_feedback_service.FeedbackSessionConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except personalized_feedback_service.FeedbackValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get(
