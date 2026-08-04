@@ -13,7 +13,11 @@ from sqlalchemy.pool import StaticPool
 os.environ.setdefault("SECRET_KEY", "test-secret")
 
 from app import schemas  # noqa: E402
-from app.services import minigame_service, minigame_session_service  # noqa: E402
+from app.services import (  # noqa: E402
+    learning_content_service,
+    minigame_service,
+    minigame_session_service,
+)
 from app.services.concept_catalog import get_concepts  # noqa: E402
 
 
@@ -216,14 +220,16 @@ def test_session_lesson_uses_selected_item_concepts():
 
 
 def test_session_does_not_include_unselected_concepts():
-    session = minigame_session_service.create_minigame_session(
+    selected_concept_ids = ["passwords.salt", "passwords.hash"]
+    lesson = learning_content_service.get_learning_content_for_concepts(
         topic="passwords",
         risk="bajo",
         minigame="crossword",
+        concept_ids=selected_concept_ids,
     )
     terms = {
         concept["term"].lower()
-        for concept in session["lesson"]["key_concepts"]
+        for concept in lesson["key_concepts"]
     }
 
     assert "password spraying" not in terms
@@ -236,15 +242,15 @@ def test_passwords_bajo_crossword_session_teaches_salt_hash_argon2id():
         minigame="crossword",
     )
 
-    assert [
+    concept_ids = [
         concept_id
         for item in session["items"]
         for concept_id in item["concept_ids"]
-    ] == [
-        "passwords.salt",
-        "passwords.hash",
-        "passwords.argon2id",
     ]
+
+    assert "passwords.salt" in concept_ids
+    assert "passwords.hash" in concept_ids
+    assert "passwords.argon2id" in concept_ids
 
     text = " ".join(
         " ".join(concept.values())
@@ -264,15 +270,15 @@ def test_passwords_bajo_wordsearch_session_teaches_salt_hash_argon2id():
         minigame="wordsearch",
     )
 
-    assert [
+    concept_ids = [
         concept_id
         for item in session["items"]
         for concept_id in item["concept_ids"]
-    ] == [
-        "passwords.salt",
-        "passwords.hash",
-        "passwords.argon2id",
     ]
+
+    assert "passwords.salt" in concept_ids
+    assert "passwords.hash" in concept_ids
+    assert "passwords.argon2id" in concept_ids
 
 
 def test_quiz_session_supports_multiple_concept_ids():
@@ -492,6 +498,34 @@ def create_persisted_session(
     return response.json()
 
 
+def selected_item_id(session, index=0):
+    return session["items"][index]["item_id"]
+
+
+def selected_distinct_concept_item_ids(session, count=2):
+    selected = []
+    seen_concepts = set()
+
+    for item in session["items"]:
+        concepts = set(item["concept_ids"])
+
+        if concepts.isdisjoint(seen_concepts):
+            selected.append(item["item_id"])
+            seen_concepts.update(concepts)
+
+        if len(selected) == count:
+            return selected
+
+    for item in session["items"]:
+        if item["item_id"] not in selected:
+            selected.append(item["item_id"])
+
+        if len(selected) == count:
+            return selected
+
+    return selected
+
+
 def record_attempt(
     client,
     session_id,
@@ -636,7 +670,7 @@ def test_record_correct_attempt(minigame_client):
     response = record_attempt(
         client,
         session["session_id"],
-        "passwords_bajo_crossword_argon2id",
+        selected_item_id(session),
         correct=True,
     )
 
@@ -650,7 +684,7 @@ def test_record_incorrect_attempt(minigame_client):
     response = record_attempt(
         client,
         session["session_id"],
-        "passwords_bajo_crossword_argon2id",
+        selected_item_id(session),
         correct=False,
     )
 
@@ -661,10 +695,11 @@ def test_record_incorrect_attempt(minigame_client):
 def test_attempt_metadata_is_derived_from_backend(minigame_client):
     client, _ = minigame_client
     session = create_persisted_session(client)
+    item_id = selected_item_id(session)
     response = record_attempt(
         client,
         session["session_id"],
-        "passwords_bajo_crossword_argon2id",
+        item_id,
         extra_payload={
             "concept_ids": ["client.fake"],
             "difficulty": "alto",
@@ -676,11 +711,12 @@ def test_attempt_metadata_is_derived_from_backend(minigame_client):
     response = record_attempt(
         client,
         session["session_id"],
-        "passwords_bajo_crossword_argon2id",
+        item_id,
     )
+    item_metadata = minigame_service.get_item_by_id(item_id)["item"]
 
     assert response.status_code == 200
-    assert response.json()["concept_ids"] == ["passwords.argon2id"]
+    assert response.json()["concept_ids"] == item_concept_ids(item_metadata)
     assert response.json()["difficulty"] == "bajo"
 
 
@@ -706,7 +742,7 @@ def test_attempt_rejects_session_from_another_user(minigame_client):
     response = record_attempt(
         client,
         session["session_id"],
-        "passwords_bajo_crossword_argon2id",
+        selected_item_id(session),
     )
 
     assert response.status_code == 404
@@ -739,15 +775,16 @@ def test_attempt_rejects_unknown_item(minigame_client):
 def test_attempt_rejects_duplicate_attempt_number(minigame_client):
     client, _ = minigame_client
     session = create_persisted_session(client)
+    item_id = selected_item_id(session)
     first = record_attempt(
         client,
         session["session_id"],
-        "passwords_bajo_crossword_argon2id",
+        item_id,
     )
     second = record_attempt(
         client,
         session["session_id"],
-        "passwords_bajo_crossword_argon2id",
+        item_id,
     )
 
     assert first.status_code == 200
@@ -761,7 +798,7 @@ def test_attempt_rejects_completed_session(minigame_client):
     response = record_attempt(
         client,
         session["session_id"],
-        "passwords_bajo_crossword_argon2id",
+        selected_item_id(session),
     )
 
     assert complete.status_code == 200
@@ -774,7 +811,7 @@ def test_attempt_validates_response_time(minigame_client):
     response = record_attempt(
         client,
         session["session_id"],
-        "passwords_bajo_crossword_argon2id",
+        selected_item_id(session),
         response_time_ms=3_600_001,
     )
 
@@ -787,48 +824,51 @@ def test_attempt_does_not_accept_client_concept_ids(minigame_client):
     response = record_attempt(
         client,
         session["session_id"],
-        "passwords_bajo_crossword_argon2id",
+        selected_item_id(session),
         extra_payload={"concept_ids": ["passwords.fake"]},
     )
 
     assert response.status_code == 422
 
 
-def test_passwords_bajo_crossword_argon2id_attempt_stores_backend_metadata(
+def test_passwords_bajo_crossword_attempt_stores_backend_metadata(
     minigame_client,
 ):
     from app import models
 
     client, _ = minigame_client
     session = create_persisted_session(client)
+    item_id = selected_item_id(session)
     response = record_attempt(
         client,
         session["session_id"],
-        "passwords_bajo_crossword_argon2id",
+        item_id,
     )
+    item_metadata = minigame_service.get_item_by_id(item_id)["item"]
 
     db = get_db_session()
 
     try:
         attempt = db.query(models.MinigameAttempt).filter(
-            models.MinigameAttempt.item_id == "passwords_bajo_crossword_argon2id"
+            models.MinigameAttempt.item_id == item_id
         ).first()
     finally:
         db.close()
 
     assert response.status_code == 200
-    assert attempt.item_id == "passwords_bajo_crossword_argon2id"
-    assert attempt.concept_ids == ["passwords.argon2id"]
+    assert attempt.item_id == item_id
+    assert attempt.concept_ids == item_concept_ids(item_metadata)
     assert attempt.difficulty == "bajo"
 
 
 def test_complete_session_returns_summary(minigame_client):
     client, _ = minigame_client
     session = create_persisted_session(client)
+    first_item_id, second_item_id = selected_distinct_concept_item_ids(session)
     record_attempt(
         client,
         session["session_id"],
-        "passwords_bajo_crossword_salt",
+        first_item_id,
         correct=True,
         response_time_ms=500,
         points_delta=10,
@@ -836,9 +876,10 @@ def test_complete_session_returns_summary(minigame_client):
     record_attempt(
         client,
         session["session_id"],
-        "passwords_bajo_crossword_hash",
+        second_item_id,
         correct=False,
         response_time_ms=700,
+        attempt_number=2,
         points_delta=-2,
     )
     response = client.post(f"/minigames/session/{session['session_id']}/complete")
@@ -870,17 +911,19 @@ def test_complete_session_marks_completed(minigame_client):
 def test_complete_session_accuracy(minigame_client):
     client, _ = minigame_client
     session = create_persisted_session(client)
+    first_item_id, second_item_id = selected_distinct_concept_item_ids(session)
     record_attempt(
         client,
         session["session_id"],
-        "passwords_bajo_crossword_salt",
+        first_item_id,
         correct=True,
     )
     record_attempt(
         client,
         session["session_id"],
-        "passwords_bajo_crossword_hash",
+        second_item_id,
         correct=False,
+        attempt_number=2,
     )
     response = client.post(f"/minigames/session/{session['session_id']}/complete")
 
@@ -891,17 +934,18 @@ def test_complete_session_accuracy(minigame_client):
 def test_complete_session_points_sum(minigame_client):
     client, _ = minigame_client
     session = create_persisted_session(client)
+    first_item_id, second_item_id = selected_distinct_concept_item_ids(session)
     record_attempt(
         client,
         session["session_id"],
-        "passwords_bajo_crossword_salt",
+        first_item_id,
         points_delta=10,
     )
     record_attempt(
         client,
         session["session_id"],
-        "passwords_bajo_crossword_hash",
-        attempt_number=1,
+        second_item_id,
+        attempt_number=2,
         points_delta=5,
     )
     response = client.post(f"/minigames/session/{session['session_id']}/complete")

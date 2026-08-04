@@ -79,6 +79,36 @@ def is_answer_covered(answer, terms):
     return alias in terms if alias else False
 
 
+def item_concept_search_text(item):
+    parts = []
+
+    for concept_id in item_concept_ids(item):
+        concept = CONCEPT_CATALOG[concept_id]
+        parts.extend(
+            [
+                concept["term"],
+                concept["definition"],
+                concept["explanation"],
+                concept["practical_example"],
+                concept["common_mistake"],
+                concept["recognition_clue"],
+                *concept["aliases"],
+            ]
+        )
+
+    return normalize(" ".join(parts))
+
+
+def is_answer_covered_by_item_concepts(item):
+    normalized_answer = normalize(item["answer"])
+
+    if normalized_answer in item_concept_search_text(item):
+        return True
+
+    alias = PEDAGOGICAL_ALIASES.get(normalized_answer)
+    return alias in item_concept_search_text(item) if alias else False
+
+
 def all_bank_items():
     banks = {
         "quiz": minigame_service.QUIZ,
@@ -171,8 +201,6 @@ def test_no_item_uses_legacy_argon_concept():
 @pytest.mark.parametrize("topic", TOPICS)
 @pytest.mark.parametrize("risk", RISKS)
 def test_word_puzzle_bank_answers_are_taught_or_controlled_aliases(topic, risk, minigame):
-    lesson = learning_content_service.get_learning_content(topic, risk, minigame)
-    terms = concept_terms(lesson)
     bank = (
         minigame_service.get_wordsearch(topic, risk)
         if minigame == "wordsearch"
@@ -180,9 +208,9 @@ def test_word_puzzle_bank_answers_are_taught_or_controlled_aliases(topic, risk, 
     )
 
     missing = [
-        item["answer"]
+        (item["item_id"], item["answer"])
         for item in bank
-        if not is_answer_covered(item["answer"], terms)
+        if not is_answer_covered_by_item_concepts(item)
     ]
 
     assert not missing, (

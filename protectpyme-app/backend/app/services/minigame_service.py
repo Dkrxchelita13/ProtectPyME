@@ -884,6 +884,434 @@ def _annotate_banks():
 
 _annotate_banks()
 
+
+EXTRA_QUIZ_ITEMS = {
+    ("phishing", "alto"): [
+        (
+            "phishing_alto_quiz_enlace_accion_1",
+            "Un proveedor envía un enlace inesperado para actualizar datos. ¿Qué conviene hacer?",
+            ["Abrirlo porque parece urgente", "Ignorarlo sin avisar", "Verificar por canal oficial antes de entrar", "Compartirlo con el equipo"],
+            2,
+            ["phishing.enlace", "phishing.phishing"],
+        ),
+        (
+            "phishing_alto_quiz_urgencia_1",
+            "¿Qué señal suele aumentar la sospecha en un correo fraudulento?",
+            ["Que tenga saludo cordial", "Que presione para actuar de inmediato", "Que llegue por la mañana", "Que use texto corto"],
+            1,
+            ["phishing.phishing"],
+        ),
+        (
+            "phishing_alto_quiz_reporte_pyme_1",
+            "En una PYME, varias personas reciben el mismo correo dudoso. ¿Cuál es la mejor respuesta?",
+            ["Responder al remitente", "Descargar el adjunto", "Borrar el mensaje en silencio", "Reportarlo al canal interno"],
+            3,
+            ["phishing.reportar"],
+        ),
+    ],
+    ("phishing", "medio"): [
+        (
+            "phishing_medio_quiz_dominio_similar_1",
+            "¿Cuál dominio debería revisarse con más cuidado?",
+            ["empresa.com", "empresa-soporte.com", "portal interno conocido", "proveedor validado"],
+            1,
+            ["phishing.dominio"],
+        ),
+        (
+            "phishing_medio_quiz_url_visible_1",
+            "Un botón dice 'factura', pero la URL apunta a un sitio desconocido. ¿Qué indica?",
+            ["Que siempre es seguro", "Que es un archivo local", "Que puede ser un enlace engañoso", "Que no requiere revisión"],
+            2,
+            ["phishing.url", "phishing.enlace"],
+        ),
+        (
+            "phishing_medio_quiz_spam_riesgo_1",
+            "¿Por qué no conviene tratar todo spam como simple publicidad?",
+            ["Porque puede ocultar enlaces o adjuntos riesgosos", "Porque siempre bloquea la cuenta", "Porque elimina mensajes legítimos", "Porque cambia la contraseña"],
+            0,
+            ["phishing.spam"],
+        ),
+    ],
+    ("phishing", "bajo"): [
+        (
+            "phishing_bajo_quiz_spf_1",
+            "¿Qué valida SPF en el correo de una empresa?",
+            ["El color del logotipo", "Qué servidores pueden enviar por un dominio", "La longitud del asunto", "La contraseña del usuario"],
+            1,
+            ["phishing.spf"],
+        ),
+        (
+            "phishing_bajo_quiz_dkim_1",
+            "¿Para qué ayuda DKIM?",
+            ["Para borrar spam", "Para cifrar archivos", "Para verificar autenticidad e integridad del correo", "Para crear contraseñas"],
+            2,
+            ["phishing.dkim"],
+        ),
+        (
+            "phishing_bajo_quiz_spear_contexto_1",
+            "Un correo menciona datos reales de tu jefe y pide una factura urgente. ¿Qué riesgo representa?",
+            ["Spam común sin riesgo", "Error de red", "Actualización normal", "Spear phishing"],
+            3,
+            ["phishing.spear_phishing"],
+        ),
+    ],
+    ("passwords", "alto"): [
+        (
+            "passwords_alto_quiz_unica_1",
+            "¿Qué práctica reduce el impacto si una cuenta externa se filtra?",
+            ["Usar una contraseña única por servicio", "Compartir la clave con soporte", "Usar el nombre de la empresa", "Anotar la clave en un chat"],
+            0,
+            ["passwords.password", "passwords.reutilizacion"],
+        ),
+        (
+            "passwords_alto_quiz_secreto_1",
+            "¿Qué dato debe tratarse como secreto?",
+            ["El horario de oficina", "El código temporal de acceso", "El nombre del área", "La marca del equipo"],
+            1,
+            ["passwords.secreto"],
+        ),
+        (
+            "passwords_alto_quiz_larga_1",
+            "¿Cuál opción es mejor para una contraseña laboral?",
+            ["Una palabra común con 1", "La fecha de nacimiento", "Una frase larga y difícil de adivinar", "El nombre del negocio"],
+            2,
+            ["passwords.larga"],
+        ),
+    ],
+    ("passwords", "medio"): [
+        (
+            "passwords_medio_quiz_mfa_solicitud_1",
+            "Recibes una solicitud MFA que no iniciaste. ¿Qué debes hacer?",
+            ["Aprobarla para cerrar la alerta", "Ignorarla sin avisar", "Compartir el código", "Rechazarla y reportarla"],
+            3,
+            ["passwords.mfa"],
+        ),
+        (
+            "passwords_medio_quiz_gestor_1",
+            "¿Qué ventaja aporta un gestor de contraseñas?",
+            ["Generar y guardar claves únicas", "Eliminar la necesidad de MFA", "Hacer públicas las claves", "Cambiar el correo"],
+            0,
+            ["passwords.gestor"],
+        ),
+        (
+            "passwords_medio_quiz_passphrase_1",
+            "¿Cuándo una passphrase es más segura?",
+            ["Cuando usa una frase famosa", "Cuando es larga, única y no obvia", "Cuando incluye el nombre del usuario", "Cuando se comparte con el equipo"],
+            1,
+            ["passwords.passphrase"],
+        ),
+    ],
+    ("passwords", "bajo"): [
+        (
+            "passwords_bajo_quiz_argon2id_1",
+            "¿Qué describe mejor a Argon2id?",
+            ["Un cifrado reversible", "Un antivirus", "Una función para almacenar contraseñas de forma resistente", "Una red WiFi"],
+            2,
+            ["passwords.argon2id"],
+        ),
+        (
+            "passwords_bajo_quiz_hash_no_reversible_1",
+            "¿Qué error conviene evitar al hablar de hash de contraseñas?",
+            ["Compararlo con el valor almacenado", "Usarlo junto con salt", "Aplicarlo antes de guardar", "Pensar que permite recuperar la contraseña"],
+            3,
+            ["passwords.hash"],
+        ),
+        (
+            "passwords_bajo_quiz_spraying_1",
+            "¿Qué caracteriza al password spraying?",
+            ["Probar una contraseña común en muchas cuentas", "Cifrar una USB", "Firmar un correo", "Crear una VPN"],
+            0,
+            ["passwords.password_spraying"],
+        ),
+    ],
+    ("malware", "alto"): [
+        (
+            "malware_alto_quiz_adjunto_1",
+            "Llega un adjunto inesperado de un contacto conocido. ¿Qué acción reduce el riesgo?",
+            ["Abrirlo de inmediato", "Verificar el origen antes de abrir", "Reenviarlo a todos", "Desactivar el antivirus"],
+            1,
+            ["malware.malware"],
+        ),
+        (
+            "malware_alto_quiz_antivirus_alerta_1",
+            "El antivirus alerta sobre una descarga. ¿Qué conviene hacer?",
+            ["Ignorar la alerta", "Ejecutar el archivo", "Detenerse y pedir apoyo", "Copiarlo a otra carpeta"],
+            2,
+            ["malware.antivirus"],
+        ),
+        (
+            "malware_alto_quiz_usb_soporte_1",
+            "Encuentras una USB en recepción. ¿Cuál es la decisión más segura?",
+            ["Conectarla para revisar dueño", "Copiar su contenido", "Prestarla a un compañero", "Entregarla a soporte sin conectarla"],
+            3,
+            ["malware.usb"],
+        ),
+    ],
+    ("malware", "medio"): [
+        (
+            "malware_medio_quiz_ransomware_impacto_1",
+            "¿Cuál es un impacto probable del ransomware?",
+            ["Bloquear o cifrar archivos de trabajo", "Mejorar el rendimiento", "Validar correos", "Crear contraseñas"],
+            0,
+            ["malware.ransomware"],
+        ),
+        (
+            "malware_medio_quiz_spyware_credenciales_1",
+            "¿Por qué el spyware es peligroso para una PYME?",
+            ["Porque ordena archivos", "Porque puede recopilar credenciales o actividad", "Porque cambia el fondo de pantalla", "Porque mejora la red"],
+            1,
+            ["malware.spyware"],
+        ),
+        (
+            "malware_medio_quiz_botnet_red_1",
+            "Un equipo envía tráfico extraño sin que el usuario lo note. ¿Qué podría indicar?",
+            ["Una impresora nueva", "Una clave larga", "Participación en una botnet", "Un correo legítimo"],
+            2,
+            ["malware.botnet"],
+        ),
+    ],
+    ("malware", "bajo"): [
+        (
+            "malware_bajo_quiz_rootkit_oculto_1",
+            "¿Qué vuelve delicado a un rootkit?",
+            ["Que solo afecta correos", "Que crea contraseñas", "Que siempre es visible", "Que intenta ocultar su presencia"],
+            3,
+            ["malware.rootkit"],
+        ),
+        (
+            "malware_bajo_quiz_sandbox_analisis_1",
+            "¿Para qué sirve una sandbox autorizada?",
+            ["Analizar archivos sospechosos de forma aislada", "Compartir claves", "Evitar respaldos", "Abrir cualquier enlace"],
+            0,
+            ["malware.sandbox"],
+        ),
+        (
+            "malware_bajo_quiz_persistencia_1",
+            "Si una amenaza reaparece tras reiniciar, ¿qué concepto ayuda a explicarlo?",
+            ["Spam", "Persistencia", "MFA", "SSID"],
+            1,
+            ["malware.persistencia"],
+        ),
+    ],
+    ("wifi", "alto"): [
+        (
+            "wifi_alto_quiz_publica_tarea_1",
+            "¿Qué conviene evitar en una red pública?",
+            ["Consultar datos sensibles sin protección", "Confirmar el SSID", "Usar HTTPS", "Activar VPN autorizada"],
+            0,
+            ["wifi.wifi_publica", "wifi.datos_sensibles"],
+        ),
+        (
+            "wifi_alto_quiz_https_limite_1",
+            "¿Qué límite tiene HTTPS?",
+            ["Protege la comunicación, pero no prueba que el sitio sea legítimo", "Elimina todo phishing", "Cambia la contraseña", "Bloquea USB"],
+            0,
+            ["wifi.https"],
+        ),
+        (
+            "wifi_alto_quiz_vpn_uso_1",
+            "¿Cuándo es recomendable activar la VPN corporativa?",
+            ["Al conectar una USB", "Antes de entrar a recursos internos desde una red externa", "Para abrir adjuntos sospechosos", "Para cambiar el SSID"],
+            1,
+            ["wifi.vpn"],
+        ),
+    ],
+    ("wifi", "medio"): [
+        (
+            "wifi_medio_quiz_ssid_parecido_1",
+            "Dos redes tienen nombres muy parecidos. ¿Qué conviene revisar?",
+            ["El color del icono", "La hora del día", "El SSID oficial antes de conectarse", "La batería del equipo"],
+            2,
+            ["wifi.ssid"],
+        ),
+        (
+            "wifi_medio_quiz_hotspot_1",
+            "¿Qué debe confirmarse antes de usar un hotspot para trabajo?",
+            ["Que sea autorizado y confiable", "Que no tenga nombre", "Que sea el primero de la lista", "Que no use clave"],
+            0,
+            ["wifi.hotspot"],
+        ),
+        (
+            "wifi_medio_quiz_wpa2_1",
+            "¿Qué indica WPA2 en una red de oficina?",
+            ["Que no necesita administración", "Que usa un estándar de protección inalámbrica", "Que siempre es pública", "Que evita correos falsos"],
+            1,
+            ["wifi.wpa2"],
+        ),
+    ],
+    ("wifi", "bajo"): [
+        (
+            "wifi_bajo_quiz_evil_twin_1",
+            "¿Qué busca una red Evil Twin?",
+            ["Mejorar la señal", "Actualizar el router", "Imitar una red legítima para engañar", "Crear una contraseña larga"],
+            2,
+            ["wifi.evil_twin"],
+        ),
+        (
+            "wifi_bajo_quiz_rogue_ap_1",
+            "¿Qué problema representa un Rogue AP en la empresa?",
+            ["Es un punto de acceso no autorizado", "Es un antivirus", "Es una firma de correo", "Es un hash seguro"],
+            0,
+            ["wifi.rogue_ap"],
+        ),
+        (
+            "wifi_bajo_quiz_wpa3_1",
+            "¿Cómo debe interpretarse WPA3?",
+            ["Como permiso para compartir claves", "Como reemplazo de toda política", "Como razón para ignorar actualizaciones", "Como estándar moderno que mejora la seguridad WiFi"],
+            3,
+            ["wifi.wpa3"],
+        ),
+    ],
+}
+
+
+EXTRA_WORD_ITEMS = {
+    ("phishing", "alto"): [
+        ("engano", "ENGANO", "phishing.phishing", "Señal de manipulación para robar información"),
+        ("canal", "CANAL", "phishing.reportar", "Medio interno usado para avisar de un correo sospechoso"),
+    ],
+    ("phishing", "medio"): [
+        ("pagina", "PAGINA", "phishing.url", "Destino web que debe coincidir con el servicio esperado"),
+        ("remitente", "REMITENTE", "phishing.dominio", "Origen del correo que debe verificarse"),
+    ],
+    ("phishing", "bajo"): [
+        ("politica", "POLITICA", "phishing.dmarc", "Regla de correo que decide cómo tratar mensajes sospechosos"),
+        ("dirigido", "DIRIGIDO", "phishing.spear_phishing", "Ataque enfocado en una persona o área específica"),
+    ],
+    ("passwords", "alto"): [
+        ("privada", "PRIVADA", "passwords.password", "Característica de una clave que no debe compartirse"),
+        ("repetir", "REPETIR", "passwords.reutilizacion", "Acción riesgosa al usar la misma clave en varios servicios"),
+    ],
+    ("passwords", "medio"): [
+        ("factor", "FACTOR", "passwords.mfa", "Elemento adicional para verificar un acceso"),
+        ("claves", "CLAVES", "passwords.gestor", "Datos que un gestor ayuda a guardar de forma segura"),
+    ],
+    ("passwords", "bajo"): [
+        ("spraying", "SPRAYING", "passwords.password_spraying", "Prueba de una contraseña común en muchas cuentas"),
+        ("memoria", "MEMORIA", "passwords.argon2id", "Recurso que Argon2id usa para resistir intentos masivos"),
+    ],
+    ("malware", "alto"): [
+        ("usb", "USB", "malware.usb", "Dispositivo externo que puede transportar amenazas"),
+        ("alerta", "ALERTA", "malware.antivirus", "Aviso que no debe ignorarse ante una descarga riesgosa"),
+    ],
+    ("malware", "medio"): [
+        ("cifra", "CIFRA", "malware.ransomware", "Acción de bloquear archivos para exigir pago"),
+        ("espia", "ESPIA", "malware.spyware", "Acción de recopilar información sin autorización"),
+    ],
+    ("malware", "bajo"): [
+        ("ocultar", "OCULTAR", "malware.rootkit", "Acción que dificulta detectar una amenaza"),
+        ("aislado", "AISLADO", "malware.sandbox", "Forma segura de analizar archivos sospechosos"),
+    ],
+    ("wifi", "alto"): [
+        ("datos", "DATOS", "wifi.datos_sensibles", "Información que requiere protección en redes externas"),
+        ("publica", "PUBLICA", "wifi.wifi_publica", "Tipo de red compartida fuera del control de la empresa"),
+    ],
+    ("wifi", "medio"): [
+        ("red", "RED", "wifi.ssid", "Conexión cuyo nombre visible debe verificarse"),
+        ("clave", "CLAVE", "wifi.wpa2", "Secreto que protege el acceso a una red inalámbrica"),
+    ],
+    ("wifi", "bajo"): [
+        ("falsa", "FALSA", "wifi.evil_twin", "Característica de una red que imita a otra legítima"),
+        ("moderno", "MODERNO", "wifi.wpa3", "Cualidad del estándar WPA3 frente a controles anteriores"),
+    ],
+}
+
+
+def _quiz_item(item_id, question, options, answer, concept_ids, difficulty):
+    item = {
+        "item_id": item_id,
+        "question": question,
+        "options": list(options),
+        "answer": answer,
+        "difficulty": difficulty,
+    }
+    _set_concept_metadata(item, concept_ids)
+    return item
+
+
+def _word_item(topic, risk, minigame, suffix, answer, concept_id, clue):
+    return {
+        "item_id": f"{topic}_{risk}_{minigame}_{suffix}",
+        "answer": answer,
+        "clue": clue,
+        "difficulty": risk,
+        "concept_id": concept_id,
+    }
+
+
+def _expand_quiz_bank():
+    for (topic, risk), items in EXTRA_QUIZ_ITEMS.items():
+        QUIZ[topic][risk].extend(
+            _quiz_item(
+                item_id=item_id,
+                question=question,
+                options=options,
+                answer=answer,
+                concept_ids=concept_ids,
+                difficulty=risk,
+            )
+            for item_id, question, options, answer, concept_ids in items
+        )
+
+
+def _expand_word_bank(bank, minigame):
+    for (topic, risk), items in EXTRA_WORD_ITEMS.items():
+        pool_items = list(items)
+
+        if minigame == "crossword" and topic == "malware" and risk == "alto":
+            pool_items[0] = (
+                "virus",
+                "VIRUS",
+                "malware.virus",
+                "Tipo de malware que puede propagarse al ejecutar archivos",
+            )
+
+        bank[topic][risk].extend(
+            _word_item(
+                topic=topic,
+                risk=risk,
+                minigame=minigame,
+                suffix=f"{suffix}_variant_2",
+                answer=answer,
+                concept_id=concept_id,
+                clue=clue,
+            )
+            for suffix, answer, concept_id, clue in pool_items
+        )
+
+
+def _replace_word_item_answer(bank, item_id, answer, clue):
+    for risks in bank.values():
+        for items in risks.values():
+            for item in items:
+                if item["item_id"] == item_id:
+                    item["answer"] = answer
+                    item["clue"] = clue
+                    return
+
+    raise KeyError(f"Minigame item not found: {item_id}")
+
+
+def _expand_banks():
+    _replace_word_item_answer(
+        WORDSEARCH,
+        "malware_bajo_wordsearch_persistencia",
+        "REINICIO",
+        "Señal de una amenaza que vuelve después de apagar y encender",
+    )
+    _replace_word_item_answer(
+        CROSSWORD,
+        "malware_bajo_crossword_persistencia",
+        "REINICIO",
+        "Indicio de malware que reaparece tras reiniciar",
+    )
+    _expand_quiz_bank()
+    _expand_word_bank(WORDSEARCH, "wordsearch")
+    _expand_word_bank(CROSSWORD, "crossword")
+
+
+_expand_banks()
+
 ITEM_INDEX = {}
 
 
