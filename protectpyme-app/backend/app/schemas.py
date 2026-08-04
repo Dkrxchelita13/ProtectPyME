@@ -65,7 +65,7 @@ class Score(ScoreBase):
         from_attributes = True
  """
 
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 from pydantic import BaseModel, EmailStr
 from typing import Literal
 
@@ -295,10 +295,11 @@ class MinigameSessionItem(BaseModel):
     item_id: str
     concept_ids: List[str]
     difficulty: Literal["alto", "medio", "bajo"]
-    answer: Union[int, str]
     question: Optional[str] = None
     options: Optional[List[str]] = None
     clue: Optional[str] = None
+    answer_text: str
+    correct_option: int
 
 
 class MinigameSessionResponse(BaseModel):

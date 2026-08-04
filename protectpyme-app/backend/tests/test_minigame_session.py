@@ -121,7 +121,9 @@ def assert_session_contract(session):
         assert item["item_id"]
         assert item["concept_ids"]
         assert item["difficulty"] == session["risk"]
-        assert "answer" in item
+        assert "answer" not in item
+        assert isinstance(item["answer_text"], str)
+        assert isinstance(item["correct_option"], int)
 
 
 def test_session_response_contract(minigame_client):
@@ -266,6 +268,115 @@ def test_quiz_session_supports_multiple_concept_ids():
         item["concept_ids"] == ["passwords.salt", "passwords.hash"]
         for item in session["items"]
     )
+
+
+def test_quiz_session_uses_numeric_correct_option(minigame_client):
+    client, _ = minigame_client
+    response = client.post(
+        "/minigames/session",
+        json={
+            "topic": "passwords",
+            "risk": "bajo",
+            "minigame": "quiz",
+        },
+    )
+    session = response.json()
+    bank = minigame_service.get_quiz("passwords", "bajo")
+
+    assert response.status_code == 200
+
+    for index, item in enumerate(session["items"]):
+        assert "answer" not in item
+        assert item["answer_text"] == ""
+        assert item["correct_option"] == bank[index]["answer"]
+        assert isinstance(item["correct_option"], int)
+
+
+def test_wordsearch_session_uses_text_answer(minigame_client):
+    client, _ = minigame_client
+    response = client.post(
+        "/minigames/session",
+        json={
+            "topic": "passwords",
+            "risk": "bajo",
+            "minigame": "wordsearch",
+        },
+    )
+    session = response.json()
+    bank = minigame_service.get_wordsearch("passwords", "bajo")
+
+    assert response.status_code == 200
+
+    for index, item in enumerate(session["items"]):
+        assert "answer" not in item
+        assert item["answer_text"] == bank[index]["answer"]
+        assert item["correct_option"] == -1
+
+
+def test_crossword_session_uses_text_answer(minigame_client):
+    client, _ = minigame_client
+    response = client.post(
+        "/minigames/session",
+        json={
+            "topic": "passwords",
+            "risk": "bajo",
+            "minigame": "crossword",
+        },
+    )
+    session = response.json()
+    bank = minigame_service.get_crossword("passwords", "bajo")
+
+    assert response.status_code == 200
+
+    for index, item in enumerate(session["items"]):
+        assert "answer" not in item
+        assert item["answer_text"] == bank[index]["answer"]
+        assert item["correct_option"] == -1
+
+
+def test_all_36_sessions_have_stable_answer_types():
+    for topic in TOPICS:
+        for risk in RISKS:
+            for minigame in MINIGAMES:
+                session = minigame_session_service.create_minigame_session(
+                    topic=topic,
+                    risk=risk,
+                    minigame=minigame,
+                )
+
+                for item in session["items"]:
+                    assert "answer" not in item
+                    assert isinstance(item["answer_text"], str)
+                    assert isinstance(item["correct_option"], int)
+
+                    if minigame == "quiz":
+                        assert item["answer_text"] == ""
+                        assert item["correct_option"] >= 0
+                    else:
+                        assert item["answer_text"].strip()
+                        assert item["correct_option"] == -1
+
+
+def test_old_routes_keep_legacy_answer_contract(minigame_client):
+    client, _ = minigame_client
+    quiz = client.get(
+        "/minigames/quiz",
+        params={"topic": "passwords", "risk": "bajo"},
+    ).json()
+    wordsearch = client.get(
+        "/minigames/wordsearch",
+        params={"topic": "passwords", "risk": "bajo"},
+    ).json()
+    crossword = client.get(
+        "/minigames/crossword",
+        params={"topic": "passwords", "risk": "bajo"},
+    ).json()
+
+    assert isinstance(quiz[0]["answer"], int)
+    assert isinstance(wordsearch[0]["answer"], str)
+    assert isinstance(crossword[0]["answer"], str)
+    assert "answer_text" not in quiz[0]
+    assert "correct_option" not in wordsearch[0]
 
 
 def test_old_minigame_routes_still_work(minigame_client):

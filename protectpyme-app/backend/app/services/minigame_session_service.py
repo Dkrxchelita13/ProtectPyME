@@ -32,7 +32,10 @@ def create_minigame_session(topic: str, risk: str, minigame: str) -> dict:
         "risk": normalized_risk,
         "minigame": normalized_minigame,
         "lesson": lesson,
-        "items": [_normalize_session_item(item) for item in items],
+        "items": [
+            _normalize_session_item(item, normalized_minigame)
+            for item in items
+        ],
     }
 
 
@@ -75,8 +78,24 @@ def _item_concept_ids(item: dict) -> list:
     return list(concept_ids)
 
 
-def _normalize_session_item(item: dict) -> dict:
-    normalized = copy.deepcopy(item)
-    normalized["concept_ids"] = _item_concept_ids(item)
-    normalized.pop("concept_id", None)
+def _normalize_session_item(item: dict, minigame: str) -> dict:
+    normalized = {
+        "item_id": item["item_id"],
+        "concept_ids": _item_concept_ids(item),
+        "difficulty": item["difficulty"],
+        "question": None,
+        "options": None,
+        "clue": None,
+        "answer_text": "",
+        "correct_option": -1,
+    }
+
+    if minigame == "quiz":
+        normalized["question"] = item["question"]
+        normalized["options"] = list(item["options"])
+        normalized["correct_option"] = int(item["answer"])
+    else:
+        normalized["clue"] = item["clue"]
+        normalized["answer_text"] = str(item["answer"])
+
     return normalized
