@@ -176,8 +176,24 @@ public class CrosswordController : MonoBehaviour
 
         if (APIManager.Instance == null)
         {
-            Debug.LogError("Crossword: APIManager no disponible para endpoint legacy.");
-            yield break;
+            Debug.Log("Crossword: esperando APIManager para endpoint legacy");
+            float startedAt = Time.realtimeSinceStartup;
+
+            while (
+                APIManager.Instance == null &&
+                Time.realtimeSinceStartup - startedAt < 3f
+            )
+            {
+                yield return null;
+            }
+
+            if (APIManager.Instance == null)
+            {
+                Debug.LogError(
+                    "Crossword: APIManager no disponible despues del tiempo de espera"
+                );
+                yield break;
+            }
         }
 
         string token = APIManager.Instance.GetToken();
