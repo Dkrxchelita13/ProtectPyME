@@ -8,6 +8,10 @@ using UnityEngine.UI;
 
 public class CrosswordController : MonoBehaviour
 {
+    private float itemStartedAt;
+    private bool currentItemAttemptRecorded;
+    private bool usingSessionItems;
+
     public GameObject cellPrefab;
     public Transform gridParent;
     public TextMeshProUGUI cluesText;
@@ -122,6 +126,8 @@ public class CrosswordController : MonoBehaviour
 
         if (tiempoRestante <= 0)
         {
+            int puntosAntesTimeout = ObtenerPuntosActuales();
+
             if (model != null && model.words != null && indicePreguntaActual < model.words.Count)
             {
                 CrosswordWordData palabraActual = model.words[indicePreguntaActual];
@@ -133,6 +139,11 @@ public class CrosswordController : MonoBehaviour
                     {
                         gamificacion.ReproducirError();
                         gamificacion.QuitarVida();
+                        RegistrarIntentoPalabra(
+                            palabraActual,
+                            false,
+                            ObtenerPuntosActuales() - puntosAntesTimeout
+                        );
                         Debug.Log($"⏳ Tiempo agotado. Palabra incorrecta/vacía. Vidas restantes: {gamificacion.ObtenerVidas()}");
 
                         if (gamificacion.ObtenerVidas() <= 0)
@@ -142,6 +153,11 @@ public class CrosswordController : MonoBehaviour
                             return;
                         }
                     }
+                    RegistrarIntentoPalabra(
+                        palabraActual,
+                        false,
+                        ObtenerPuntosActuales() - puntosAntesTimeout
+                    );
                 }
             }
             AvanzarSiguientePregunta();
@@ -226,6 +242,7 @@ public class CrosswordController : MonoBehaviour
             + MinigameLessonState.SessionId
         );
 
+        usingSessionItems = true;
         InitializeGameFromWords(sessionWords);
         return true;
     }
@@ -277,6 +294,7 @@ public class CrosswordController : MonoBehaviour
 
     void OnData(string json)
     {
+        usingSessionItems = false;
         Debug.Log("📦 JSON recibido: " + json);
 
         List<CrosswordWordData> words;
@@ -420,6 +438,8 @@ public class CrosswordController : MonoBehaviour
         if (model != null && model.words != null && model.words.Count > 0)
         {
             DesbloquearCasillasPalabra(model.words[indicePreguntaActual]);
+            itemStartedAt = Time.realtimeSinceStartup;
+            currentItemAttemptRecorded = false;
         }
     }
 
@@ -461,6 +481,7 @@ public class CrosswordController : MonoBehaviour
                 
                 if (gamificacion != null && !palabrasPuntuadas.Contains(word))
                 {
+                    int puntosAntes = ObtenerPuntosActuales();
                     gamificacion.ReproducirAcierto();
                     gamificacion.SumarPuntos(10); // 10 puntos, igual que la sopa de letras
                     gamificacion.ModificarSeguridad(1f); // 1% de seguridad por palabra (puedes ajustarlo)
@@ -469,6 +490,11 @@ public class CrosswordController : MonoBehaviour
                         barraSeguridad.fillAmount = gamificacion.progresoSeguridad / 100f;
                     }
                     palabrasPuntuadas.Add(word); // La marcamos para no volver a dar puntos por esta
+                    RegistrarIntentoPalabra(
+                        word,
+                        true,
+                        ObtenerPuntosActuales() - puntosAntes
+                    );
                     Debug.Log("🌟 ¡Palabra del crucigrama completada! +10 puntos y +1% seguridad");
 
                     if (model.words.IndexOf(word) == indicePreguntaActual)
@@ -501,6 +527,8 @@ public class CrosswordController : MonoBehaviour
         if (model != null && indicePreguntaActual < model.words.Count)
         {
             tiempoRestante = 30f;
+            itemStartedAt = Time.realtimeSinceStartup;
+            currentItemAttemptRecorded = false;
             DesbloquearCasillasPalabra(model.words[indicePreguntaActual]);
             Debug.Log($"➡️ Turno de la pregunta {indicePreguntaActual + 1}");
         }
@@ -573,6 +601,103 @@ public class CrosswordController : MonoBehaviour
                 return false;
         }
         return true;
+    }
+
+    private void RegistrarIntentoPalabra(
+        CrosswordWordData word,
+        bool correcto,
+        int pointsDelta
+    )
+    {
+        if (currentItemAttemptRecorded)
+        {
+            return;
+        }
+
+        MinigameSessionItem item = ObtenerItemSesion(word);
+
+        if (item == null)
+        {
+            Debug.LogWarning("Attempt: omitido porque el flujo es legacy");
+            return;
+        }
+
+        currentItemAttemptRecorded = true;
+        EnviarIntento(item.item_id, correcto, pointsDelta);
+    }
+
+    private MinigameSessionItem ObtenerItemSesion(CrosswordWordData word)
+    {
+        if (!usingSessionItems ||
+            !MinigameLessonState.HasValidSession ||
+            !IsSessionForMinigame("crossword") ||
+            model == null ||
+            model.words == null)
+        {
+            return null;
+        }
+
+        int itemIndex = model.words.IndexOf(word);
+        MinigameSessionItem[] items = MinigameLessonState.GetItems();
+
+        if (items == null ||
+            itemIndex < 0 ||
+            itemIndex >= items.Length ||
+            items[itemIndex] == null ||
+            string.IsNullOrEmpty(items[itemIndex].item_id))
+        {
+            return null;
+        }
+
+        return items[itemIndex];
+    }
+
+    private void EnviarIntento(string itemId, bool correcto, int pointsDelta)
+    {
+        if (APIManager.Instance == null)
+        {
+            Debug.LogWarning("Attempt no registrado item=" + itemId + ": APIManager no disponible");
+            return;
+        }
+
+        int responseTimeMs = CalcularResponseTimeMs();
+
+        MinigameAttemptRequest request = new MinigameAttemptRequest
+        {
+            session_id = MinigameLessonState.SessionId,
+            item_id = itemId,
+            correct = correcto,
+            response_time_ms = responseTimeMs,
+            attempt_number = 1,
+            points_delta = pointsDelta
+        };
+
+        StartCoroutine(APIManager.Instance.RecordMinigameAttempt(
+            request,
+            (_) =>
+            {
+                Debug.Log("Attempt registrado item=" + itemId);
+            },
+            (mensaje) =>
+            {
+                Debug.LogWarning("Attempt no registrado item=" + itemId + ": " + mensaje);
+            }
+        ));
+    }
+
+    private int CalcularResponseTimeMs()
+    {
+        return Mathf.Max(
+            0,
+            Mathf.RoundToInt(
+                (Time.realtimeSinceStartup - itemStartedAt) * 1000f
+            )
+        );
+    }
+
+    private int ObtenerPuntosActuales()
+    {
+        return gamificacion != null ? gamificacion.ObtenerPuntos() : 0;
     }
 
     List<CrosswordWordData> GetOffline()

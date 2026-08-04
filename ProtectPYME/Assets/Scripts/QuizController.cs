@@ -5,6 +5,10 @@ using UnityEngine.UI;
 
 public class QuizController : MonoBehaviour
 {
+    private float itemStartedAt;
+    private bool currentItemAttemptRecorded;
+    private bool usingSessionItems;
+
     private bool usandoBackend = false;
 
     [System.Serializable]
@@ -134,6 +138,7 @@ public class QuizController : MonoBehaviour
 
         bancoDePreguntas = sessionQuestions;
         usandoBackend = true;
+        usingSessionItems = true;
 
         Debug.Log(
             "Quiz: usando "
@@ -216,6 +221,7 @@ public class QuizController : MonoBehaviour
         }
 
         usandoBackend = true;
+        usingSessionItems = false;
         bancoDePreguntas = new Pregunta[data.items.Length];
 
         for (int i = 0; i < data.items.Length; i++)
@@ -262,6 +268,8 @@ public class QuizController : MonoBehaviour
             }
 
             tiempoRestante = tiempoPorPregunta;
+            itemStartedAt = Time.realtimeSinceStartup;
+            currentItemAttemptRecorded = false;
             if (gamificacion != null) gamificacion.ReiniciarCronometro();
             juegoActivo = true;
         } 
@@ -299,17 +307,21 @@ public class QuizController : MonoBehaviour
         if (tiempoRestante <= 0) 
         {
             juegoActivo = false;
+            int puntosAntes = ObtenerPuntosActuales();
             if (gamificacion != null) 
             {
                 gamificacion.ReproducirError();
                 gamificacion.QuitarVida(); // Esto actualiza la UI de vidas automáticamente
                 
+                RegistrarIntentoActual(false, ObtenerPuntosActuales() - puntosAntes);
+
                 if (gamificacion.ObtenerVidas() <= 0)
                 {
                     StartCoroutine(TerminarJuegoYSincronizar());
                     return;
                 }
             }
+            RegistrarIntentoActual(false, ObtenerPuntosActuales() - puntosAntes);
             Invoke("SiguientePregunta", 2f);
         }
     }
@@ -317,7 +329,8 @@ public class QuizController : MonoBehaviour
     public void Responder(int indiceSeleccionado) 
     {
         if (!juegoActivo) return;
-        juegoActivo = false; 
+        juegoActivo = false;
+        int puntosAntes = ObtenerPuntosActuales();
 
         int indiceCorrecto = bancoDePreguntas[preguntaActual].indiceCorrecto;
         Image imagenIcono = iconosResultado[indiceSeleccionado].GetComponent<Image>();
@@ -350,7 +363,11 @@ public class QuizController : MonoBehaviour
             imagenIcono.sprite = spriteTache;
         }
 
-        iconosResultado[indiceSeleccionado].SetActive(true);
+        iconosResultado[indiceSeleccionado].SetActive(true);
+        RegistrarIntentoActual(
+            indiceSeleccionado == indiceCorrecto,
+            ObtenerPuntosActuales() - puntosAntes
+        );
 
         if (gamificacion != null && gamificacion.ObtenerVidas() <= 0)
         {
@@ -484,6 +501,96 @@ public class QuizController : MonoBehaviour
         yield return new WaitForEndOfFrame();
         Time.timeScale = 0f; 
     }
+
+    private void RegistrarIntentoActual(bool correcto, int pointsDelta)
+    {
+        if (currentItemAttemptRecorded)
+        {
+            return;
+        }
+
+        MinigameSessionItem item = ObtenerItemActualSesion();
+
+        if (item == null)
+        {
+            Debug.LogWarning("Attempt: omitido porque el flujo es legacy");
+            return;
+        }
+
+        currentItemAttemptRecorded = true;
+        EnviarIntento(item.item_id, correcto, pointsDelta);
+    }
+
+    private MinigameSessionItem ObtenerItemActualSesion()
+    {
+        if (!usingSessionItems ||
+            !MinigameLessonState.HasValidSession ||
+            !IsSessionForMinigame("quiz"))
+        {
+            return null;
+        }
+
+        MinigameSessionItem[] items = MinigameLessonState.GetItems();
+
+        if (items == null ||
+            preguntaActual < 0 ||
+            preguntaActual >= items.Length ||
+            items[preguntaActual] == null ||
+            string.IsNullOrEmpty(items[preguntaActual].item_id))
+        {
+            return null;
+        }
+
+        return items[preguntaActual];
+    }
+
+    private void EnviarIntento(string itemId, bool correcto, int pointsDelta)
+    {
+        if (APIManager.Instance == null)
+        {
+            Debug.LogWarning("Attempt no registrado item=" + itemId + ": APIManager no disponible");
+            return;
+        }
+
+        int responseTimeMs = CalcularResponseTimeMs();
+
+        MinigameAttemptRequest request = new MinigameAttemptRequest
+        {
+            session_id = MinigameLessonState.SessionId,
+            item_id = itemId,
+            correct = correcto,
+            response_time_ms = responseTimeMs,
+            attempt_number = 1,
+            points_delta = pointsDelta
+        };
+
+        StartCoroutine(APIManager.Instance.RecordMinigameAttempt(
+            request,
+            (_) =>
+            {
+                Debug.Log("Attempt registrado item=" + itemId);
+            },
+            (mensaje) =>
+            {
+                Debug.LogWarning("Attempt no registrado item=" + itemId + ": " + mensaje);
+            }
+        ));
+    }
+
+    private int CalcularResponseTimeMs()
+    {
+        return Mathf.Max(
+            0,
+            Mathf.RoundToInt(
+                (Time.realtimeSinceStartup - itemStartedAt) * 1000f
+            )
+        );
+    }
+
+    private int ObtenerPuntosActuales()
+    {
+        return gamificacion != null ? gamificacion.ObtenerPuntos() : 0;
+    }
 
     private float ObtenerSeguridadPersistente()
     {

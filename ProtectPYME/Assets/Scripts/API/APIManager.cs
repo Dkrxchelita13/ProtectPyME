@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.Networking;
 using System.Collections;
+using System.Collections.Generic;
 using System.Text;
 using TMPro;
 using System;
@@ -16,6 +17,8 @@ public class APIManager : MonoBehaviour
     private bool surveySubmitRequestInProgress;
     private bool minigameLessonRequestInProgress;
     private bool minigameSessionRequestInProgress;
+    private readonly HashSet<string> minigameAttemptRequestsInProgress =
+        new HashSet<string>();
 
 
 
@@ -476,6 +479,90 @@ public class APIManager : MonoBehaviour
         }
 
         minigameSessionRequestInProgress = false;
+
+        if (string.IsNullOrEmpty(error))
+        {
+            onSuccess?.Invoke(parsedResponse);
+        }
+        else
+        {
+            onError?.Invoke(error);
+        }
+    }
+
+    public IEnumerator RecordMinigameAttempt(
+        MinigameAttemptRequest payload,
+        Action<MinigameAttemptResponse> onSuccess,
+        Action<string> onError
+    )
+    {
+        string validationError = ValidateMinigameAttemptRequest(payload);
+
+        if (!string.IsNullOrEmpty(validationError))
+        {
+            onError?.Invoke(validationError);
+            yield break;
+        }
+
+        if (string.IsNullOrEmpty(token))
+        {
+            onError?.Invoke("NO_TOKEN");
+            yield break;
+        }
+
+        string requestKey = BuildMinigameAttemptKey(payload);
+
+        if (minigameAttemptRequestsInProgress.Contains(requestKey))
+        {
+            Debug.LogWarning(
+                "Attempt: envio duplicado ignorado para item=" + payload.item_id
+            );
+            yield break;
+        }
+
+        minigameAttemptRequestsInProgress.Add(requestKey);
+
+        MinigameAttemptResponse parsedResponse = null;
+        string error = "";
+        string json = JsonUtility.ToJson(payload);
+        byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
+
+        using (UnityWebRequest request =
+            new UnityWebRequest(baseUrl + "/minigames/attempts", "POST"))
+        {
+            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader("Content-Type", "application/json");
+            request.SetRequestHeader(
+                "Authorization",
+                "Bearer " + token
+            );
+
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                try
+                {
+                    parsedResponse =
+                        JsonUtility.FromJson<MinigameAttemptResponse>(
+                            request.downloadHandler.text
+                        );
+                }
+                catch (Exception exception)
+                {
+                    error =
+                        "La respuesta del intento no se pudo leer: " +
+                        exception.Message;
+                }
+            }
+            else
+            {
+                error = BuildRequestError(request);
+            }
+        }
+
+        minigameAttemptRequestsInProgress.Remove(requestKey);
 
         if (string.IsNullOrEmpty(error))
         {
@@ -973,6 +1060,45 @@ public class APIManager : MonoBehaviour
         }
 
         return "";
+    }
+
+    private string ValidateMinigameAttemptRequest(MinigameAttemptRequest request)
+    {
+        if (request == null)
+        {
+            return "Attempt: request vacio.";
+        }
+
+        if (string.IsNullOrEmpty(request.session_id))
+        {
+            return "Attempt: session_id vacio.";
+        }
+
+        if (string.IsNullOrEmpty(request.item_id))
+        {
+            return "Attempt: item_id vacio.";
+        }
+
+        if (request.response_time_ms < 0)
+        {
+            return "Attempt: response_time_ms invalido.";
+        }
+
+        if (request.attempt_number < 1)
+        {
+            return "Attempt: attempt_number invalido.";
+        }
+
+        return "";
+    }
+
+    private string BuildMinigameAttemptKey(MinigameAttemptRequest request)
+    {
+        return request.session_id
+            + "|"
+            + request.item_id
+            + "|"
+            + request.attempt_number;
     }
 
     private string ValidateMinigameSessionItemType(

@@ -19,6 +19,10 @@ public class CrosswordList { public CrosswordBackend[] items; }
 
 public class PreguntasController : MonoBehaviour
 {
+    private float itemStartedAt;
+    private bool currentItemAttemptRecorded;
+    private bool usingSessionItems;
+
     [Header("Panel Ganador")]
     public TextMeshProUGUI txtPuntosFinal;
     public TextMeshProUGUI txtVidasFinal;
@@ -115,6 +119,7 @@ public class PreguntasController : MonoBehaviour
         }
 
         bancoDePreguntas = sessionQuestions;
+        usingSessionItems = true;
 
         Debug.Log(
             "Wordsearch: usando "
@@ -213,6 +218,7 @@ public class PreguntasController : MonoBehaviour
 
     void OnCrosswordLoaded(string json)
     {
+        usingSessionItems = false;
         indicePreguntaActual = 0;
         if (!string.IsNullOrEmpty(json) && json != "ERROR")
         {
@@ -264,6 +270,8 @@ public class PreguntasController : MonoBehaviour
             }
 
             tiempoRestante = TIEMPO_MAX;
+            itemStartedAt = Time.realtimeSinceStartup;
+            currentItemAttemptRecorded = false;
             corriendoTiempo = true;
             txtPreguntaDisplay.text = bancoDePreguntas[indicePreguntaActual].textoPregunta;
 
@@ -326,6 +334,7 @@ public class PreguntasController : MonoBehaviour
             bloqueado = true;
 
             // 🔥 Cuenta la respuesta como válida
+            int puntosAntes = ObtenerPuntosActuales();
             respuestasCorrectas++;
 
             if (gamificacion != null)
@@ -337,6 +346,7 @@ public class PreguntasController : MonoBehaviour
             }
 
             foreach (var c in casillasSeleccionadas) c.MarcarCorrecta();
+            RegistrarIntentoActual(true, ObtenerPuntosActuales() - puntosAntes);
             
             StartCoroutine(SiguientePreguntaConDelay());
         }
@@ -548,13 +558,18 @@ public class PreguntasController : MonoBehaviour
         {
             corriendoTiempo = false;
             bloqueado = true;
-            ResetSeleccion("⏰ Tiempo agotado");
+                ResetSeleccion("⏰ Tiempo agotado");
+                int puntosAntesTimeout = ObtenerPuntosActuales();
 
             if (gamificacion != null)
             {
                 gamificacion.ReproducirError();
                 contadorErroresPalabra = 0; 
-                gamificacion.QuitarVida(); 
+                    gamificacion.QuitarVida();
+                    RegistrarIntentoActual(
+                        false,
+                        ObtenerPuntosActuales() - puntosAntesTimeout
+                    );
 
                 if (gamificacion.ObtenerVidas() > 0)
                 {
@@ -566,6 +581,7 @@ public class PreguntasController : MonoBehaviour
                     DetenerJuegoPorGameOver();
                 }
             }
+            RegistrarIntentoActual(false, ObtenerPuntosActuales() - puntosAntesTimeout);
         }
     }
 
@@ -590,6 +606,96 @@ public class PreguntasController : MonoBehaviour
         txtPreguntaDisplay.text = "Guardando progreso...";
         StartCoroutine(TerminarJuegoYSincronizar());
     }
+
+    private void RegistrarIntentoActual(bool correcto, int pointsDelta)
+    {
+        if (currentItemAttemptRecorded)
+        {
+            return;
+        }
+
+        MinigameSessionItem item = ObtenerItemActualSesion();
+
+        if (item == null)
+        {
+            Debug.LogWarning("Attempt: omitido porque el flujo es legacy");
+            return;
+        }
+
+        currentItemAttemptRecorded = true;
+        EnviarIntento(item.item_id, correcto, pointsDelta);
+    }
+
+    private MinigameSessionItem ObtenerItemActualSesion()
+    {
+        if (!usingSessionItems ||
+            !MinigameLessonState.HasValidSession ||
+            !IsSessionForMinigame("wordsearch"))
+        {
+            return null;
+        }
+
+        MinigameSessionItem[] items = MinigameLessonState.GetItems();
+
+        if (items == null ||
+            indicePreguntaActual < 0 ||
+            indicePreguntaActual >= items.Length ||
+            items[indicePreguntaActual] == null ||
+            string.IsNullOrEmpty(items[indicePreguntaActual].item_id))
+        {
+            return null;
+        }
+
+        return items[indicePreguntaActual];
+    }
+
+    private void EnviarIntento(string itemId, bool correcto, int pointsDelta)
+    {
+        if (APIManager.Instance == null)
+        {
+            Debug.LogWarning("Attempt no registrado item=" + itemId + ": APIManager no disponible");
+            return;
+        }
+
+        int responseTimeMs = CalcularResponseTimeMs();
+
+        MinigameAttemptRequest request = new MinigameAttemptRequest
+        {
+            session_id = MinigameLessonState.SessionId,
+            item_id = itemId,
+            correct = correcto,
+            response_time_ms = responseTimeMs,
+            attempt_number = 1,
+            points_delta = pointsDelta
+        };
+
+        StartCoroutine(APIManager.Instance.RecordMinigameAttempt(
+            request,
+            (_) =>
+            {
+                Debug.Log("Attempt registrado item=" + itemId);
+            },
+            (mensaje) =>
+            {
+                Debug.LogWarning("Attempt no registrado item=" + itemId + ": " + mensaje);
+            }
+        ));
+    }
+
+    private int CalcularResponseTimeMs()
+    {
+        return Mathf.Max(
+            0,
+            Mathf.RoundToInt(
+                (Time.realtimeSinceStartup - itemStartedAt) * 1000f
+            )
+        );
+    }
+
+    private int ObtenerPuntosActuales()
+    {
+        return gamificacion != null ? gamificacion.ObtenerPuntos() : 0;
+    }
 
     private float ObtenerSeguridadPersistente()
     {
