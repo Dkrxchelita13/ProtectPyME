@@ -22,6 +22,7 @@ public class PreguntasController : MonoBehaviour
     private float itemStartedAt;
     private bool currentItemAttemptRecorded;
     private bool usingSessionItems;
+    private bool sessionCompletionScheduled;
 
     [Header("Panel Ganador")]
     public TextMeshProUGUI txtPuntosFinal;
@@ -389,6 +390,7 @@ public class PreguntasController : MonoBehaviour
 
     private IEnumerator TerminarJuegoYSincronizar()
     {
+        ScheduleSessionCompletion();
         if (barraTiempo != null && barraTiempo2 != null)
         {
             barraTiempo.fillAmount = 0f;
@@ -695,6 +697,54 @@ public class PreguntasController : MonoBehaviour
     private int ObtenerPuntosActuales()
     {
         return gamificacion != null ? gamificacion.ObtenerPuntos() : 0;
+    }
+
+    private void ScheduleSessionCompletion()
+    {
+        if (sessionCompletionScheduled)
+        {
+            return;
+        }
+
+        if (!usingSessionItems ||
+            !MinigameLessonState.HasValidSession ||
+            !IsSessionForMinigame("wordsearch") ||
+            string.IsNullOrEmpty(MinigameLessonState.SessionId))
+        {
+            Debug.LogWarning("Session completion: omitido porque el flujo es legacy");
+            return;
+        }
+
+        if (APIManager.Instance == null)
+        {
+            Debug.LogWarning("Session completion: APIManager no disponible");
+            return;
+        }
+
+        sessionCompletionScheduled = true;
+        string sessionId = MinigameLessonState.SessionId;
+
+        APIManager.Instance.StartCoroutine(
+            APIManager.Instance.CompleteMinigameSessionWhenReady(
+                sessionId,
+                12f,
+                (summary) =>
+                {
+                    Debug.Log(
+                        "Session completada id=" + summary.session_id +
+                        " accuracy=" + summary.accuracy + "% " +
+                        "attempts=" + summary.total_attempts
+                    );
+                },
+                (mensaje) =>
+                {
+                    sessionCompletionScheduled = false;
+                    Debug.LogWarning(
+                        "Session no completada id=" + sessionId + ": " + mensaje
+                    );
+                }
+            )
+        );
     }
 
     private float ObtenerSeguridadPersistente()

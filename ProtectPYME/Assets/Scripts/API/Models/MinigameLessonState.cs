@@ -8,6 +8,16 @@ public static class MinigameLessonState
     public static string Topic = "";
     public static string Risk = "";
     public static MinigameSessionResponse Session;
+    public static MinigameSessionSummaryResponse LastSummary;
+
+    public static bool HasLastSummary
+    {
+        get
+        {
+            return LastSummary != null &&
+                !string.IsNullOrEmpty(LastSummary.session_id);
+        }
+    }
 
     public static string SessionId
     {
@@ -101,6 +111,7 @@ public static class MinigameLessonState
     )
     {
         Prepare(minigameKey, targetScene, topic, risk);
+        ClearLastSummary();
         Session = session;
 
         if (!HasValidSession)
@@ -133,6 +144,18 @@ public static class MinigameLessonState
         Topic = "";
         Risk = "";
         Session = null;
+    }
+
+    public static void SetLastSummary(
+        MinigameSessionSummaryResponse summary
+    )
+    {
+        LastSummary = summary;
+    }
+
+    public static void ClearLastSummary()
+    {
+        LastSummary = null;
     }
 
     private static bool IsValidMinigameKey(string minigameKey)

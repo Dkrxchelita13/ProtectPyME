@@ -11,6 +11,7 @@ public class CrosswordController : MonoBehaviour
     private float itemStartedAt;
     private bool currentItemAttemptRecorded;
     private bool usingSessionItems;
+    private bool sessionCompletionScheduled;
 
     public GameObject cellPrefab;
     public Transform gridParent;
@@ -700,6 +701,54 @@ public class CrosswordController : MonoBehaviour
         return gamificacion != null ? gamificacion.ObtenerPuntos() : 0;
     }
 
+    private void ScheduleSessionCompletion()
+    {
+        if (sessionCompletionScheduled)
+        {
+            return;
+        }
+
+        if (!usingSessionItems ||
+            !MinigameLessonState.HasValidSession ||
+            !IsSessionForMinigame("crossword") ||
+            string.IsNullOrEmpty(MinigameLessonState.SessionId))
+        {
+            Debug.LogWarning("Session completion: omitido porque el flujo es legacy");
+            return;
+        }
+
+        if (APIManager.Instance == null)
+        {
+            Debug.LogWarning("Session completion: APIManager no disponible");
+            return;
+        }
+
+        sessionCompletionScheduled = true;
+        string sessionId = MinigameLessonState.SessionId;
+
+        APIManager.Instance.StartCoroutine(
+            APIManager.Instance.CompleteMinigameSessionWhenReady(
+                sessionId,
+                12f,
+                (summary) =>
+                {
+                    Debug.Log(
+                        "Session completada id=" + summary.session_id +
+                        " accuracy=" + summary.accuracy + "% " +
+                        "attempts=" + summary.total_attempts
+                    );
+                },
+                (mensaje) =>
+                {
+                    sessionCompletionScheduled = false;
+                    Debug.LogWarning(
+                        "Session no completada id=" + sessionId + ": " + mensaje
+                    );
+                }
+            )
+        );
+    }
+
     List<CrosswordWordData> GetOffline()
     {
         return new List<CrosswordWordData>
@@ -771,6 +820,8 @@ public class CrosswordController : MonoBehaviour
     // ✏️ REEMPLAZAR tu corrutina TerminarJuegoYSincronizar por esta versión:
     private IEnumerator TerminarJuegoYSincronizar(bool victoria)
     {
+        ScheduleSessionCompletion();
+
         string claveSeguridad = (GameManagerGlobal.instancia != null) 
             ? GameManagerGlobal.instancia.ObtenerClaveUsuario("SeguridadPersistente") 
             : "SeguridadPersistente";

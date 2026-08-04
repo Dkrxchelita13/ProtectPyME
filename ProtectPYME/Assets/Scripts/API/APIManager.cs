@@ -19,6 +19,10 @@ public class APIManager : MonoBehaviour
     private bool minigameSessionRequestInProgress;
     private readonly HashSet<string> minigameAttemptRequestsInProgress =
         new HashSet<string>();
+    private readonly HashSet<string> sessionCompletionRequestsInProgress =
+        new HashSet<string>();
+    private readonly HashSet<string> completedSessionIds =
+        new HashSet<string>();
 
 
 
@@ -574,6 +578,167 @@ public class APIManager : MonoBehaviour
         }
     }
 
+    public bool HasPendingAttemptsForSession(string sessionId)
+    {
+        return GetPendingAttemptsCount(sessionId) > 0;
+    }
+
+    public int GetPendingAttemptsCount(string sessionId)
+    {
+        if (string.IsNullOrEmpty(sessionId))
+        {
+            return 0;
+        }
+
+        string prefix = sessionId + "|";
+        int count = 0;
+
+        foreach (string requestKey in minigameAttemptRequestsInProgress)
+        {
+            if (!string.IsNullOrEmpty(requestKey) &&
+                requestKey.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    public IEnumerator CompleteMinigameSessionWhenReady(
+        string sessionId,
+        float timeoutSeconds,
+        Action<MinigameSessionSummaryResponse> onSuccess,
+        Action<string> onError
+    )
+    {
+        if (string.IsNullOrEmpty(sessionId))
+        {
+            onError?.Invoke("Session completion: session_id vacio.");
+            yield break;
+        }
+
+        float safeTimeoutSeconds = Mathf.Max(0f, timeoutSeconds);
+        float startedAt = Time.realtimeSinceStartup;
+
+        while (HasPendingAttemptsForSession(sessionId))
+        {
+            if (Time.realtimeSinceStartup - startedAt >= safeTimeoutSeconds)
+            {
+                onError?.Invoke(
+                    "Session completion: timeout esperando intentos pendientes."
+                );
+                yield break;
+            }
+
+            yield return null;
+        }
+
+        yield return StartCoroutine(
+            CompleteMinigameSession(sessionId, onSuccess, onError)
+        );
+    }
+
+    public IEnumerator CompleteMinigameSession(
+        string sessionId,
+        Action<MinigameSessionSummaryResponse> onSuccess,
+        Action<string> onError
+    )
+    {
+        if (string.IsNullOrEmpty(sessionId))
+        {
+            onError?.Invoke("Session completion: session_id vacio.");
+            yield break;
+        }
+
+        if (string.IsNullOrEmpty(token))
+        {
+            onError?.Invoke("NO_TOKEN");
+            yield break;
+        }
+
+        if (completedSessionIds.Contains(sessionId))
+        {
+            Debug.LogWarning(
+                "Session completion: cierre duplicado ignorado id=" + sessionId
+            );
+            yield break;
+        }
+
+        if (sessionCompletionRequestsInProgress.Contains(sessionId))
+        {
+            Debug.LogWarning(
+                "Session completion: cierre en curso ignorado id=" + sessionId
+            );
+            yield break;
+        }
+
+        sessionCompletionRequestsInProgress.Add(sessionId);
+
+        MinigameSessionSummaryResponse parsedResponse = null;
+        string error = "";
+
+        using (UnityWebRequest request =
+            new UnityWebRequest(
+                baseUrl +
+                "/minigames/session/" +
+                UnityWebRequest.EscapeURL(sessionId) +
+                "/complete",
+                "POST"
+            ))
+        {
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader(
+                "Authorization",
+                "Bearer " + token
+            );
+
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                try
+                {
+                    parsedResponse =
+                        JsonUtility.FromJson<MinigameSessionSummaryResponse>(
+                            request.downloadHandler.text
+                        );
+                }
+                catch (Exception exception)
+                {
+                    error =
+                        "La respuesta del cierre no se pudo leer: " +
+                        exception.Message;
+                }
+
+                if (string.IsNullOrEmpty(error))
+                {
+                    error = ValidateMinigameSessionSummary(
+                        parsedResponse,
+                        sessionId
+                    );
+                }
+            }
+            else
+            {
+                error = BuildRequestError(request);
+            }
+        }
+
+        sessionCompletionRequestsInProgress.Remove(sessionId);
+
+        if (string.IsNullOrEmpty(error))
+        {
+            completedSessionIds.Add(sessionId);
+            MinigameLessonState.SetLastSummary(parsedResponse);
+            onSuccess?.Invoke(parsedResponse);
+        }
+        else
+        {
+            onError?.Invoke(error);
+        }
+    }
+
     public IEnumerator GetMinigameLesson(
         string topic,
         string risk,
@@ -1087,6 +1252,41 @@ public class APIManager : MonoBehaviour
         if (request.attempt_number < 1)
         {
             return "Attempt: attempt_number invalido.";
+        }
+
+        return "";
+    }
+
+    private string ValidateMinigameSessionSummary(
+        MinigameSessionSummaryResponse summary,
+        string expectedSessionId
+    )
+    {
+        if (summary == null)
+        {
+            return "Session completion: resumen vacio.";
+        }
+
+        if (!ValuesMatch(summary.session_id, expectedSessionId))
+        {
+            return "Session completion: session_id no coincide.";
+        }
+
+        if (!ValuesMatch(summary.status, "completed"))
+        {
+            return "Session completion: status invalido.";
+        }
+
+        if (summary.total_items < 0 ||
+            summary.attempted_items < 0 ||
+            summary.total_attempts < 0)
+        {
+            return "Session completion: contadores invalidos.";
+        }
+
+        if (summary.accuracy < 0f || summary.accuracy > 100f)
+        {
+            return "Session completion: accuracy invalida.";
         }
 
         return "";
