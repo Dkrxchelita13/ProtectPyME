@@ -4,7 +4,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.EventSystems; // Necesario para detectar clics en botones de la interfaz
 using TMPro; // Necesario para los textos de la ventana flotante
 
-public class Escenario1Manager : MonoBehaviour
+public class Escenario6Manager : MonoBehaviour
 {
     private float tiempoInicio;
 
@@ -47,14 +47,6 @@ public class Escenario1Manager : MonoBehaviour
 
     private bool yaRespondio = false;
     private bool bloquearClick = false;
-
-    [Header("Configuración de Progreso")]
-    [Tooltip("Escribe 'NivelAlcanzado' para el primer mundo, o 'ProgresoIntermedio' para el segundo.")]
-    public string claveDeProgreso = "NivelAlcanzado";
-    [Tooltip("El número que se guardará al ganar. Ej: Si ganas el Escenario 1, guarda 2.")]
-    public int valorDeDesbloqueo = 2;
-    [Tooltip("El ID del escenario para enviar a tu API (1, 2, 3, 4, etc.)")]
-    public int idEscenarioAPI = 1;
 
     /*
         0 = Introducción
@@ -244,12 +236,13 @@ public class Escenario1Manager : MonoBehaviour
     // Añadimos "public" aquí también
     public void PanelAnterior()
     {
+        Debug.Log("Botón Regresar presionado. Estábamos en el panel: " + panelActual);
+
         if (panelActual == 1) MostrarIntroduccion();
-        else if (panelActual == 2) MostrarCorreo();
+        else if (panelActual == 2) MostrarCorreo(); // Ojo: MostrarCorreo activa la variable 'panelCorreo', que en tu Inspector es el Panel_Llamada.
         else if (panelActual == 3) MostrarSospechoso();
     }
 
-    // (Tus funciones de Respuestas, Vidas, Audio, Efectos van aquí exactamente igual que antes. No he tocado nada de la conexión a tu API ni de vidas.)
     
     // =========================
     // RESPUESTAS
@@ -262,9 +255,9 @@ public class Escenario1Manager : MonoBehaviour
         int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
         StartCoroutine(APIManager.Instance.SendDecision(1, "reportar_phishing", tiempoRespuesta));
 
-        if (PlayerPrefs.GetInt(claveDeProgreso, 1) < valorDeDesbloqueo)
+        if (PlayerPrefs.GetInt("ProgresoIntermedio", 1) < 4)
         {
-            PlayerPrefs.SetInt(claveDeProgreso, valorDeDesbloqueo);
+            PlayerPrefs.SetInt("ProgresoIntermedio", 4); 
             PlayerPrefs.Save();
         }
 
@@ -312,7 +305,7 @@ public class Escenario1Manager : MonoBehaviour
     // =========================
     // (Pega aquí el resto de tus funciones: IrAEscenario2, PerderVida, GanarVida, ActualizarCorazones, ReproducirSonido, ZoomSuave, DesbloquearClick, ModificarSeguridadEscenario)
     
-    public void IrAEscenario2(string nombreEscena) { SceneManager.LoadScene(nombreEscena); }
+    public void IrAEscenario2() { SceneManager.LoadScene("MenuNivelIntermedio"); }
 
     void PerderVida() { if (GameManagerGlobal.instancia != null) { GameManagerGlobal.instancia.PerderVida(); } ActualizarCorazones(); }
     void GanarVida() { if (GameManagerGlobal.instancia != null) { GameManagerGlobal.instancia.GanarVida(); } ActualizarCorazones(); }

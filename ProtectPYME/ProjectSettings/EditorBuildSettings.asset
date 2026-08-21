@@ -18,6 +18,9 @@ EditorBuildSettings:
     path: Assets/Scenes/NIVEL 1/MenuNivelInicial.unity
     guid: deb2fabf1ec0b1c4fbbc8d0cbe1ebe5a
   - enabled: 1
+    path: Assets/Scenes/NIVEL 1/MenuNivelIntermedio.unity
+    guid: 040bd4e4b681b8e409a7a2ef76bab674
+  - enabled: 1
     path: Assets/Scenes/NIVEL 1/MenuMinijuegos.unity
     guid: cdb41f4bc6f2e044a9a7562013f2586d
   - enabled: 1
@@ -56,6 +59,15 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/NIVEL 1/Escenario 3 (USB sospechoso).unity
     guid: dc2d070750c95484aaff55e84598fa68
+  - enabled: 1
+    path: Assets/Scenes/NIVEL 1/Escenario 4.unity
+    guid: 3c7bae7f549b2864e8609acbe8eb48e0
+  - enabled: 1
+    path: Assets/Scenes/NIVEL 1/Escenario 5.unity
+    guid: 560cf9d0e7181464fa9fc749bca22fe0
+  - enabled: 1
+    path: Assets/Scenes/NIVEL 1/Escenario 6.unity
+    guid: 04f1bb84324188044a72760c7f54487f
   - enabled: 1
     path: Assets/Scenes/NIVEL 1/Register.unity
     guid: a3ee7570b73c9d04c9d2f15827d643b4

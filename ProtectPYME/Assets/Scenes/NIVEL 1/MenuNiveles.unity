@@ -921,6 +921,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   panelPausa: {fileID: 0}
   CanvasJuegoTerminado: {fileID: 0}
+  panelConfirmacionSalir: {fileID: 0}
   SonidoBoton: {fileID: 0}
   Boton: {fileID: 0}
 --- !u!4 &1355539251
@@ -959,6 +960,9 @@ MonoBehaviour:
   txtAreaVulnerable: {fileID: 0}
   txtRecomendacion: {fileID: 0}
   txtEscenarioSugerido: {fileID: 0}
+  imagenBotonPracticar: {fileID: 0}
+  spriteBotonPracticar: {fileID: 0}
+  spriteBotonContinuar: {fileID: 0}
   botonesNiveles:
   - {fileID: 2081722434}
   - {fileID: 2119169034}
@@ -2180,7 +2184,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 2119169035}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1355539250}
+        m_TargetAssemblyTypeName: CambioEscena, Assembly-CSharp
+        m_MethodName: CambiarEscena
+        m_Mode: 5
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: MenuNivelIntermedio
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &2119169035
 MonoBehaviour:
   m_ObjectHideFlags: 0

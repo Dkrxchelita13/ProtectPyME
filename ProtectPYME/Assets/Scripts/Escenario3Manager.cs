@@ -73,22 +73,6 @@ public class Escenario3Manager : MonoBehaviour
             (retroCorrecta != null && retroCorrecta.activeSelf) ||
             (retroIncorrecta != null && retroIncorrecta.activeSelf))
             return;
-
-        if (Input.GetMouseButtonDown(0))
-        {
-            float mitad = Screen.width / 2;
-
-            // CLICK DERECHA (Avanzar)
-            if (Input.mousePosition.x > mitad)
-            {
-                SiguientePanel();
-            }
-            // CLICK IZQUIERDA (Retroceder)
-            else
-            {
-                PanelAnterior();
-            }
-        }
     }
 
     // =========================

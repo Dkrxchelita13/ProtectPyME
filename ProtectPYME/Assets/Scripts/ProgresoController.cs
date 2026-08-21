@@ -157,7 +157,7 @@ public class ProgresoController : MonoBehaviour
         if (botonesNiveles == null || botonesNiveles.Length == 0) return;
 
         int puntajeMinimoRequerido = 100;
-        float seguridadMinimaRequerida = 85f;
+        float seguridadMinimaRequerida = 50f;
 
         int puntajeActual = data.total_points;
         float seguridadActual = seguridadCalculada;

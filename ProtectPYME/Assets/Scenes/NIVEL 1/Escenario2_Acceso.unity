@@ -1095,8 +1095,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7297b214bac1b49de939a99ceb5e7e88, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  panelActual: {fileID: 1854424863}
-  panelSiguiente: {fileID: 736486199}
+  panelActual: {fileID: 736486199}
+  panelSiguiente: {fileID: 1854424863}
 --- !u!114 &68345066
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2387,8 +2387,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7297b214bac1b49de939a99ceb5e7e88, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  panelActual: {fileID: 448230815}
-  panelSiguiente: {fileID: 1450892577}
+  panelActual: {fileID: 1450892577}
+  panelSiguiente: {fileID: 448230815}
 --- !u!114 &257005214
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3933,8 +3933,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7297b214bac1b49de939a99ceb5e7e88, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  panelActual: {fileID: 736486199}
-  panelSiguiente: {fileID: 1741210384}
+  panelActual: {fileID: 1741210384}
+  panelSiguiente: {fileID: 736486199}
 --- !u!114 &382792009
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9927,8 +9927,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7297b214bac1b49de939a99ceb5e7e88, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  panelActual: {fileID: 483746176}
-  panelSiguiente: {fileID: 1854424863}
+  panelActual: {fileID: 1854424863}
+  panelSiguiente: {fileID: 483746176}
 --- !u!114 &674665355
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11307,8 +11307,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7297b214bac1b49de939a99ceb5e7e88, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  panelActual: {fileID: 1783023539}
-  panelSiguiente: {fileID: 448230815}
+  panelActual: {fileID: 448230815}
+  panelSiguiente: {fileID: 1783023539}
 --- !u!114 &851131603
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -26413,8 +26413,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7297b214bac1b49de939a99ceb5e7e88, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  panelActual: {fileID: 1450892577}
-  panelSiguiente: {fileID: 483746176}
+  panelActual: {fileID: 483746176}
+  panelSiguiente: {fileID: 1450892577}
 --- !u!114 &2062480168
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -61,20 +61,6 @@ public class Escenario2Manager : MonoBehaviour
             panelRetroCorrecto.activeSelf || panelRetroIncorrecto.activeSelf || 
             (panelRetroMedio != null && panelRetroMedio.activeSelf))
             return;
-
-        if (Input.GetMouseButtonDown(0))
-        {
-            float mitad = Screen.width / 2;
-
-            if (Input.mousePosition.x > mitad)
-            {
-                SiguientePanel();
-            }
-            else
-            {
-                PanelAnterior();
-            }
-        }
     }
 
     // =========================
