@@ -2412,7 +2412,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1066602065}
         m_TargetAssemblyTypeName: Escenario1Manager, Assembly-CSharp
-        m_MethodName: OpcionCorrecta
+        m_MethodName: OpcionIncorrecta
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -5632,7 +5632,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1066602065}
         m_TargetAssemblyTypeName: Escenario1Manager, Assembly-CSharp
-        m_MethodName: OpcionIncorrecta
+        m_MethodName: OpcionCorrecta
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
