@@ -584,6 +584,33 @@ public class ProgresoController : MonoBehaviour
         }
     }
 
+    private string GetScenarioDisplayName(int scenarioId)
+    {
+        switch (scenarioId)
+        {
+            case 1:
+                return "Correo de phishing";
+
+            case 2:
+                return "Contraseña débil";
+
+            case 3:
+                return "USB desconocido";
+
+            case 5:
+                return "Portal falso de proveedores";
+
+            case 6:
+                return "Llamada sospechosa solicitando contraseña";
+
+            case 7:
+                return "Exfiltración de datos en red";
+
+            default:
+                return "Práctica recomendada";
+        }
+    }
+
     private string BuildRiskRecommendationText(AIRiskResponse data, string riskSource)
     {
         string message = string.IsNullOrEmpty(data.message)
@@ -621,7 +648,9 @@ public class ProgresoController : MonoBehaviour
 
         if (txtEscenarioSugerido != null)
         {
-            txtEscenarioSugerido.text = "Escenario " + data.recommended_scenario;
+            txtEscenarioSugerido.text = GetScenarioDisplayName(
+                data.recommended_scenario
+            );
         }
 
         if (txtAreaVulnerable != null)
