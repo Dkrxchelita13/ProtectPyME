@@ -712,6 +712,22 @@ public class ProgresoController : MonoBehaviour
                 SceneManager.LoadScene("Escenario 3 (USB sospechoso)");
                 return true;
 
+            case 5:
+                SceneManager.LoadScene("Escenario 4");
+                return true;
+
+            case 6:
+                SceneManager.LoadScene("Escenario 5");
+                return true;
+
+            case 7:
+                SceneManager.LoadScene("Escenario 6");
+                return true;
+
+            case 4:
+                Debug.LogWarning("Escenario 4 backend es historico y no jugable desde MiPerfil");
+                return false;
+
             default:
                 Debug.LogWarning("Escenario no configurado");
                 return false;

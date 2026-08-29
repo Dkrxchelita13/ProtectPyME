@@ -1,6 +1,12 @@
 import joblib
 import numpy as np
 import os
+import logging
+
+from app.services.topic_taxonomy import to_rf_category
+
+
+logger = logging.getLogger("protectpyme")
 
 class RiskPredictor:
     def __init__(self):
@@ -10,9 +16,23 @@ class RiskPredictor:
         self.risk_labels = {0: "BAJO", 1: "MEDIO", 2: "ALTO"}
 
     def predict_risk(self, features_dict: dict):
-        # Convertir categoría de string a número seguro
-        cat_str = features_dict.get("most_failed_category", "phishing")
-        cat_encoded = self.category_map.get(cat_str, 0)
+        # Convertir categoría educativa a la taxonomia heredada del modelo.
+        category_mapping = to_rf_category(
+            features_dict.get("most_failed_category")
+        )
+
+        if category_mapping.used_fallback:
+            logger.warning(
+                "RF category fallback: %s -> %s (%s)",
+                category_mapping.original_topic,
+                category_mapping.rf_category,
+                category_mapping.reason,
+            )
+
+        cat_encoded = self.category_map.get(
+            category_mapping.rf_category,
+            0
+        )
         
         # Construcción del vector en el orden estricto requerido
         vector = [

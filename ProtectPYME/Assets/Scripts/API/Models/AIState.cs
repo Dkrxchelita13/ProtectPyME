@@ -98,7 +98,13 @@ public static class AIState
             case 3:
                 return "malware";
 
-            case 4:
+            case 5:
+                return "phishing";
+
+            case 6:
+                return "passwords";
+
+            case 7:
                 return "wifi";
 
             default:
@@ -113,6 +119,11 @@ public static class AIState
 
     public static bool IsValidPracticeScenario(int scenario)
     {
-        return scenario >= 1 && scenario <= 3;
+        return scenario == 1
+            || scenario == 2
+            || scenario == 3
+            || scenario == 5
+            || scenario == 6
+            || scenario == 7;
     }
 }

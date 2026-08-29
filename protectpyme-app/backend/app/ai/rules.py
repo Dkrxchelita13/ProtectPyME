@@ -1,3 +1,9 @@
+from app.services.scenario_recommendation_service import (
+    get_recommendation_for_topic,
+)
+from app.services.topic_taxonomy import normalize_topic
+
+
 def evaluate_decision(scenario, choice):
 
     is_correct = choice == scenario.correct_choice
@@ -42,40 +48,7 @@ def evaluate_decision(scenario, choice):
     
     
 def get_recommendation(category):
-
-    category = (category or "").lower()
-
-    recommendations = {
-
-        "phishing": {
-            "training": "phishing",
-            "scenario": 1,
-            "message": "Practica detección de correos fraudulentos"
-        },
-
-        "passwords": {
-            "training": "passwords",
-            "scenario": 2,
-            "message": "Refuerza buenas prácticas de contraseñas"
-        },
-
-        "malware": {
-            "training": "malware",
-            "scenario": 3,
-            "message": "Refuerza tus conocimientos sobre malware y software malicioso"
-        },
-        "network": {
-            "training": "network",
-            "scenario": 4,
-            "message": "Aprende a protegerte al utilizar redes WiFi públicas"
-        }
-    }
-
-    return recommendations.get(
+    return get_recommendation_for_topic(
         category,
-        {
-            "training": "general",
-            "scenario": 1,
-            "message": "Excelente desempeño. No se detectaron áreas críticas de mejora."
-        }
+        no_critical_area=normalize_topic(category) is None,
     )

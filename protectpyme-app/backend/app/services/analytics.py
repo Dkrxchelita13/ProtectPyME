@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timedelta
 from app import models
+from app.services.topic_taxonomy import CANONICAL_TOPICS, normalize_topic
 
 import logging
 logger = logging.getLogger("protectpyme")
@@ -92,8 +93,9 @@ def get_user_analytics(db: Session, user_id: int):
         .count()
     )
 
-    # Categoría con más errores
-    most_failed = (
+    # Categoría con más errores. Se normaliza al leer para conservar
+    # decisiones historicas como network/password sin mutar la base.
+    failed_categories = (
         db.query(
             models.Scenario.category,
             func.count(models.Decision.id).label("fail_count")
@@ -104,11 +106,35 @@ def get_user_analytics(db: Session, user_id: int):
             models.Decision.is_correct == 0
         )
         .group_by(models.Scenario.category)
-        .order_by(func.count(models.Decision.id).desc())
-        .first()
+        .all()
     )
 
-    most_failed_category = most_failed[0] if most_failed else None
+    category_counts = {
+        category: 0
+        for category in CANONICAL_TOPICS
+    }
+
+    for category, fail_count in failed_categories:
+        canonical_category = normalize_topic(category)
+
+        if canonical_category in category_counts:
+            category_counts[canonical_category] += fail_count
+
+    most_failed_category = None
+
+    if any(category_counts.values()):
+        category_order = {
+            category: index
+            for index, category in enumerate(CANONICAL_TOPICS)
+        }
+
+        most_failed_category = min(
+            CANONICAL_TOPICS,
+            key=lambda category: (
+                -category_counts[category],
+                category_order[category],
+            )
+        )
 
     logger.info(f"Analytics generated for user {user_id}")
     
@@ -134,7 +160,6 @@ def get_user_analytics(db: Session, user_id: int):
     } """
     
 
-    
     
     
     
