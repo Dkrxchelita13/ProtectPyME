@@ -111,13 +111,14 @@ BASE_CONTENT = {
                 "reutiliza, se comparte o no cuenta con una verificación adicional. Antes del "
                 "minijuego, analiza qué servicios contienen información sensible, qué accesos "
                 "requieren mayor protección y cuándo conviene cambiar credenciales. La seguridad "
-                "mejora al combinar contraseñas únicas, gestión ordenada y autenticación "
-                "multifactor."
+                "mejora al combinar contraseñas únicas, gestión ordenada, autenticación "
+                "multifactor y verificación por un canal oficial cuando alguien solicita "
+                "contraseñas o códigos."
             ),
             "tips": [
                 "Prioriza MFA en cuentas con información sensible.",
                 "Evita compartir credenciales por chats o correos.",
-                "Cambia contraseñas expuestas o reutilizadas.",
+                "Verifica la identidad por un canal oficial y reporta a TI las solicitudes sospechosas de contraseñas o códigos.",
             ],
             "recommended_action": (
                 "Analiza el contexto de cada cuenta antes de elegir la respuesta del minijuego."
@@ -247,13 +248,15 @@ BASE_CONTENT = {
                 "Una conexión puede parecer normal aunque exista una red falsa, un portal cautivo "
                 "engañoso o sitios sin protección adecuada. Antes de continuar, revisa si la red "
                 "corresponde al lugar, si la navegación usa HTTPS y si el servicio solicita datos "
-                "innecesarios. Tomar unos segundos para evaluar señales ayuda a evitar exposiciones "
-                "sin bloquear el trabajo diario."
+                "innecesarios. También observa alertas de tráfico saliente, conexiones no "
+                "reconocidas o transferencias inusuales, porque pueden indicar exfiltración o fuga de datos. "
+                "Tomar unos segundos para evaluar señales ayuda a evitar exposiciones sin bloquear "
+                "el trabajo diario."
             ),
             "tips": [
                 "Comprueba HTTPS antes de enviar información.",
                 "Evita redes con nombres imitados o confusos.",
-                "Desactiva conexión automática a redes abiertas.",
+                "Revisa y bloquea tráfico saliente anómalo, y reporta conexiones o transferencias no reconocidas.",
             ],
             "recommended_action": (
                 "Analiza las señales de conexión antes de elegir cada respuesta del minijuego."
@@ -412,6 +415,12 @@ CONCEPT_SETS = {
                 "why_it_matters": "Combina longitud con menor carga para el usuario.",
                 "example": "Una frase interna sin datos personales puede proteger una cuenta.",
             },
+            {
+                "term": "Verificación de solicitudes",
+                "definition": "Confirmar identidad por canal oficial antes de responder una solicitud sensible.",
+                "why_it_matters": "Evita entregar contraseñas o códigos ante llamadas o mensajes sospechosos y permite reportarlos a TI.",
+                "example": "Cuelgas una llamada dudosa y contactas a TI por el canal interno registrado.",
+            },
         ],
         "bajo": [
             {
@@ -555,10 +564,10 @@ CONCEPT_SETS = {
                 "example": "La red de oficina usa WPA2 con una clave administrada.",
             },
             {
-                "term": "Red falsa",
-                "definition": "Red creada para parecer confiable y atraer usuarios.",
-                "why_it_matters": "Puede capturar tráfico o credenciales si se usa sin verificar.",
-                "example": "Un atacante crea 'Empresa Gratis' cerca de la oficina.",
+                "term": "Tráfico y fuga de datos",
+                "definition": "Señales de red que pueden indicar exfiltración o fuga de datos.",
+                "why_it_matters": "El tráfico saliente anómalo, las conexiones no reconocidas o las transferencias inusuales requieren revisión, bloqueo o aislamiento y reporte.",
+                "example": "Un sistema intenta enviar archivos internos a un destino externo no reconocido.",
             },
         ],
         "bajo": [
@@ -621,21 +630,21 @@ QUICK_CHECKS = {
         "medio": ("Un enlace dice una cosa pero apunta a otro dominio. ¿Qué señal es?", ["Posible sitio falso", "Confirmación automática", "Archivo local"], 0, "La URL real debe coincidir con el sitio esperado."),
         "bajo": ("Un correo falla SPF y DKIM. ¿Qué ayuda a decidir la política?", ["DMARC", "USB", "WPA3"], 0, "DMARC combina esas validaciones para reducir suplantación."),
     },
-    "passwords": {
-        "alto": ("Una clave se usa en correo y ventas. ¿Cuál es el riesgo?", ["Solo ocupa memoria", "Una filtración puede afectar ambas cuentas", "Hace más rápida la sesión"], 1, "Cada cuenta debe tener una contraseña única."),
-        "medio": ("Una cuenta crítica ya tiene clave fuerte. ¿Qué control agrega protección?", ["MFA", "Compartir la clave", "Usar una red abierta"], 0, "MFA reduce el riesgo si la clave se expone."),
-        "bajo": ("Dos usuarios tienen la misma contraseña. ¿Qué evita que el hash guardado sea igual?", ["Salt único", "SSID", "Spam"], 0, "El salt único cambia el resultado del hash."),
-    },
+        "passwords": {
+            "alto": ("Una clave se usa en correo y ventas. ¿Cuál es el riesgo?", ["Solo ocupa memoria", "Una filtración puede afectar ambas cuentas", "Hace más rápida la sesión"], 1, "Cada cuenta debe tener una contraseña única."),
+        "medio": ("Una llamada pide tu contraseña para resolver una urgencia. ¿Qué haces?", ["Entregarla rápido", "Verificar por canal oficial y reportar", "Dictar solo el código MFA"], 1, "Las credenciales no se entregan por llamadas inesperadas; se valida identidad y se reporta."),
+            "bajo": ("Dos usuarios tienen la misma contraseña. ¿Qué evita que el hash guardado sea igual?", ["Salt único", "SSID", "Spam"], 0, "El salt único cambia el resultado del hash."),
+        },
     "malware": {
         "alto": ("Encuentras un USB en recepción. ¿Qué decisión reduce el riesgo?", ["Conectarlo para ver archivos", "Entregarlo a soporte sin conectarlo", "Copiar su contenido"], 1, "Los dispositivos desconocidos deben verificarse por canales autorizados."),
         "medio": ("Un archivo cifra carpetas compartidas y pide pago. ¿Qué concepto describe el caso?", ["Ransomware", "SSID", "MFA"], 0, "Ransomware bloquea o cifra archivos para presionar a la víctima."),
         "bajo": ("Soporte quiere revisar un adjunto sin exponer equipos reales. ¿Qué usa?", ["Sandbox autorizada", "Red pública", "Password spraying"], 0, "La sandbox aísla el análisis del entorno productivo."),
     },
-    "wifi": {
-        "alto": ("Necesitas enviar datos de clientes fuera de la oficina. ¿Qué revisas?", ["HTTPS/VPN y red confiable", "Solo el color del portal", "Que la red no pida clave"], 0, "Datos sensibles requieren conexión protegida."),
-        "medio": ("Ves dos redes con nombres casi iguales. ¿Qué debes validar?", ["SSID oficial", "El tamaño del texto", "La marca del celular"], 0, "El SSID ayuda a identificar la red correcta."),
-        "bajo": ("Una red copia el nombre exacto de la red oficial. ¿Qué ataque puede ser?", ["Evil Twin", "Hash", "Botnet"], 0, "Evil Twin imita una red legítima para engañar usuarios."),
-    },
+        "wifi": {
+            "alto": ("Necesitas enviar datos de clientes fuera de la oficina. ¿Qué revisas?", ["HTTPS/VPN y red confiable", "Solo el color del portal", "Que la red no pida clave"], 0, "Datos sensibles requieren conexión protegida."),
+            "medio": ("Una alerta muestra tráfico saliente inusual. ¿Qué decisión reduce el riesgo?", ["Ignorarla si internet funciona", "Revisar, bloquear o aislar y reportar", "Enviar más archivos para probar"], 1, "El tráfico anómalo puede indicar fuga de datos y debe escalarse."),
+            "bajo": ("Una red copia el nombre exacto de la red oficial. ¿Qué ataque puede ser?", ["Evil Twin", "Hash", "Botnet"], 0, "Evil Twin imita una red legítima para engañar usuarios."),
+        },
 }
 
 
@@ -730,6 +739,7 @@ WORD_PUZZLE_CONCEPT_SETS = {
             {"term": "MFA", "definition": "Autenticación que pide más de un factor para entrar.", "why_it_matters": "Reduce el riesgo si una contraseña queda expuesta.", "example": "Además de la clave se aprueba el acceso en una app."},
             {"term": "Gestor", "definition": "Programa para guardar y generar contraseñas seguras.", "why_it_matters": "Evita repetir claves o anotarlas en lugares inseguros.", "example": "El gestor crea una clave distinta para cada proveedor."},
             {"term": "Passphrase", "definition": "Frase larga usada como contraseña.", "why_it_matters": "Combina longitud con facilidad de recuerdo.", "example": "Una frase interna sin datos personales protege una cuenta."},
+            {"term": "Verificación de solicitudes", "definition": "Confirmar identidad por canal oficial antes de responder una solicitud sensible.", "why_it_matters": "Evita entregar contraseñas o códigos ante llamadas o mensajes sospechosos y permite reportarlos a TI.", "example": "Un falso soporte pide un código temporal y se valida con TI antes de responder."},
         ],
         "bajo": [
             {"term": "Salt", "definition": "Valor aleatorio único agregado antes de generar el hash.", "why_it_matters": "Hace que contraseñas iguales produzcan hashes distintos.", "example": "Dos empleados con la misma clave no tendrían el mismo hash guardado."},
@@ -765,6 +775,7 @@ WORD_PUZZLE_CONCEPT_SETS = {
             {"term": "SSID", "definition": "Nombre visible de una red inalámbrica.", "why_it_matters": "Los atacantes pueden imitar nombres conocidos para confundir.", "example": "Oficina_Invitados no es igual a Oficina-Invitados."},
             {"term": "Hotspot", "definition": "Punto de acceso que ofrece conexión WiFi.", "why_it_matters": "Puede ser legítimo o falso según quién lo controle.", "example": "Un celular comparte internet como hotspot temporal autorizado."},
             {"term": "WPA2", "definition": "Estándar de seguridad usado para proteger redes inalámbricas.", "why_it_matters": "Indica mejor protección que una red abierta sin clave.", "example": "La red de oficina usa WPA2 con una clave administrada."},
+            {"term": "Tráfico y fuga de datos", "definition": "Actividad de red anómala que puede indicar exfiltración o fuga de datos.", "why_it_matters": "Conexiones no reconocidas o transferencias inusuales deben revisarse, bloquearse o aislarse y reportarse.", "example": "Una alerta muestra envío de datos a un destino desconocido."},
         ],
         "bajo": [
             {"term": "Evil Twin", "definition": "Red falsa que imita una red legítima.", "why_it_matters": "Engaña al usuario para conectarse a un punto controlado por otro.", "example": "Una red copia el nombre del WiFi del hotel para robar accesos."},
@@ -796,6 +807,12 @@ QUIZ_CONCEPT_OVERRIDES = {
                 "why_it_matters": "Compararlo con el nombre oficial ayuda a evitar redes imitadas.",
                 "example": "Oficina_Invitados no es igual a Oficina-Invitados.",
             },
+            {
+                "term": "Tráfico y fuga de datos",
+                "definition": "Actividad de red anómala que puede indicar exfiltración o fuga de datos.",
+                "why_it_matters": "El tráfico saliente anómalo, las conexiones no reconocidas o las transferencias inusuales requieren revisión, bloqueo o aislamiento y reporte.",
+                "example": "Un equipo envía muchos datos a un destino desconocido.",
+            },
         ],
     },
 }
@@ -811,7 +828,7 @@ MINIGAME_QUICK_CHECKS = {
         },
         "passwords": {
             "alto": ("¿Qué palabra representa una clave con muchos caracteres?", ["Larga", "Spam", "SSID"], 0, "Larga ayuda a reconocer la característica visual del banco."),
-            "medio": ("¿Qué término corto representa autenticación en más de un paso?", ["MFA", "URL", "USB"], 0, "MFA es el vocabulario que aparecerá como respuesta."),
+            "medio": ("¿Qué palabra buscarías para confirmar una solicitud sensible?", ["Verificar", "URL", "USB"], 0, "Verificar recuerda que se confirma identidad por un canal oficial."),
             "bajo": ("¿Qué término nombra el valor aleatorio usado antes del hash?", ["Salt", "DMARC", "VPN"], 0, "Salt se reconoce como palabra clave del proceso de hashing."),
         },
         "malware": {
@@ -821,7 +838,7 @@ MINIGAME_QUICK_CHECKS = {
         },
         "wifi": {
             "alto": ("¿Qué término buscarías para un servicio que protege la conexión?", ["VPN", "Hash", "Spam"], 0, "VPN es la palabra corta asociada a protección de conexión."),
-            "medio": ("¿Qué término representa el nombre visible de una red?", ["SSID", "Botnet", "Salt"], 0, "SSID es el vocabulario que debes reconocer."),
+            "medio": ("¿Qué término buscarías ante actividad de red anómala?", ["Tráfico", "Botnet", "Salt"], 0, "Tráfico ayuda a reconocer alertas de conexiones inusuales."),
             "bajo": ("¿Qué término identifica el estándar moderno de seguridad WiFi?", ["WPA3", "DKIM", "MFA"], 0, "WPA3 es una palabra clave del banco de redes."),
         },
     },
@@ -833,7 +850,7 @@ MINIGAME_QUICK_CHECKS = {
         },
         "passwords": {
             "alto": ("La pista dice 'dato privado que no debe compartirse'. ¿Qué concepto corresponde?", ["Secreto", "Hotspot", "Spam"], 0, "Secreto se relaciona directamente con protección de claves o códigos."),
-            "medio": ("La pista indica 'programa que almacena contraseñas seguras'. ¿Qué concepto encaja?", ["Gestor", "DKIM", "Botnet"], 0, "Gestor es el concepto asociado a almacenar claves."),
+            "medio": ("La pista habla de confirmar por canal oficial quién pide información. ¿Qué concepto encaja?", ["Verificar", "DKIM", "Botnet"], 0, "Verificar identidad evita entregar credenciales ante solicitudes falsas."),
             "bajo": ("La pista dice 'resultado de aplicar una función criptográfica'. ¿Qué concepto corresponde?", ["Hash", "SSID", "Spam"], 0, "Hash es el resultado que se compara sin guardar la contraseña en claro."),
         },
         "malware": {
@@ -843,7 +860,7 @@ MINIGAME_QUICK_CHECKS = {
         },
         "wifi": {
             "alto": ("La pista dice 'protocolo seguro para navegar'. ¿Qué concepto corresponde?", ["HTTPS", "Hash", "DKIM"], 0, "HTTPS se relaciona con navegación protegida."),
-            "medio": ("La pista habla de un punto de acceso inalámbrico. ¿Qué término encaja?", ["Hotspot", "Rootkit", "Salt"], 0, "Hotspot es el punto de acceso descrito."),
+            "medio": ("La pista habla de actividad de red anómala. ¿Qué término encaja?", ["Tráfico", "Rootkit", "Salt"], 0, "Tráfico sospechoso debe revisarse antes de permitir la conexión."),
             "bajo": ("La pista menciona un punto de acceso no autorizado. ¿Qué concepto corresponde?", ["Rogue AP", "MFA", "Virus"], 0, "Rogue AP define ese acceso no autorizado."),
         },
     },

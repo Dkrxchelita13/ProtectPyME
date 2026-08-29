@@ -740,6 +740,9 @@ ANSWER_CONCEPT_IDS = {
     "MFA": ["passwords.mfa"],
     "GESTOR": ["passwords.gestor"],
     "PASSPHRASE": ["passwords.passphrase"],
+    "VERIFICAR": ["passwords.identity_verification"],
+    "IDENTIDAD": ["passwords.identity_verification"],
+    "CREDENCIAL": ["passwords.credential_request"],
     "SALT": ["passwords.salt"],
     "HASH": ["passwords.hash"],
     "ARGON2ID": ["passwords.argon2id"],
@@ -759,6 +762,10 @@ ANSWER_CONCEPT_IDS = {
     "SSID": ["wifi.ssid"],
     "HOTSPOT": ["wifi.hotspot"],
     "WPA2": ["wifi.wpa2"],
+    "TRAFICO": ["wifi.suspicious_traffic"],
+    "ALERTA": ["wifi.suspicious_traffic"],
+    "BLOQUEAR": ["wifi.suspicious_traffic"],
+    "EXFILTRACION": ["wifi.data_exfiltration"],
     "EVILTWIN": ["wifi.evil_twin"],
     "ROGUEAP": ["wifi.rogue_ap"],
     "WPA3": ["wifi.wpa3"],
@@ -1000,6 +1007,34 @@ EXTRA_QUIZ_ITEMS = {
             1,
             ["passwords.passphrase"],
         ),
+        (
+            "passwords_medio_quiz_llamada_soporte_1",
+            "Una llamada dice ser de soporte y pide tu contraseña. ¿Qué haces?",
+            ["Entregarla para resolver rápido", "Verificar por canal oficial antes de responder", "Dictar solo una parte", "Cambiar de tema"],
+            1,
+            ["passwords.credential_request", "passwords.identity_verification"],
+        ),
+        (
+            "passwords_medio_quiz_codigo_temporal_1",
+            "¿Qué debes hacer si alguien solicita un código temporal por teléfono?",
+            ["Compartirlo si parece urgente", "Enviarlo por chat interno", "No compartirlo y reportar la solicitud", "Publicarlo para que soporte lo vea"],
+            2,
+            ["passwords.credential_request"],
+        ),
+        (
+            "passwords_medio_quiz_canal_oficial_1",
+            "¿Cómo confirmas una solicitud sensible de credenciales?",
+            ["Usando el enlace que llegó en el mensaje", "Por un canal oficial independiente", "Preguntando al mismo número desconocido", "Aceptando si usa el logo correcto"],
+            1,
+            ["passwords.identity_verification"],
+        ),
+        (
+            "passwords_medio_quiz_reporte_ti_1",
+            "Si recibes una petición sospechosa de contraseña, ¿cuál es la respuesta segura?",
+            ["Reportarla a TI", "Probar si la clave funciona", "Responder con la clave anterior", "Ignorarla sin avisar"],
+            0,
+            ["passwords.credential_request", "passwords.identity_verification"],
+        ),
     ],
     ("passwords", "bajo"): [
         (
@@ -1138,6 +1173,34 @@ EXTRA_QUIZ_ITEMS = {
             1,
             ["wifi.wpa2"],
         ),
+        (
+            "wifi_medio_quiz_trafico_saliente_1",
+            "Una alerta muestra tráfico saliente inusual desde un equipo. ¿Qué indica?",
+            ["Actividad que debe revisarse", "Que todo funciona mejor", "Que la contraseña es larga", "Que el correo es legítimo"],
+            0,
+            ["wifi.suspicious_traffic"],
+        ),
+        (
+            "wifi_medio_quiz_transferencia_anormal_1",
+            "Un sistema intenta enviar muchos archivos a un destino no reconocido. ¿Qué riesgo existe?",
+            ["Exfiltración de datos", "Mejora de señal WiFi", "Cambio de idioma", "Validación SPF"],
+            0,
+            ["wifi.data_exfiltration", "wifi.suspicious_traffic"],
+        ),
+        (
+            "wifi_medio_quiz_bloquear_alerta_1",
+            "Ante una conexión sospechosa con transferencia anormal, ¿qué acción es más segura?",
+            ["Ignorarla si no hay quejas", "Revisar, bloquear o aislar y reportar", "Compartir la red con más usuarios", "Desactivar MFA"],
+            1,
+            ["wifi.suspicious_traffic", "wifi.data_exfiltration"],
+        ),
+        (
+            "wifi_medio_quiz_conexion_no_reconocida_1",
+            "¿Qué debe hacerse con una conexión no reconocida que mueve datos sensibles?",
+            ["Permitirla siempre", "Revisarla antes de continuar", "Cambiar el color del portal", "Abrir un adjunto"],
+            1,
+            ["wifi.suspicious_traffic", "wifi.data_exfiltration"],
+        ),
     ],
     ("wifi", "bajo"): [
         (
@@ -1185,6 +1248,9 @@ EXTRA_WORD_ITEMS = {
     ("passwords", "medio"): [
         ("factor", "FACTOR", "passwords.mfa", "Elemento adicional para verificar un acceso"),
         ("claves", "CLAVES", "passwords.gestor", "Datos que un gestor ayuda a guardar de forma segura"),
+        ("verificar", "VERIFICAR", "passwords.identity_verification", "Confirmar una solicitud sensible por canal oficial"),
+        ("identidad", "IDENTIDAD", "passwords.identity_verification", "Persona solicitante que debe confirmarse por un canal oficial"),
+        ("credencial", "CREDENCIAL", "passwords.credential_request", "Dato de autenticación que no debe entregarse ante una solicitud sospechosa"),
     ],
     ("passwords", "bajo"): [
         ("spraying", "SPRAYING", "passwords.password_spraying", "Prueba de una contraseña común en muchas cuentas"),
@@ -1209,6 +1275,10 @@ EXTRA_WORD_ITEMS = {
     ("wifi", "medio"): [
         ("red", "RED", "wifi.ssid", "Conexión cuyo nombre visible debe verificarse"),
         ("clave", "CLAVE", "wifi.wpa2", "Secreto que protege el acceso a una red inalámbrica"),
+        ("trafico", "TRAFICO", "wifi.suspicious_traffic", "Flujo de red que puede mostrar actividad anómala"),
+        ("alerta", "ALERTA", "wifi.suspicious_traffic", "Aviso que debe revisarse ante conexiones inusuales"),
+        ("bloquear", "BLOQUEAR", "wifi.suspicious_traffic", "Acción segura ante tráfico saliente sospechoso"),
+        ("exfiltracion", "EXFILTRACION", "wifi.data_exfiltration", "Salida no autorizada de información desde un sistema"),
     ],
     ("wifi", "bajo"): [
         ("falsa", "FALSA", "wifi.evil_twin", "Característica de una red que imita a otra legítima"),
@@ -1239,6 +1309,26 @@ def _word_item(topic, risk, minigame, suffix, answer, concept_id, clue):
     }
 
 
+def _word_item_for_minigame(topic, risk, minigame, suffix, answer, concept_id, clue):
+    if (
+        minigame == "wordsearch"
+        and concept_id == "wifi.data_exfiltration"
+        and answer == "EXFILTRACION"
+    ):
+        answer = "FUGADATOS"
+        clue = "Fuga de datos no autorizada desde un sistema"
+
+    return _word_item(
+        topic=topic,
+        risk=risk,
+        minigame=minigame,
+        suffix=f"{suffix}_variant_2",
+        answer=answer,
+        concept_id=concept_id,
+        clue=clue,
+    )
+
+
 def _expand_quiz_bank():
     for (topic, risk), items in EXTRA_QUIZ_ITEMS.items():
         QUIZ[topic][risk].extend(
@@ -1267,11 +1357,11 @@ def _expand_word_bank(bank, minigame):
             )
 
         bank[topic][risk].extend(
-            _word_item(
+            _word_item_for_minigame(
                 topic=topic,
                 risk=risk,
                 minigame=minigame,
-                suffix=f"{suffix}_variant_2",
+                suffix=suffix,
                 answer=answer,
                 concept_id=concept_id,
                 clue=clue,

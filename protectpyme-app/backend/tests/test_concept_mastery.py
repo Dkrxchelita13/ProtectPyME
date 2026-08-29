@@ -286,6 +286,47 @@ def test_incorrect_attempt_updates_beta_score_and_counts(db):
     assert record.evidence_weight == 1.5
 
 
+@pytest.mark.parametrize(
+    ("topic", "concept_id"),
+    (
+        ("passwords", "passwords.credential_request"),
+        ("passwords", "passwords.identity_verification"),
+        ("wifi", "wifi.suspicious_traffic"),
+        ("wifi", "wifi.data_exfiltration"),
+    ),
+)
+def test_new_scenario_concepts_update_beta_on_incorrect_attempt(db, topic, concept_id):
+    user = create_user(db)
+    session = create_session_record(
+        db,
+        user.id,
+        topic=topic,
+        risk="medio",
+        minigame="quiz",
+        concept_ids=[concept_id],
+    )
+    add_attempt(
+        db,
+        session,
+        user.id,
+        concept_ids=[concept_id],
+        difficulty="medio",
+        correct=False,
+    )
+
+    complete_session(db, user.id, session.id)
+    record = mastery_record(db, user.id, concept_id)
+
+    assert record.topic == topic
+    assert record.alpha == 2.0
+    assert record.beta == 3.25
+    assert record.mastery_score == 38.1
+    assert record.attempt_count == 1
+    assert record.correct_count == 0
+    assert record.incorrect_count == 1
+    assert record.evidence_weight == 1.25
+
+
 def test_duplicate_concepts_in_same_attempt_are_counted_once(db):
     user = create_user(db)
     session = create_session_record(db, user.id)

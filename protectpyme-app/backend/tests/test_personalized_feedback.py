@@ -145,13 +145,16 @@ def create_session(
     status="completed",
     item_ids=None,
     concept_ids=None,
+    topic="passwords",
+    risk="bajo",
+    minigame="crossword",
 ):
     session = models.MinigameSessionRecord(
         id=str(uuid.uuid4()),
         user_id=user_id,
-        topic="passwords",
-        risk="bajo",
-        minigame="crossword",
+        topic=topic,
+        risk=risk,
+        minigame=minigame,
         item_ids=item_ids or [
             "passwords_bajo_crossword_salt",
             "passwords_bajo_crossword_argon2id",
@@ -198,11 +201,11 @@ def add_attempt(
     return attempt
 
 
-def add_mastery(db, user_id, concept_id, mastery_score):
+def add_mastery(db, user_id, concept_id, mastery_score, topic="passwords"):
     record = models.UserConceptMastery(
         user_id=user_id,
         concept_id=concept_id,
-        topic="passwords",
+        topic=topic,
         alpha=2.0,
         beta=2.0,
         mastery_score=mastery_score,
@@ -425,6 +428,58 @@ def test_multiconcept_attempt_is_counted_once_per_concept(db):
         "passwords.hash": 1,
         "passwords.salt": 1,
     }
+
+
+@pytest.mark.parametrize(
+    ("topic", "concept_id", "term"),
+    (
+        ("passwords", "passwords.credential_request", "Solicitud de credenciales"),
+        ("passwords", "passwords.identity_verification", "Verificar identidad"),
+        ("wifi", "wifi.suspicious_traffic", "Trafico sospechoso"),
+        ("wifi", "wifi.data_exfiltration", "Exfiltracion de datos"),
+    ),
+)
+def test_feedback_identifies_new_scenario_concepts_as_reinforcement(
+    db,
+    topic,
+    concept_id,
+    term,
+):
+    user = create_user(db, f"feedback-{topic}@example.com")
+    session = create_session(
+        db,
+        user.id,
+        topic=topic,
+        risk="medio",
+        minigame="quiz",
+        item_ids=[f"{topic}_medio_quiz_gap_case"],
+        concept_ids=[concept_id],
+    )
+    add_attempt(
+        db,
+        session,
+        user.id,
+        f"{topic}_medio_quiz_gap_case",
+        [concept_id],
+        correct=False,
+        points_delta=0,
+    )
+    add_mastery(db, user.id, concept_id, 35.0, topic=topic)
+
+    feedback = personalized_feedback_service.get_minigame_feedback(
+        db,
+        user.id,
+        session.id,
+    )
+    reinforcement = {
+        item["concept_id"]: item
+        for item in feedback["reinforcement"]
+    }
+
+    assert concept_id in reinforcement
+    assert reinforcement[concept_id]["term"] == term
+    assert reinforcement[concept_id]["status"] == "refuerzo"
+    assert reinforcement[concept_id]["recommendation"]
 
 
 def test_feedback_is_deterministic(db):

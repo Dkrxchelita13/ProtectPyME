@@ -4,12 +4,32 @@ import unicodedata
 import pytest
 
 from app.services import learning_content_service, minigame_service
+from app.services import minigame_session_service
 from app.services.concept_catalog import CONCEPT_CATALOG
 
 
 TOPICS = ("phishing", "passwords", "malware", "wifi")
 RISKS = ("alto", "medio", "bajo")
 MINIGAMES = ("quiz", "wordsearch", "crossword")
+
+NEW_SCENARIO_CONCEPTS = {
+    "passwords": {
+        "risk": "medio",
+        "concepts": {
+            "passwords.credential_request",
+            "passwords.identity_verification",
+        },
+        "coverage_terms": ("credencial", "identidad", "canaloficial", "report"),
+    },
+    "wifi": {
+        "risk": "medio",
+        "concepts": {
+            "wifi.suspicious_traffic",
+            "wifi.data_exfiltration",
+        },
+        "coverage_terms": ("trafico", "exfiltracion", "bloque", "report"),
+    },
+}
 
 PEDAGOGICAL_ALIASES = {
     "PASSWORD": "CONTRASENA",
@@ -160,6 +180,71 @@ def test_all_item_concept_ids_exist_in_catalog():
                 missing.append((item["item_id"], concept_id))
 
     assert not missing
+
+
+def test_new_scenario_concepts_exist_with_expected_topics():
+    for topic, expected in NEW_SCENARIO_CONCEPTS.items():
+        for concept_id in expected["concepts"]:
+            concept = CONCEPT_CATALOG[concept_id]
+
+            assert concept["topic"] == topic
+            assert concept["difficulty"] == expected["risk"]
+
+
+@pytest.mark.parametrize("topic", ("passwords", "wifi"))
+@pytest.mark.parametrize("minigame", MINIGAMES)
+def test_new_scenario_concepts_are_taught_in_lessons(topic, minigame):
+    expected = NEW_SCENARIO_CONCEPTS[topic]
+    lesson = learning_content_service.get_learning_content(
+        topic,
+        expected["risk"],
+        minigame,
+    )
+    searchable_text = all_lesson_text(lesson)
+
+    missing = [
+        term
+        for term in expected["coverage_terms"]
+        if term not in searchable_text
+    ]
+
+    assert not missing
+
+
+@pytest.mark.parametrize("topic", ("passwords", "wifi"))
+@pytest.mark.parametrize("minigame", MINIGAMES)
+def test_new_scenario_concepts_are_available_in_minigame_banks(topic, minigame):
+    expected = NEW_SCENARIO_CONCEPTS[topic]
+    bank = {
+        "quiz": minigame_service.get_quiz,
+        "wordsearch": minigame_service.get_wordsearch,
+        "crossword": minigame_service.get_crossword,
+    }[minigame](topic, expected["risk"])
+    concepts = {
+        concept_id
+        for item in bank
+        for concept_id in item_concept_ids(item)
+    }
+
+    assert expected["concepts"].issubset(concepts)
+
+
+@pytest.mark.parametrize("topic", ("passwords", "wifi"))
+@pytest.mark.parametrize("minigame", MINIGAMES)
+def test_new_scenario_concept_ids_reach_minigame_sessions(topic, minigame):
+    expected = NEW_SCENARIO_CONCEPTS[topic]
+    session = minigame_session_service.create_minigame_session(
+        topic=topic,
+        risk=expected["risk"],
+        minigame=minigame,
+    )
+    concepts = {
+        concept_id
+        for item in session["items"]
+        for concept_id in item["concept_ids"]
+    }
+
+    assert expected["concepts"].issubset(concepts)
 
 
 def test_item_difficulty_matches_bank_risk():
