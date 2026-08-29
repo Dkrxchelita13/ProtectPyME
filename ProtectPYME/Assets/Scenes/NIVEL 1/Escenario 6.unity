@@ -12646,6 +12646,7 @@ MonoBehaviour:
   inspeccionCompletada: 0
   tituloEscenario: {fileID: 1492013092}
   tiempoVisibilidadTitulo: 3.5
+  idEscenarioAPI: 7
 --- !u!1 &1071665904
 GameObject:
   m_ObjectHideFlags: 0

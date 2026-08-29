@@ -79,62 +79,99 @@ from app.database import SessionLocal
 from app.models import Scenario, Badge
 
 
+SCENARIOS = [
+    {
+        "id": 1,
+        "title": "Phishing Email",
+        "description": "Recibes un correo del 'banco' pidiendo tu contraseña",
+        "difficulty": "easy",
+        "category": "phishing",
+        "correct_choice": "reportar_phishing",
+        "points_correct": 10,
+        "points_incorrect": 0,
+    },
+    {
+        "id": 2,
+        "title": "Contraseña débil",
+        "description": "Usar '123456' como contraseña en sistemas de la empresa",
+        "difficulty": "easy",
+        "category": "passwords",
+        "correct_choice": "cambiar_password",
+        "points_correct": 10,
+        "points_incorrect": 0,
+    },
+    {
+        "id": 3,
+        "title": "USB desconocido",
+        "description": "Encuentras un USB en la oficina y quieres abrirlo",
+        "difficulty": "medium",
+        "category": "malware",
+        "correct_choice": "no_conectar",
+        "points_correct": 10,
+        "points_incorrect": 0,
+    },
+    {
+        "id": 4,
+        "title": "WiFi público",
+        "description": "Conectarte a WiFi público para trabajar",
+        "difficulty": "medium",
+        "category": "network",
+        "correct_choice": "usar_vpn",
+        "points_correct": 10,
+        "points_incorrect": 0,
+    },
+    {
+        "id": 5,
+        "title": "Portal falso de proveedores",
+        "description": "Detectar un portal falso que intenta robar credenciales",
+        "difficulty": "medium",
+        "category": "phishing",
+        "correct_choice": "reportar_phishing",
+        "points_correct": 10,
+        "points_incorrect": 0,
+    },
+    {
+        "id": 6,
+        "title": "Llamada sospechosa solicitando contraseña",
+        "description": "Rechazar una llamada que solicita compartir la contraseña",
+        "difficulty": "medium",
+        "category": "passwords",
+        "correct_choice": "rechazar_reportar_ti",
+        "points_correct": 10,
+        "points_incorrect": 0,
+    },
+    {
+        "id": 7,
+        "title": "Exfiltración de datos en red",
+        "description": "Revisar y bloquear tráfico sospechoso de salida",
+        "difficulty": "medium",
+        "category": "wifi",
+        "correct_choice": "revisar_bloquear",
+        "points_correct": 10,
+        "points_incorrect": 0,
+    },
+]
+
+
 def seed_scenarios():
     db: Session = SessionLocal()
 
     try:
-        # Verificar si ya existen escenarios
-        existing = db.query(Scenario).first()
-        if existing:
-            print("Scenarios already seeded")
-        else:
-            scenarios = [
+        scenarios_created = 0
 
-                Scenario(
-                    title="Phishing Email",
-                    description="Recibes un correo del 'banco' pidiendo tu contraseña",
-                    difficulty="easy",
-                    category="phishing",
-                    correct_choice="reportar_phishing",
-                    points_correct=10,
-                    points_incorrect=0
-                ),
-                
-                Scenario(
-                    title="Contraseña débil",
-                    description="Usar '123456' como contraseña en sistemas de la empresa",
-                    difficulty="easy",
-                    category="passwords",
-                    correct_choice="cambiar_password",
-                    points_correct=10,
-                    points_incorrect=0
-                ),
+        for scenario_data in SCENARIOS:
+            existing = db.query(Scenario).filter(Scenario.id == scenario_data["id"]).first()
+            if existing:
+                continue
 
-                Scenario(
-                    title="USB desconocido",
-                    description="Encuentras un USB en la oficina y quieres abrirlo",
-                    difficulty="medium",
-                    category="malware",
-                    correct_choice="no_conectar",
-                    points_correct=10,
-                    points_incorrect=0
-                ),
+            db.add(Scenario(**scenario_data))
+            scenarios_created += 1
 
-
-                Scenario(
-                    title="WiFi público",
-                    description="Conectarte a WiFi público para trabajar",
-                    difficulty="medium",
-                    category="network",
-                    correct_choice="usar_vpn",
-                    points_correct=10,
-                    points_incorrect=0
-                ),
-            ]
-
-            db.add_all(scenarios)
+        if scenarios_created:
             db.commit()
-            print("Seed scenarios created")
+            print(f"Seed scenarios created: {scenarios_created}")
+        else:
+            print("Scenarios already seeded")
 
         # -------- BADGES --------
 

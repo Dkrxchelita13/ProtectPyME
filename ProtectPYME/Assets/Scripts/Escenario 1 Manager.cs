@@ -260,7 +260,7 @@ public class Escenario1Manager : MonoBehaviour
         if (yaRespondio) return;
         yaRespondio = true;
         int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
-        StartCoroutine(APIManager.Instance.SendDecision(1, "reportar_phishing", tiempoRespuesta));
+        StartCoroutine(APIManager.Instance.SendDecision(idEscenarioAPI, "reportar_phishing", tiempoRespuesta));
 
         if (PlayerPrefs.GetInt(claveDeProgreso, 1) < valorDeDesbloqueo)
         {
@@ -281,7 +281,7 @@ public class Escenario1Manager : MonoBehaviour
         if (yaRespondio) return;
         yaRespondio = true;
         int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
-        StartCoroutine(APIManager.Instance.SendDecision(1, "abrir_correo", tiempoRespuesta));
+        StartCoroutine(APIManager.Instance.SendDecision(idEscenarioAPI, ObtenerChoiceIncorrecto(), tiempoRespuesta));
         panelDecision.SetActive(false);
         panelMalo.SetActive(true);
         ReproducirSonido(sonidoError);
@@ -327,5 +327,6 @@ public class Escenario1Manager : MonoBehaviour
     IEnumerator ZoomSuave(float tamaño) { float tiempo = 0f; float duracion = 1f; float tamañoInicial = camara.orthographicSize; while (tiempo < duracion) { camara.orthographicSize = Mathf.Lerp(tamañoInicial, tamaño, tiempo / duracion); tiempo += Time.deltaTime; yield return null; } camara.orthographicSize = tamaño; }
     public void SkipIntroduccion() { bloquearClick = true; MostrarCorreo(); StartCoroutine(DesbloquearClick()); }
     IEnumerator DesbloquearClick() { yield return new WaitForSeconds(0.2f); bloquearClick = false; }
+    private string ObtenerChoiceIncorrecto() { return idEscenarioAPI == 5 ? "hacer_clic_login" : "abrir_correo"; }
     private void ModificarSeguridadEscenario(float cambio) { string claveSeguridad = (GameManagerGlobal.instancia != null) ? GameManagerGlobal.instancia.ObtenerClaveUsuario("SeguridadPersistente") : "SeguridadPersistente"; float seguridadActual = PlayerPrefs.GetFloat(claveSeguridad, 0f); float nuevaSeguridad = Mathf.Clamp(seguridadActual + cambio, 0f, 100f); if (GameManagerGlobal.instancia != null) { GameManagerGlobal.instancia.nivelSeguridad = nuevaSeguridad; } PlayerPrefs.SetFloat(claveSeguridad, nuevaSeguridad); PlayerPrefs.Save(); }
 }

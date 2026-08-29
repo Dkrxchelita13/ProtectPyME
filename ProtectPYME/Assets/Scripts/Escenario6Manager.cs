@@ -45,6 +45,9 @@ public class Escenario6Manager : MonoBehaviour
     public GameObject tituloEscenario;
     public float tiempoVisibilidadTitulo = 3.5f;
 
+    [Header("Configuración API")]
+    [SerializeField] private int idEscenarioAPI = 7;
+
     private bool yaRespondio = false;
     private bool bloquearClick = false;
 
@@ -253,7 +256,7 @@ public class Escenario6Manager : MonoBehaviour
         if (yaRespondio) return;
         yaRespondio = true;
         int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
-        StartCoroutine(APIManager.Instance.SendDecision(1, "reportar_phishing", tiempoRespuesta));
+        StartCoroutine(APIManager.Instance.SendDecision(idEscenarioAPI, "revisar_bloquear", tiempoRespuesta));
 
         if (PlayerPrefs.GetInt("ProgresoIntermedio", 1) < 4)
         {
@@ -274,7 +277,7 @@ public class Escenario6Manager : MonoBehaviour
         if (yaRespondio) return;
         yaRespondio = true;
         int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
-        StartCoroutine(APIManager.Instance.SendDecision(1, "abrir_correo", tiempoRespuesta));
+        StartCoroutine(APIManager.Instance.SendDecision(idEscenarioAPI, "ignorar_alerta", tiempoRespuesta));
         panelDecision.SetActive(false);
         panelMalo.SetActive(true);
         ReproducirSonido(sonidoError);

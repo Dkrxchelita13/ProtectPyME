@@ -12192,7 +12192,7 @@ MonoBehaviour:
   tiempoVisibilidadTitulo: 3.5
   claveDeProgreso: ProgresoIntermedio
   valorDeDesbloqueo: 2
-  idEscenarioAPI: 4
+  idEscenarioAPI: 5
 --- !u!4 &1066602066
 Transform:
   m_ObjectHideFlags: 0
