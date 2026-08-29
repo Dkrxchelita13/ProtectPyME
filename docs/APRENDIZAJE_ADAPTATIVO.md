@@ -1,86 +1,223 @@
 # Aprendizaje adaptativo en ProtectPyME
 
+Release documentado: `v0.2.1-adaptive-learning`
+
 ## 1. Objetivo del modulo
 
-El modulo de aprendizaje adaptativo conecta la recomendacion de riesgo del backend con microlecciones, minijuegos, registro de intentos, dominio por concepto y retroalimentacion personalizada. Su objetivo es que cada usuario practique contenidos de ciberseguridad acordes con su area vulnerable, nivel de riesgo y desempeno reciente.
+El modulo de aprendizaje adaptativo conecta decisiones de escenarios, analitica conductual, clasificacion de riesgo, recomendaciones, microlecciones, minijuegos adaptativos, dominio por concepto y retroalimentacion personalizada.
 
-## 2. Arquitectura general
+Su objetivo es que cada usuario practique contenidos de ciberseguridad acordes con su area vulnerable, nivel de riesgo y evidencia pedagogica reciente. El sistema no usa IA generativa; el contenido y la retroalimentacion son deterministas y estan basados en bancos curados.
 
-Flujo principal:
+## 2. Arquitectura real
+
+El sistema tiene dos capas complementarias.
+
+### Capa A: adaptacion conductual
 
 ```text
-IA recomienda topic/risk
--> sesion adaptativa
--> microleccion
--> minijuego
--> intentos
--> cierre
--> dominio
--> feedback
--> siguiente sesion adaptada
+Unity scenarios
+-> decision
+-> FastAPI
+-> PostgreSQL
+-> analytics
+-> most_failed_category
+-> Random Forest risk classification
+-> recommendation engine
+-> recommended_training
+-> recommended_scenario
+-> Unity
 ```
 
-Backend FastAPI:
+Esta capa observa el desempeno del usuario en escenarios de ciberseguridad. FastAPI persiste las decisiones en PostgreSQL, calcula analitica de comportamiento y entrega features al Random Forest para clasificar riesgo.
 
-- Define endpoints protegidos por JWT interno.
-- Selecciona contenido desde bancos curados.
-- Persiste sesiones, intentos y dominio por concepto.
-- Genera retroalimentacion determinista sin LLM.
+Importante: el modelo clasifica; el motor recomienda.
 
-Unity:
+El `RandomForestClassifier` produce `risk_level` y probabilidad. El motor de recomendaciones usa el resultado, la categoria vulnerable y el historial para elegir `recommended_training` y `recommended_scenario`. El recomendador no es otro modelo ML.
 
-- Solicita una sesion pedagogica.
-- Guarda el estado en `MinigameLessonState`.
-- Muestra la microleccion.
-- Ejecuta Quiz, Sopa de letras o Crucigrama con los items de sesion.
-- Registra un intento por item.
-- Cierra la sesion y solicita feedback sin bloquear la pantalla final.
+### Capa B: adaptacion pedagogica
 
-## 3. Endpoints del modulo
+```text
+training topic
+-> microlearning content
+-> adaptive minigame
+-> concept_ids
+-> attempts
+-> Beta-Bernoulli mastery
+-> strengths / reinforcement areas
+-> personalized feedback
+```
+
+Esta capa empieza cuando el usuario practica un tema. El backend crea una sesion de minijuego con leccion e items alineados a `topic`, `risk` y `minigame`. Cada intento se registra con `concept_ids` derivados por backend. Al cerrar la sesion, se actualiza dominio por concepto y se genera retroalimentacion personalizada.
+
+## 3. Backend y endpoints
+
+Todos los endpoints adaptativos usan el JWT interno de la aplicacion.
 
 | Endpoint | Metodo | Uso |
 | --- | --- | --- |
-| `/minigames/lesson` | GET | Obtiene una microleccion por `topic`, `risk` y `minigame`. |
-| `/minigames/session` | POST | Crea una sesion adaptativa con items y leccion alineados. |
-| `/minigames/attempts` | POST | Registra el intento de un item de sesion. |
-| `/minigames/session/{session_id}/complete` | POST | Cierra la sesion, actualiza dominio y devuelve resumen. |
+| `/ai/risk/me` | GET | Clasifica riesgo conductual y devuelve recomendacion. |
+| `/minigames/lesson` | GET | Obtiene microleccion por `topic`, `risk` y `minigame`. |
+| `/minigames/session` | POST | Crea sesion adaptativa con leccion e items seleccionados. |
+| `/minigames/attempts` | POST | Registra intento de un item de sesion. |
+| `/minigames/session/{session_id}/complete` | POST | Cierra la sesion, resume resultados y actualiza mastery. |
 | `/minigames/session/{session_id}/feedback` | GET | Devuelve retroalimentacion personalizada de una sesion completada. |
 | `/minigames/mastery` | GET | Consulta dominio pedagogico por concepto. |
 | `/minigames/quiz` | GET | Endpoint legacy de quiz. |
 | `/minigames/wordsearch` | GET | Endpoint legacy de sopa de letras. |
 | `/minigames/crossword` | GET | Endpoint legacy de crucigrama. |
 
-Todos los endpoints del modulo requieren usuario autenticado. Los endpoints legacy conservan su contrato anterior y no participan en el flujo completo de sesiones adaptativas.
+Los endpoints legacy conservan su contrato anterior. Permiten abrir minijuegos de forma directa, pero no participan en el flujo completo de sesiones adaptativas, intentos, mastery y feedback.
 
-## 4. Tablas nuevas
+## 4. Random Forest
 
-`minigame_session_records`:
+El modelo historico es un `RandomForestClassifier` entrenado con datos sinteticos/controlados. Si se menciona una metrica historica de accuracy, debe entenderse como resultado sobre ese dataset sintetico/controlado, no como validacion de eficacia educativa real con poblacion real.
 
-- `id`: UUID de sesion.
-- `user_id`: propietario autenticado.
-- `topic`, `risk`, `minigame`: contexto exacto de seleccion.
-- `item_ids`: ids seleccionados por backend.
-- `concept_ids`: conceptos evaluados en la sesion.
-- `status`: `started` o `completed`.
-- `started_at`, `completed_at`: marcas temporales.
+Features reales del modelo:
 
-`minigame_attempts`:
+```text
+total_points
+correct_decisions
+total_decisions
+accuracy
+risk_score
+awareness_score
+decisions_last_7_days
+failed_category_encoded
+```
 
-- `session_id`, `user_id`, `item_id`.
-- `concept_ids`: derivados por backend desde el banco.
-- `difficulty`: derivada por backend desde el item.
-- `correct`, `response_time_ms`, `attempt_number`, `points_delta`.
-- Restriccion unica por `session_id`, `item_id` y `attempt_number`.
+El entrenamiento selecciono esas columnas como `DataFrame`. En `v0.2.1-adaptive-learning`, la inferencia tambien usa `pandas.DataFrame` con `model.feature_names_in_`. Esto elimina el warning:
 
-`user_concept_mastery`:
+```text
+X does not have valid feature names, but RandomForestClassifier was fitted with feature names
+```
 
-- `user_id`, `concept_id`, `topic`.
-- `alpha`, `beta`, `mastery_score`.
-- `attempt_count`, `correct_count`, `incorrect_count`, `evidence_weight`.
-- `last_practiced_at`, `created_at`, `updated_at`.
-- Restriccion unica por usuario y concepto.
+La correccion no reentrena el modelo, no modifica `model.pkl`, no modifica `encoder.pkl` y no altera los resultados predictivos observados en pruebas de regresion.
 
-## 5. Contrato de sesion
+## 5. Deuda conocida del RF para malware
+
+El encoder/modelo historico reconoce estas categorias:
+
+```text
+phishing
+password
+wifi
+social_engineering
+```
+
+La aplicacion actual usa esta taxonomia canonica:
+
+```text
+phishing
+passwords
+malware
+wifi
+```
+
+Adapter actual hacia el RF:
+
+| Topic canonico | Categoria RF |
+| --- | --- |
+| `phishing` | `phishing` |
+| `passwords` | `password` |
+| `wifi` | `wifi` |
+| `malware` | fallback controlado a `phishing` |
+
+Para `malware`, el fallback queda documentado con la razon:
+
+```text
+malware_without_rf_category
+```
+
+Esta limitacion afecta solo a la feature categorica del Random Forest historico. Malware si tiene contenido educativo, minijuegos, concept mastery, feedback personalizado y puede recomendar el escenario backend 3. La solucion futura correcta es reentrenar y versionar el modelo con un espacio categorico revisado.
+
+## 6. Taxonomia
+
+Categorias canonicas:
+
+```text
+phishing
+passwords
+malware
+wifi
+```
+
+Aliases historicos normalizados:
+
+| Alias | Canonico |
+| --- | --- |
+| `password` | `passwords` |
+| `network` | `wifi` |
+| `social_engineering` | `phishing` |
+| `malicious_software` | `malware` |
+
+Valores `general`, `unknown` y `none` no representan una categoria concreta. La analitica normaliza aliases historicos en lectura sin reescribir registros existentes.
+
+## 7. Escenarios y mapping Unity
+
+Los IDs del backend no se renumeran. Unity usa un mapping explicito para abrir escenas.
+
+| Backend ID | Escena Unity |
+| ---: | --- |
+| 1 | `Escenario` |
+| 2 | `Escenario2_Acceso` |
+| 3 | `Escenario 3 (USB sospechoso)` |
+| 5 | `Escenario 4` |
+| 6 | `Escenario 5` |
+| 7 | `Escenario 6` |
+
+El backend ID 4 es historico/no recomendado actualmente y no debe abrir una escena jugable desde el flujo adaptativo.
+
+Candidatos por categoria:
+
+| Categoria | Candidatos |
+| --- | --- |
+| `phishing` | `[1, 5]` |
+| `passwords` | `[2, 6]` |
+| `malware` | `[3]` |
+| `wifi` | `[7]` |
+
+El selector evita repeticion inmediata cuando existe alternativa, prioriza el escenario menos practicado y usa desempate determinista por ID.
+
+## 8. Cobertura pedagogica
+
+Conceptos nuevos documentados para escenarios intermedios:
+
+| Concept ID | Topic | Riesgo | Uso pedagogico |
+| --- | --- | --- | --- |
+| `passwords.credential_request` | `passwords` | `medio` | Solicitudes sospechosas de credenciales. |
+| `passwords.identity_verification` | `passwords` | `medio` | Verificacion de identidad por canal oficial. |
+| `wifi.suspicious_traffic` | `wifi` | `medio` | Trafico saliente anomalo y conexiones no reconocidas. |
+| `wifi.data_exfiltration` | `wifi` | `medio` | Exfiltracion o fuga de datos. |
+
+Cobertura por escenario nuevo:
+
+| Backend ID | Situacion | Topic | Conceptos principales |
+| ---: | --- | --- | --- |
+| 5 | Portal falso de proveedores | `phishing` | dominio, URL, proveedor falso. |
+| 6 | Llamada fraudulenta solicitando contrasena | `passwords` | `credential_request`, `identity_verification`. |
+| 7 | Trafico sospechoso / exfiltracion | `wifi` | `suspicious_traffic`, `data_exfiltration`. |
+
+Las microlecciones y bancos de Quiz, Wordsearch y Crossword cubren estos conceptos. En Wordsearch, la respuesta visible `FUGADATOS` representa pedagogicamente `wifi.data_exfiltration` por restriccion de longitud de la cuadricula. El crucigrama puede conservar respuestas mas largas cuando su contrato lo permite.
+
+## 9. Bancos pedagogicos y minijuegos
+
+El backend mantiene bancos curados para:
+
+```text
+Quiz
+Wordsearch
+Crossword
+```
+
+Cobertura:
+
+```text
+4 topics * 3 riesgos * 3 minijuegos * 5 items = 180 items
+```
+
+Los bancos contienen `item_id`, respuesta esperada, dificultad y `concept_ids`. Unity no decide los conceptos evaluados; los recibe en la sesion y registra intentos contra items del backend.
+
+## 10. Contrato de sesion
 
 Solicitud:
 
@@ -107,7 +244,7 @@ Respuesta:
 
 El cliente no envia `user_id`, `concept_ids`, `difficulty` ni `mastery`. Esos datos se derivan en backend para evitar manipulacion del aprendizaje.
 
-## 6. Registro de intentos
+## 11. Registro de intentos
 
 Unity registra un intento por item usando:
 
@@ -124,17 +261,22 @@ Unity registra un intento por item usando:
 
 El backend valida que la sesion pertenezca al usuario autenticado, que este en estado `started`, que el item pertenezca a la sesion y que coincidan `topic`, `risk`, `minigame`, dificultad y conceptos con el banco. El cliente no puede registrar conceptos arbitrarios.
 
-## 7. Cierre automatico
+## 12. Mastery Beta-Bernoulli
 
-Al terminar un minijuego con sesion, Unity espera intentos pendientes y luego llama:
+Un error en un escenario no actualiza directamente mastery.
+
+Flujo correcto:
 
 ```text
-POST /minigames/session/{session_id}/complete
+scenario decision
+-> behavioral analytics
+-> recommended training
+-> minigame session
+-> item attempt
+-> concept_ids
+-> alpha/beta
+-> mastery_score
 ```
-
-El backend marca la sesion como `completed`, calcula resumen y actualiza dominio si hay intentos. Un segundo cierre de la misma sesion responde conflicto para evitar actualizar dominio dos veces.
-
-## 8. Formula de dominio Beta-Bernoulli
 
 Cada concepto inicia con:
 
@@ -156,60 +298,25 @@ Si el intento es correcto, se suma el peso a `alpha`. Si es incorrecto, se suma 
 
 Niveles:
 
-- `sin_datos`: sin intentos.
-- `necesita_refuerzo`: menor a 50.
-- `en_desarrollo`: 50 a menor de 75.
-- `dominado`: 75 o mas.
+| Nivel | Criterio |
+| --- | --- |
+| `sin_datos` | Sin intentos. |
+| `necesita_refuerzo` | Menor a 50. |
+| `en_desarrollo` | 50 a menor de 75. |
+| `dominado` | 75 o mas. |
 
-## 9. Seleccion adaptativa
+Esta capa distingue evidencia conductual de evidencia de dominio conceptual. Las decisiones de escenarios orientan la recomendacion; los intentos de minijuegos actualizan mastery.
 
-La seleccion usa solo `topic`, `risk` y `minigame` exactos. Cada sesion selecciona 3 items. La puntuacion de cada candidato combina:
+## 13. Retroalimentacion personalizada
 
-- debilidad del concepto;
-- bono por refuerzo de conceptos practicados y debiles;
-- bono de exploracion para conceptos no practicados;
-- penalizacion por repeticion reciente;
-- desempate estable basado en `session_id`, `user_id` e `item_id`.
+La retroalimentacion posterior usa evidencia de:
 
-La seleccion mantiene el `risk` solicitado; no escala ni reduce dificultad automaticamente.
+- attempts;
+- concept_ids;
+- accuracy;
+- mastery.
 
-## 10. Antirrepeticion
-
-El backend revisa las ultimas sesiones completadas del mismo usuario, topic, risk y minigame. Los items usados recientemente reciben penalizaciones decrecientes para favorecer variedad sin impedir que un item vuelva a aparecer cuando el banco disponible es pequeno.
-
-## 11. Bancos pedagogicos
-
-El backend tiene 180 items curados:
-
-- 4 topics: `phishing`, `passwords`, `malware`, `wifi`.
-- 3 riesgos: `alto`, `medio`, `bajo`.
-- 3 minijuegos: `quiz`, `wordsearch`, `crossword`.
-- 5 items por combinacion.
-
-Total:
-
-```text
-4 topics * 3 riesgos * 3 minijuegos * 5 items = 180 items
-```
-
-El catalogo pedagogico actual contiene 41 conceptos.
-
-## 12. Retroalimentacion personalizada
-
-Despues del cierre exitoso, Unity consulta:
-
-```text
-GET /minigames/session/{session_id}/feedback
-```
-
-El feedback se genera solo para sesiones completadas y propiedad del usuario autenticado. No expone respuestas correctas, opciones ni soluciones completas. Incluye:
-
-- resumen de precision;
-- nivel de desempeno;
-- fortalezas;
-- conceptos a reforzar;
-- siguiente paso;
-- minijuego recomendado por rotacion.
+Con esa evidencia identifica fortalezas, avances y areas de refuerzo. No usa LLM ni IA generativa y no expone respuestas correctas, opciones ni soluciones completas.
 
 Niveles de desempeno:
 
@@ -226,9 +333,9 @@ Estados de concepto:
 - `refuerzo`
 - `dificultad_puntual`
 
-## 13. Integracion Unity
+## 14. Integracion Unity
 
-Modelos Unity:
+Modelos Unity principales:
 
 - `MinigameSessionModels.cs`
 - `MinigameAttemptModels.cs`
@@ -236,8 +343,10 @@ Modelos Unity:
 - `MinigameFeedbackModels.cs`
 - `MinigameLessonState.cs`
 
-Controladores:
+Controladores principales:
 
+- `AIRecommendationController.cs`
+- `ProgresoController.cs`
 - `QuizController.cs`
 - `PreguntasController.cs`
 - `CrosswordController.cs`
@@ -250,64 +359,99 @@ Unity conserva:
 - `MinigameLessonState.LastSummary`: resumen tras `/complete`.
 - `MinigameLessonState.LastFeedback`: retroalimentacion tras `/feedback`.
 
-La interfaz de feedback es modal, bloquea raycasts mientras se lee, tiene boton X y boton CERRAR, y destruye solo el modal al cerrarse. Los botones originales de la pantalla final conservan sus listeners.
-
-## 14. Seguridad y privacidad
-
-- Los endpoints adaptativos usan JWT interno.
-- El backend obtiene `user_id` del usuario autenticado.
-- Las sesiones de otros usuarios responden 404.
-- El cliente no envia dominio, conceptos ni usuario.
-- No se imprimen JWT ni secretos.
-- El feedback no expone respuestas correctas.
-- Los logs de contenido detallado del crucigrama y entradas de usuario quedan limitados a `UNITY_EDITOR`.
-
-## 15. Pruebas
-
-Backend:
+El flujo validado de produccion es:
 
 ```text
-venv/Scripts/python.exe -m pytest -q
-292 passed
+Unity
+-> Render
+-> Neon PostgreSQL
+-> analytics
+-> IA / recommendation
+-> Unity
 ```
 
-Cobertura de comportamiento validada por tests:
+## 15. Produccion
 
-- creacion de sesiones;
-- registro unico de intentos;
-- cierre de sesiones;
-- dominio por concepto;
-- seleccion adaptativa;
-- bancos ampliados;
-- retroalimentacion personalizada;
-- encuesta y AI hibrida.
+Backend: Render.
 
-Pruebas visuales Unity pendientes para entrega:
+Base de datos: Neon PostgreSQL.
 
-- Quiz: 3 items, aciertos/errores, cierre, feedback, X, CERRAR, botones finales.
-- Sopa de letras: 3 terminos, timeout, feedback y botones posteriores.
-- Crucigrama: 3 palabras, terminos largos como ARGON2ID, victoria, derrota, scroll y botones.
-- Legacy: abrir Kahoot, SopaLetras y Crucigrama directamente sin intentos ni feedback personalizado.
-- Android real: revisar legibilidad, bloqueo modal, cierre durante espera y orientacion horizontal.
+Cliente: Unity Android.
 
-## 16. Limitaciones
+La validacion end-to-end confirmo el ciclo:
 
-- `mastery` no usa todavia tiempo de respuesta.
-- La seleccion adaptativa mantiene `risk` exacto y no cambia dificultad automaticamente.
-- El feedback es determinista y no usa LLM.
-- El historial previo a 4B.2 no se recalculo automaticamente.
-- Los endpoints legacy no usan el aprendizaje adaptativo completo.
-- Quedan warnings de Pydantic v2 por `class Config`.
-- Quedan warnings por `datetime.utcnow`.
-- Crucigrama legacy puede depender de `APIManager` al abrirse directamente.
-- Las pruebas visuales finales deben repetirse en Android real.
+```text
+decision de escenario
+-> persistencia en Neon
+-> recalculo de analitica
+-> recomendacion adaptativa
+-> apertura de practica Unity
+-> minijuego / aprendizaje
+```
 
-## 17. Trabajo futuro
+## 16. QA y testing
 
+Baseline final de backend para `v0.2.1-adaptive-learning`:
+
+```text
+355 passed
+0 failed
+```
+
+Categorias principales de tests:
+
+- adaptive selection;
+- AI hybrid;
+- concept catalog;
+- concept mastery;
+- expanded minigame banks;
+- lesson coverage;
+- minigame lessons;
+- minigame sessions;
+- personalized feedback;
+- scenario decisions;
+- seed scenarios;
+- survey;
+- RF feature-name regression.
+
+Tambien se valido manualmente el flujo Unity -> Render -> Neon -> analytics -> IA/recommendation -> Unity para escenarios nuevos y recomendacion multi-escenario. No se afirma cobertura total ni 100% porque no existe una metrica formal de cobertura end-to-end visual.
+
+## 17. Releases
+
+`v0.2.0-adaptive-scenarios`:
+
+- escenarios intermedios;
+- taxonomia canonica;
+- flujo de recomendacion multi-escenario;
+- mapping explicito backend -> Unity.
+
+`v0.2.1-adaptive-learning`:
+
+- cobertura pedagogica especifica para escenarios intermedios;
+- concept mastery ampliado;
+- feedback personalizado;
+- inferencia RF segura con feature names;
+- QA final backend con 355 tests passing.
+
+## 18. Limitaciones conocidas
+
+Limitaciones actuales:
+
+1. El Random Forest historico no tiene categoria propia para `malware`; usa fallback controlado `malware_without_rf_category` solo para esa feature categorica.
+2. El dataset de entrenamiento actual es sintetico/controlado.
+3. No existe validacion educativa longitudinal con poblacion real.
+4. Persisten warnings de Pydantic v2 por `class Config`.
+5. Persisten warnings por `datetime.utcnow()`.
+6. Persiste un warning de pytest/SQLAlchemy por coleccion de una clase `Base`.
+7. Backend ID 4 es historico/no recomendado actualmente.
+8. No existe IA generativa.
+
+Trabajo futuro:
+
+- Reentrenar y versionar el RF con espacio categorico revisado, incluyendo `malware`.
 - Incorporar tiempo de respuesta como evidencia secundaria de dominio.
 - Permitir ajuste pedagogico gradual de dificultad cuando exista historial suficiente.
 - Agregar pantalla historica de dominio por concepto en Unity.
-- Mostrar recomendaciones acumuladas por topic en Perfil.
 - Migrar Pydantic `class Config` a `ConfigDict`.
-- Reemplazar `datetime.utcnow` por fechas aware en UTC.
+- Reemplazar `datetime.utcnow()` por fechas aware en UTC.
 - Ampliar pruebas automatizadas de contrato Unity con mocks de API.
