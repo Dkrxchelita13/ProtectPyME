@@ -448,3 +448,79 @@ class RecommendationEventResponse(BaseModel):
     source: str
     evidence_count: int
     created_at: datetime
+
+
+class PilotAssessmentStartRequest(BaseModel):
+    phase: Literal["PRE", "POST"]
+
+
+class PilotAssessmentPublicQuestion(BaseModel):
+    question_id: str
+    prompt: str
+    options: List[str]
+
+
+class PilotAssessmentStartResponse(BaseModel):
+    assessment_id: str
+    phase: Literal["PRE", "POST"]
+    instrument_version: str
+    status: Literal["started"]
+    questions: List[PilotAssessmentPublicQuestion]
+
+
+class PilotAssessmentAnswerRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    question_id: str = Field(..., min_length=1, max_length=100)
+    selected_option: str = Field(..., min_length=1, max_length=1)
+    response_time_ms: int = Field(..., ge=0, le=3_600_000)
+
+
+class PilotAssessmentAnswerResponse(BaseModel):
+    assessment_id: str
+    question_id: str
+    recorded: bool
+    answered_count: int
+    total_questions: int
+
+
+class PilotAssessmentStatusItem(BaseModel):
+    assessment_id: str
+    phase: Literal["PRE", "POST"]
+    status: Literal["started", "completed"]
+    started_at: datetime
+    completed_at: Optional[datetime] = None
+    answered_count: int
+
+
+class PilotAssessmentStatusResponse(BaseModel):
+    instrument_version: str
+    consent_active: bool
+    pre: Optional[PilotAssessmentStatusItem] = None
+    post: Optional[PilotAssessmentStatusItem] = None
+    next_phase: Optional[Literal["PRE", "POST"]] = None
+
+
+class PilotAssessmentResultItem(BaseModel):
+    assessment_id: str
+    phase: Literal["PRE", "POST"]
+    instrument_version: str
+    status: Literal["completed"]
+    completed_at: datetime
+    total_score: float
+    topic_scores: Dict[str, float]
+
+
+class PilotAssessmentGainResponse(BaseModel):
+    total: float
+    phishing: float
+    passwords: float
+    malware: float
+    wifi: float
+
+
+class PilotAssessmentResultsResponse(BaseModel):
+    instrument_version: str
+    pre: Optional[PilotAssessmentResultItem] = None
+    post: Optional[PilotAssessmentResultItem] = None
+    gain: Optional[PilotAssessmentGainResponse] = None

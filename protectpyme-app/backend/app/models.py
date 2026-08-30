@@ -360,6 +360,79 @@ class RecommendationEvent(Base):
         default=datetime.utcnow
     )
 
+
+class PilotAssessment(Base):
+    __tablename__ = "pilot_assessments"
+
+    id = Column(String(36), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    phase = Column(String(10), nullable=False)
+    form = Column(String(1), nullable=False)
+    instrument_version = Column(String(50), nullable=False)
+    status = Column(String(20), nullable=False, default="started")
+    started_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=datetime.utcnow
+    )
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    total_score = Column(Float, nullable=True)
+    phishing_score = Column(Float, nullable=True)
+    passwords_score = Column(Float, nullable=True)
+    malware_score = Column(Float, nullable=True)
+    wifi_score = Column(Float, nullable=True)
+
+    answers = relationship(
+        "PilotAssessmentAnswer",
+        back_populates="assessment",
+        cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "phase",
+            "instrument_version",
+            name="uq_pilot_assessments_user_phase_version"
+        ),
+    )
+
+
+class PilotAssessmentAnswer(Base):
+    __tablename__ = "pilot_assessment_answers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    assessment_id = Column(
+        String(36),
+        ForeignKey("pilot_assessments.id"),
+        nullable=False,
+        index=True
+    )
+    question_id = Column(String(100), nullable=False)
+    topic = Column(String(50), nullable=False)
+    selected_option = Column(String(1), nullable=False)
+    is_correct = Column(Boolean, nullable=False)
+    response_time_ms = Column(Integer, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=datetime.utcnow
+    )
+
+    assessment = relationship(
+        "PilotAssessment",
+        back_populates="answers"
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "assessment_id",
+            "question_id",
+            name="uq_pilot_assessment_answers_assessment_question"
+        ),
+    )
+
+
 # -------- AUDIT LOGS --------
 class AuditLog(Base):
     __tablename__ = "audit_logs"
