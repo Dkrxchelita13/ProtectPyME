@@ -1,10 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app import models, schemas
-from app.auth import get_current_user
+from app.auth import get_current_user, require_admin
 from app.database import get_db
-from app.services import pilot_assessment_service, pilot_service
+from app.services import (
+    pilot_assessment_service,
+    pilot_export_service,
+    pilot_service,
+)
 
 
 router = APIRouter(
@@ -148,3 +153,41 @@ def get_assessment_results(
         )
     except pilot_assessment_service.PilotAssessmentPermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
+@router.get("/export/summary.csv")
+def export_pilot_summary_csv(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_admin)
+):
+    rows = pilot_export_service.build_summary_dataset(db)
+    csv_body = pilot_export_service.serialize_summary_csv(rows)
+
+    return Response(
+        content=csv_body,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": (
+                "attachment; filename=pilot_summary.csv"
+            )
+        },
+    )
+
+
+@router.get("/export/events.csv")
+def export_pilot_events_csv(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_admin)
+):
+    rows = pilot_export_service.build_events_dataset(db)
+    csv_body = pilot_export_service.serialize_events_csv(rows)
+
+    return Response(
+        content=csv_body,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": (
+                "attachment; filename=pilot_events.csv"
+            )
+        },
+    )
