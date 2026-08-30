@@ -323,6 +323,43 @@ class UserConceptMastery(Base):
         ),
     )
 
+# -------- PILOT READINESS --------
+class PilotConsent(Base):
+    __tablename__ = "pilot_consents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    participant_code = Column(String(80), nullable=False, unique=True, index=True)
+    consent_version = Column(String(50), nullable=False)
+    accepted = Column(Boolean, nullable=False, default=False)
+    accepted_at = Column(DateTime(timezone=True), nullable=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "consent_version",
+            name="uq_pilot_consents_user_version"
+        ),
+    )
+
+
+class RecommendationEvent(Base):
+    __tablename__ = "recommendation_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    risk_level = Column(String(20), nullable=False)
+    recommended_training = Column(String(50), nullable=False)
+    recommended_scenario = Column(Integer, nullable=False)
+    source = Column(String(30), nullable=False)
+    evidence_count = Column(Integer, nullable=False, default=0)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=datetime.utcnow
+    )
+
 # -------- AUDIT LOGS --------
 class AuditLog(Base):
     __tablename__ = "audit_logs"

@@ -419,3 +419,32 @@ class ConceptMasteryListResponse(BaseModel):
     developing_count: int
     mastered_count: int
     concepts: List[ConceptMasteryResponse]
+
+
+# -------- PILOT READINESS --------
+
+class PilotConsentAcceptRequest(BaseModel):
+    accepted: Literal[True]
+
+
+class PilotConsentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    consent_version: str
+    accepted: bool
+    participant_code: Optional[str] = None
+    accepted_at: Optional[datetime] = None
+    revoked_at: Optional[datetime] = None
+
+
+class RecommendationEventResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    risk_level: str
+    recommended_training: str
+    recommended_scenario: int
+    source: str
+    evidence_count: int
+    created_at: datetime
