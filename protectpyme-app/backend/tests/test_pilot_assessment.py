@@ -278,6 +278,81 @@ def test_question_bank_uses_expected_constructs(app_modules):
     }
 
 
+def test_question_bank_has_valid_options_and_answer_key(app_modules):
+    service = app_modules.pilot_assessment_service
+
+    for question in service.get_all_questions():
+        options = question["options"]
+        assert len(options) == 4
+        assert all(option.strip() for option in options)
+        assert len(set(options)) == 4
+        assert question["correct_option"] in {"A", "B", "C", "D"}
+
+
+def test_pre_post_pairs_keep_constructs_and_distinct_prompts(app_modules):
+    service = app_modules.pilot_assessment_service
+
+    pre_questions = service.get_questions_for_form("A")
+    post_questions = service.get_questions_for_form("B")
+
+    for pre_question, post_question in zip(pre_questions, post_questions):
+        assert pre_question["topic"] == post_question["topic"]
+        assert pre_question["construct"] == post_question["construct"]
+        assert pre_question["prompt"] != post_question["prompt"]
+
+
+def test_hardened_post_questions_preserve_metadata(app_modules):
+    service = app_modules.pilot_assessment_service
+    questions = {
+        question["question_id"]: question
+        for question in service.get_questions_for_form("B")
+    }
+
+    expected_metadata = {
+        "post_phishing_01": ("B", "phishing", "senales_phishing"),
+        "post_phishing_03": ("B", "phishing", "reporte_accion_segura"),
+        "post_passwords_02": ("B", "passwords", "mfa_verificacion"),
+        "post_malware_01": ("B", "malware", "usb_archivo_desconocido"),
+        "post_wifi_03": ("B", "wifi", "trafico_exfiltracion"),
+    }
+
+    for question_id, metadata in expected_metadata.items():
+        question = questions[question_id]
+        assert (
+            question["form"],
+            question["topic"],
+            question["construct"],
+        ) == metadata
+
+
+def test_hardened_bank_removes_known_weak_or_contaminating_phrases(
+    app_modules,
+):
+    service = app_modules.pilot_assessment_service
+    bank_text = " ".join(
+        " ".join([
+            question["prompt"],
+            *question["options"],
+        ])
+        for question in service.get_all_questions()
+    ).lower()
+
+    forbidden_phrases = [
+        "que use un saludo general",
+        "portal falso",
+        "cambiar credenciales si aplica",
+        "recibes un adjunto inesperado de un contacto real",
+        "solo afecta si el equipo no tiene teclado",
+        "enviar mas archivos para verificar velocidad",
+        "usarlo solo para enviar contraseñas",
+        "conexion no reconocida que transfiere documentos internos",
+        "problema exclusivo de la impresora",
+    ]
+
+    for phrase in forbidden_phrases:
+        assert phrase not in bank_text
+
+
 def test_start_requires_active_pilot_consent(app_modules, db_session, user):
     client = make_pilot_client(app_modules, db_session, user)
 
