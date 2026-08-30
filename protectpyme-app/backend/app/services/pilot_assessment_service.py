@@ -2,6 +2,7 @@ from datetime import datetime
 import uuid
 
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app import models, schemas
@@ -17,6 +18,8 @@ PHASE_FORMS = {
 OPTION_KEYS = ("A", "B", "C", "D")
 QUESTIONS_PER_TOPIC = 3
 TOTAL_QUESTIONS = 12
+REQUIRED_DISTINCT_SCENARIOS_FOR_POST = 3
+REQUIRED_MINIGAME_SESSIONS_FOR_POST = 1
 
 
 class PilotAssessmentPermissionError(Exception):
@@ -385,6 +388,8 @@ def get_assessment_status(db: Session, user_id: int) -> dict:
     consent_active = pilot_service.has_active_pilot_consent(db, user_id)
     pre = _get_assessment(db, user_id, "PRE")
     post = _get_assessment(db, user_id, "POST")
+    intervention_progress = _intervention_progress(db, user_id, pre)
+    post_eligible = _is_post_eligible(pre, intervention_progress)
 
     return {
         "instrument_version": INSTRUMENT_VERSION,
@@ -392,6 +397,8 @@ def get_assessment_status(db: Session, user_id: int) -> dict:
         "pre": _status_item(pre),
         "post": _status_item(post),
         "next_phase": _next_phase(pre, post, consent_active),
+        "post_eligible": post_eligible,
+        "intervention_progress": intervention_progress,
     }
 
 
@@ -404,9 +411,6 @@ def start_assessment(
     phase = request.phase
     form = PHASE_FORMS[phase]
 
-    if phase == "POST" and not _completed_assessment_exists(db, user_id, "PRE"):
-        raise PilotAssessmentConflictError("PRE assessment must be completed first.")
-
     existing = _get_assessment(db, user_id, phase)
 
     if existing is not None:
@@ -416,6 +420,15 @@ def start_assessment(
         raise PilotAssessmentConflictError(
             f"{phase} assessment is already completed."
         )
+
+    if phase == "POST":
+        pre = _get_completed_assessment(db, user_id, "PRE")
+        intervention_progress = _intervention_progress(db, user_id, pre)
+
+        if not _is_post_eligible(pre, intervention_progress):
+            raise PilotAssessmentConflictError(
+                "POST assessment requires completed PRE and minimum intervention."
+            )
 
     assessment = models.PilotAssessment(
         id=str(uuid.uuid4()),
@@ -616,6 +629,65 @@ def _answered_count(db: Session, assessment_id: str) -> int:
     )
 
 
+def _answered_question_ids(assessment) -> list[str]:
+    answered = {
+        answer.question_id
+        for answer in assessment.answers
+    }
+
+    return [
+        question["question_id"]
+        for question in get_questions_for_form(assessment.form)
+        if question["question_id"] in answered
+    ]
+
+
+def _intervention_progress(db: Session, user_id: int, pre) -> dict:
+    progress = {
+        "distinct_scenarios_completed": 0,
+        "required_distinct_scenarios": REQUIRED_DISTINCT_SCENARIOS_FOR_POST,
+        "completed_minigame_sessions": 0,
+        "required_minigame_sessions": REQUIRED_MINIGAME_SESSIONS_FOR_POST,
+    }
+
+    if pre is None or pre.status != "completed" or pre.completed_at is None:
+        return progress
+
+    distinct_scenarios = (
+        db.query(func.count(func.distinct(models.Decision.scenario_id)))
+        .filter(
+            models.Decision.user_id == user_id,
+            models.Decision.created_at > pre.completed_at,
+        )
+        .scalar()
+    )
+    completed_minigames = (
+        db.query(func.count(models.MinigameSessionRecord.id))
+        .filter(
+            models.MinigameSessionRecord.user_id == user_id,
+            models.MinigameSessionRecord.status == "completed",
+            models.MinigameSessionRecord.completed_at > pre.completed_at,
+        )
+        .scalar()
+    )
+
+    progress["distinct_scenarios_completed"] = int(distinct_scenarios or 0)
+    progress["completed_minigame_sessions"] = int(completed_minigames or 0)
+    return progress
+
+
+def _is_post_eligible(pre, intervention_progress: dict) -> bool:
+    if pre is None or pre.status != "completed" or pre.completed_at is None:
+        return False
+
+    return (
+        intervention_progress["distinct_scenarios_completed"]
+        >= intervention_progress["required_distinct_scenarios"]
+        and intervention_progress["completed_minigame_sessions"]
+        >= intervention_progress["required_minigame_sessions"]
+    )
+
+
 def _normalize_selected_option(value: str) -> str:
     return (value or "").strip().upper()
 
@@ -659,6 +731,7 @@ def _start_response(assessment) -> dict:
         "phase": assessment.phase,
         "instrument_version": assessment.instrument_version,
         "status": assessment.status,
+        "answered_question_ids": _answered_question_ids(assessment),
         "questions": [
             _public_question(question)
             for question in get_questions_for_form(assessment.form)
@@ -712,6 +785,7 @@ def _status_item(assessment) -> dict | None:
         "started_at": assessment.started_at,
         "completed_at": assessment.completed_at,
         "answered_count": len(assessment.answers),
+        "answered_question_ids": _answered_question_ids(assessment),
     }
 
 

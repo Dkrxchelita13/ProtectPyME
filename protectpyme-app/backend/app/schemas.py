@@ -465,6 +465,7 @@ class PilotAssessmentStartResponse(BaseModel):
     phase: Literal["PRE", "POST"]
     instrument_version: str
     status: Literal["started"]
+    answered_question_ids: List[str]
     questions: List[PilotAssessmentPublicQuestion]
 
 
@@ -491,6 +492,14 @@ class PilotAssessmentStatusItem(BaseModel):
     started_at: datetime
     completed_at: Optional[datetime] = None
     answered_count: int
+    answered_question_ids: List[str]
+
+
+class PilotInterventionProgress(BaseModel):
+    distinct_scenarios_completed: int
+    required_distinct_scenarios: int
+    completed_minigame_sessions: int
+    required_minigame_sessions: int
 
 
 class PilotAssessmentStatusResponse(BaseModel):
@@ -499,6 +508,8 @@ class PilotAssessmentStatusResponse(BaseModel):
     pre: Optional[PilotAssessmentStatusItem] = None
     post: Optional[PilotAssessmentStatusItem] = None
     next_phase: Optional[Literal["PRE", "POST"]] = None
+    post_eligible: bool
+    intervention_progress: PilotInterventionProgress
 
 
 class PilotAssessmentResultItem(BaseModel):

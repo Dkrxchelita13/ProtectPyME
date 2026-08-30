@@ -3,7 +3,9 @@ import os
 import sys
 import types
 from collections import Counter
+from datetime import datetime, timedelta
 from types import SimpleNamespace
+import uuid
 
 import pytest
 from fastapi import FastAPI
@@ -220,6 +222,79 @@ def complete_assessment(client, assessment_id):
     return response.json()
 
 
+def complete_pre_assessment(app_modules, db_session, user, client):
+    service = app_modules.pilot_assessment_service
+    assessment = start_assessment(client, "PRE")
+    answer_assessment(
+        client,
+        assessment["assessment_id"],
+        service.get_questions_for_form("A"),
+        correct_topics={"phishing", "passwords", "malware", "wifi"},
+    )
+    complete_assessment(client, assessment["assessment_id"])
+    return db_session.query(app_modules.models.PilotAssessment).filter_by(
+        id=assessment["assessment_id"],
+    ).first()
+
+
+def add_decision(app_modules, db_session, user_id, scenario_id, created_at):
+    decision = app_modules.models.Decision(
+        user_id=user_id,
+        scenario_id=scenario_id,
+        choice="qa_intervention",
+        is_correct=1,
+        points_awarded=10,
+        risk_level="low",
+        feedback="QA intervention decision",
+        response_time=1000,
+        created_at=created_at,
+    )
+    db_session.add(decision)
+    return decision
+
+
+def add_minigame_session(
+    app_modules,
+    db_session,
+    user_id,
+    completed_at,
+    status="completed",
+):
+    session = app_modules.models.MinigameSessionRecord(
+        id=str(uuid.uuid4()),
+        user_id=user_id,
+        topic="phishing",
+        risk="alto",
+        minigame="quiz",
+        item_ids=["pilot_qa_item"],
+        concept_ids=["phishing.signals"],
+        status=status,
+        started_at=completed_at - timedelta(minutes=5),
+        completed_at=completed_at if status == "completed" else None,
+    )
+    db_session.add(session)
+    return session
+
+
+def add_minimum_post_intervention(app_modules, db_session, user_id, pre_completed_at):
+    for offset, scenario_id in enumerate((1, 2, 5), start=1):
+        add_decision(
+            app_modules,
+            db_session,
+            user_id,
+            scenario_id,
+            pre_completed_at + timedelta(minutes=offset),
+        )
+
+    add_minigame_session(
+        app_modules,
+        db_session,
+        user_id,
+        pre_completed_at + timedelta(minutes=10),
+    )
+    db_session.commit()
+
+
 def assessment_records(app_modules, db_session):
     return db_session.query(app_modules.models.PilotAssessment).all()
 
@@ -377,6 +452,13 @@ def test_status_does_not_require_consent_to_read(app_modules, db_session, user):
         "pre": None,
         "post": None,
         "next_phase": None,
+        "post_eligible": False,
+        "intervention_progress": {
+            "distinct_scenarios_completed": 0,
+            "required_distinct_scenarios": 3,
+            "completed_minigame_sessions": 0,
+            "required_minigame_sessions": 1,
+        },
     }
 
 
@@ -392,6 +474,7 @@ def test_start_pre_returns_public_questions_without_answer_key(
 
     assert data["phase"] == "PRE"
     assert data["status"] == "started"
+    assert data["answered_question_ids"] == []
     assert len(data["questions"]) == 12
     assert data["questions"][0]["question_id"] == "pre_phishing_01"
     assert "correct_option" not in data["questions"][0]
@@ -412,7 +495,144 @@ def test_start_pre_is_idempotent_while_incomplete(
     second = start_assessment(client, "PRE")
 
     assert first["assessment_id"] == second["assessment_id"]
+    assert second["answered_question_ids"] == []
     assert len(assessment_records(app_modules, db_session)) == 1
+
+
+def test_started_assessment_status_reports_answered_question_ids(
+    app_modules,
+    db_session,
+    user,
+):
+    service = app_modules.pilot_assessment_service
+    accept_consent(app_modules, db_session, user)
+    client = make_pilot_client(app_modules, db_session, user)
+    assessment = start_assessment(client, "PRE")
+    questions = service.get_questions_for_form("A")
+
+    initial_status = client.get("/pilot/assessment/status").json()
+    assert initial_status["pre"]["answered_count"] == 0
+    assert initial_status["pre"]["answered_question_ids"] == []
+
+    response = client.post(
+        f"/pilot/assessment/{assessment['assessment_id']}/answer",
+        json={
+            "question_id": questions[0]["question_id"],
+            "selected_option": questions[0]["correct_option"],
+            "response_time_ms": 1000,
+        },
+    )
+
+    assert response.status_code == 200
+    one_answer_status = client.get("/pilot/assessment/status").json()
+    assert one_answer_status["pre"]["answered_count"] == 1
+    assert one_answer_status["pre"]["answered_question_ids"] == [
+        "pre_phishing_01",
+    ]
+
+
+def test_answered_question_ids_follow_form_order_not_db_order(
+    app_modules,
+    db_session,
+    user,
+):
+    service = app_modules.pilot_assessment_service
+    accept_consent(app_modules, db_session, user)
+    client = make_pilot_client(app_modules, db_session, user)
+    assessment = start_assessment(client, "PRE")
+    questions = service.get_questions_for_form("A")
+
+    for question in (questions[2], questions[0], questions[1]):
+        response = client.post(
+            f"/pilot/assessment/{assessment['assessment_id']}/answer",
+            json={
+                "question_id": question["question_id"],
+                "selected_option": question["correct_option"],
+                "response_time_ms": 1000,
+            },
+        )
+        assert response.status_code == 200
+
+    status_data = client.get("/pilot/assessment/status").json()
+    recovered = start_assessment(client, "PRE")
+
+    assert status_data["pre"]["answered_question_ids"] == [
+        "pre_phishing_01",
+        "pre_phishing_02",
+        "pre_phishing_03",
+    ]
+    assert recovered["answered_question_ids"] == [
+        "pre_phishing_01",
+        "pre_phishing_02",
+        "pre_phishing_03",
+    ]
+
+
+def test_recovered_start_keeps_public_questions_without_answer_state(
+    app_modules,
+    db_session,
+    user,
+):
+    service = app_modules.pilot_assessment_service
+    accept_consent(app_modules, db_session, user)
+    client = make_pilot_client(app_modules, db_session, user)
+    assessment = start_assessment(client, "PRE")
+    question = service.get_questions_for_form("A")[0]
+    client.post(
+        f"/pilot/assessment/{assessment['assessment_id']}/answer",
+        json={
+            "question_id": question["question_id"],
+            "selected_option": question["correct_option"],
+            "response_time_ms": 1000,
+        },
+    )
+
+    recovered = start_assessment(client, "PRE")
+
+    assert recovered["assessment_id"] == assessment["assessment_id"]
+    assert recovered["answered_question_ids"] == ["pre_phishing_01"]
+    assert len(recovered["questions"]) == 12
+
+    for public_question in recovered["questions"]:
+        assert "correct_option" not in public_question
+        assert "is_correct" not in public_question
+        assert "selected_option" not in public_question
+        assert "topic" not in public_question
+        assert "construct" not in public_question
+
+
+def test_other_user_answered_question_ids_are_isolated(
+    app_modules,
+    db_session,
+    user,
+    other_user,
+):
+    service = app_modules.pilot_assessment_service
+    accept_consent(app_modules, db_session, user)
+    accept_consent(app_modules, db_session, other_user)
+    first_client = make_pilot_client(app_modules, db_session, user)
+    second_client = make_pilot_client(app_modules, db_session, other_user)
+    first = start_assessment(first_client, "PRE")
+    second = start_assessment(second_client, "PRE")
+    first_question = service.get_questions_for_form("A")[0]
+
+    response = first_client.post(
+        f"/pilot/assessment/{first['assessment_id']}/answer",
+        json={
+            "question_id": first_question["question_id"],
+            "selected_option": first_question["correct_option"],
+            "response_time_ms": 1000,
+        },
+    )
+
+    assert response.status_code == 200
+    assert first_client.get("/pilot/assessment/status").json()["pre"][
+        "answered_question_ids"
+    ] == ["pre_phishing_01"]
+    assert second_client.get("/pilot/assessment/status").json()["pre"][
+        "answered_question_ids"
+    ] == []
+    assert second["answered_question_ids"] == []
 
 
 def test_post_cannot_start_before_completed_pre(
@@ -429,6 +649,291 @@ def test_post_cannot_start_before_completed_pre(
     )
 
     assert response.status_code == 409
+
+
+def test_status_reports_post_ineligible_without_pre(
+    app_modules,
+    db_session,
+    user,
+):
+    accept_consent(app_modules, db_session, user)
+    client = make_pilot_client(app_modules, db_session, user)
+
+    data = client.get("/pilot/assessment/status").json()
+
+    assert data["post_eligible"] is False
+    assert data["intervention_progress"] == {
+        "distinct_scenarios_completed": 0,
+        "required_distinct_scenarios": 3,
+        "completed_minigame_sessions": 0,
+        "required_minigame_sessions": 1,
+    }
+
+
+def test_completed_pre_without_intervention_is_not_post_eligible(
+    app_modules,
+    db_session,
+    user,
+):
+    accept_consent(app_modules, db_session, user)
+    client = make_pilot_client(app_modules, db_session, user)
+    complete_pre_assessment(app_modules, db_session, user, client)
+
+    status = client.get("/pilot/assessment/status").json()
+    start_post = client.post(
+        "/pilot/assessment/start",
+        json={"phase": "POST"},
+    )
+
+    assert status["post_eligible"] is False
+    assert status["intervention_progress"] == {
+        "distinct_scenarios_completed": 0,
+        "required_distinct_scenarios": 3,
+        "completed_minigame_sessions": 0,
+        "required_minigame_sessions": 1,
+    }
+    assert start_post.status_code == 409
+
+
+def test_repeated_same_scenario_counts_once_for_post_eligibility(
+    app_modules,
+    db_session,
+    user,
+):
+    accept_consent(app_modules, db_session, user)
+    client = make_pilot_client(app_modules, db_session, user)
+    pre = complete_pre_assessment(app_modules, db_session, user, client)
+
+    for offset in range(1, 4):
+        add_decision(
+            app_modules,
+            db_session,
+            user.id,
+            1,
+            pre.completed_at + timedelta(minutes=offset),
+        )
+
+    add_minigame_session(
+        app_modules,
+        db_session,
+        user.id,
+        pre.completed_at + timedelta(minutes=10),
+    )
+    db_session.commit()
+
+    status = client.get("/pilot/assessment/status").json()
+
+    assert status["post_eligible"] is False
+    assert status["intervention_progress"]["distinct_scenarios_completed"] == 1
+    assert status["intervention_progress"]["completed_minigame_sessions"] == 1
+
+
+def test_three_distinct_scenarios_without_completed_minigame_is_not_eligible(
+    app_modules,
+    db_session,
+    user,
+):
+    accept_consent(app_modules, db_session, user)
+    client = make_pilot_client(app_modules, db_session, user)
+    pre = complete_pre_assessment(app_modules, db_session, user, client)
+
+    for offset, scenario_id in enumerate((1, 2, 5), start=1):
+        add_decision(
+            app_modules,
+            db_session,
+            user.id,
+            scenario_id,
+            pre.completed_at + timedelta(minutes=offset),
+        )
+
+    db_session.commit()
+
+    status = client.get("/pilot/assessment/status").json()
+
+    assert status["post_eligible"] is False
+    assert status["intervention_progress"]["distinct_scenarios_completed"] == 3
+    assert status["intervention_progress"]["completed_minigame_sessions"] == 0
+
+
+def test_two_distinct_scenarios_with_minigame_is_not_eligible(
+    app_modules,
+    db_session,
+    user,
+):
+    accept_consent(app_modules, db_session, user)
+    client = make_pilot_client(app_modules, db_session, user)
+    pre = complete_pre_assessment(app_modules, db_session, user, client)
+
+    for offset, scenario_id in enumerate((1, 2), start=1):
+        add_decision(
+            app_modules,
+            db_session,
+            user.id,
+            scenario_id,
+            pre.completed_at + timedelta(minutes=offset),
+        )
+
+    add_minigame_session(
+        app_modules,
+        db_session,
+        user.id,
+        pre.completed_at + timedelta(minutes=10),
+    )
+    db_session.commit()
+
+    status = client.get("/pilot/assessment/status").json()
+
+    assert status["post_eligible"] is False
+    assert status["intervention_progress"]["distinct_scenarios_completed"] == 2
+    assert status["intervention_progress"]["completed_minigame_sessions"] == 1
+
+
+def test_started_minigame_does_not_count_for_post_eligibility(
+    app_modules,
+    db_session,
+    user,
+):
+    accept_consent(app_modules, db_session, user)
+    client = make_pilot_client(app_modules, db_session, user)
+    pre = complete_pre_assessment(app_modules, db_session, user, client)
+
+    for offset, scenario_id in enumerate((1, 2, 5), start=1):
+        add_decision(
+            app_modules,
+            db_session,
+            user.id,
+            scenario_id,
+            pre.completed_at + timedelta(minutes=offset),
+        )
+
+    add_minigame_session(
+        app_modules,
+        db_session,
+        user.id,
+        pre.completed_at + timedelta(minutes=10),
+        status="started",
+    )
+    db_session.commit()
+
+    status = client.get("/pilot/assessment/status").json()
+
+    assert status["post_eligible"] is False
+    assert status["intervention_progress"]["distinct_scenarios_completed"] == 3
+    assert status["intervention_progress"]["completed_minigame_sessions"] == 0
+
+
+def test_minimum_intervention_enables_post_start(
+    app_modules,
+    db_session,
+    user,
+):
+    accept_consent(app_modules, db_session, user)
+    client = make_pilot_client(app_modules, db_session, user)
+    pre = complete_pre_assessment(app_modules, db_session, user, client)
+    add_minimum_post_intervention(
+        app_modules,
+        db_session,
+        user.id,
+        pre.completed_at,
+    )
+
+    status = client.get("/pilot/assessment/status").json()
+    post = start_assessment(client, "POST")
+
+    assert status["post_eligible"] is True
+    assert status["intervention_progress"] == {
+        "distinct_scenarios_completed": 3,
+        "required_distinct_scenarios": 3,
+        "completed_minigame_sessions": 1,
+        "required_minigame_sessions": 1,
+    }
+    assert post["phase"] == "POST"
+    assert post["answered_question_ids"] == []
+
+
+def test_activity_before_pre_completion_does_not_count_for_post_eligibility(
+    app_modules,
+    db_session,
+    user,
+):
+    accept_consent(app_modules, db_session, user)
+    client = make_pilot_client(app_modules, db_session, user)
+    pre = complete_pre_assessment(app_modules, db_session, user, client)
+
+    for offset, scenario_id in enumerate((1, 2, 5), start=1):
+        add_decision(
+            app_modules,
+            db_session,
+            user.id,
+            scenario_id,
+            pre.completed_at - timedelta(minutes=offset),
+        )
+
+    add_minigame_session(
+        app_modules,
+        db_session,
+        user.id,
+        pre.completed_at - timedelta(minutes=10),
+    )
+    db_session.commit()
+
+    status = client.get("/pilot/assessment/status").json()
+
+    assert status["post_eligible"] is False
+    assert status["intervention_progress"]["distinct_scenarios_completed"] == 0
+    assert status["intervention_progress"]["completed_minigame_sessions"] == 0
+
+
+def test_other_user_activity_does_not_count_for_post_eligibility(
+    app_modules,
+    db_session,
+    user,
+    other_user,
+):
+    accept_consent(app_modules, db_session, user)
+    client = make_pilot_client(app_modules, db_session, user)
+    pre = complete_pre_assessment(app_modules, db_session, user, client)
+    add_minimum_post_intervention(
+        app_modules,
+        db_session,
+        other_user.id,
+        pre.completed_at,
+    )
+
+    status = client.get("/pilot/assessment/status").json()
+
+    assert status["post_eligible"] is False
+    assert status["intervention_progress"]["distinct_scenarios_completed"] == 0
+    assert status["intervention_progress"]["completed_minigame_sessions"] == 0
+
+
+def test_started_post_can_be_recovered_without_creating_another_post(
+    app_modules,
+    db_session,
+    user,
+):
+    accept_consent(app_modules, db_session, user)
+    client = make_pilot_client(app_modules, db_session, user)
+    pre = complete_pre_assessment(app_modules, db_session, user, client)
+    add_minimum_post_intervention(
+        app_modules,
+        db_session,
+        user.id,
+        pre.completed_at,
+    )
+    first = start_assessment(client, "POST")
+
+    for record in db_session.query(app_modules.models.Decision).all():
+        db_session.delete(record)
+
+    for record in db_session.query(app_modules.models.MinigameSessionRecord).all():
+        db_session.delete(record)
+
+    db_session.commit()
+    second = start_assessment(client, "POST")
+
+    assert second["assessment_id"] == first["assessment_id"]
+    assert len(assessment_records(app_modules, db_session)) == 2
 
 
 def test_answer_rejects_invalid_question_option_and_duplicate(
@@ -597,6 +1102,15 @@ def test_results_include_gain_only_after_post_is_completed(
         correct_topics={"phishing", "passwords"},
     )
     complete_assessment(client, pre["assessment_id"])
+    pre_record = db_session.query(app_modules.models.PilotAssessment).filter_by(
+        id=pre["assessment_id"],
+    ).first()
+    add_minimum_post_intervention(
+        app_modules,
+        db_session,
+        user.id,
+        pre_record.completed_at,
+    )
 
     pre_results = client.get("/pilot/assessment/results").json()
     post = start_assessment(client, "POST")
