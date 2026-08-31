@@ -11,18 +11,29 @@ public class APIManager : MonoBehaviour
 {
     public static APIManager Instance;
 
+    private const string PendingSessionCompletionPrefsKey =
+        "PendingMinigameCompletionSessionIds";
+
     private string baseUrl = "https://protectpyme.onrender.com";
     private string token;
     private bool surveyStatusRequestInProgress;
     private bool surveySubmitRequestInProgress;
+    private bool pilotRequestInProgress;
     private bool minigameLessonRequestInProgress;
     private bool minigameSessionRequestInProgress;
     private readonly HashSet<string> minigameAttemptRequestsInProgress =
         new HashSet<string>();
+    private readonly Dictionary<string, MinigameAttemptRequest> failedMinigameAttempts =
+        new Dictionary<string, MinigameAttemptRequest>();
     private readonly HashSet<string> sessionCompletionRequestsInProgress =
         new HashSet<string>();
     private readonly HashSet<string> completedSessionIds =
         new HashSet<string>();
+    private readonly HashSet<string> pendingSessionCompletionRetries =
+        new HashSet<string>();
+    private readonly Dictionary<string, Coroutine> sessionCompletionRetryCoroutines =
+        new Dictionary<string, Coroutine>();
+    private readonly float[] sessionCompletionRetryDelays = { 2f, 5f, 10f };
     private readonly HashSet<string> feedbackRequestsInProgress =
         new HashSet<string>();
     private readonly HashSet<string> feedbackLoadedSessionIds =
@@ -96,10 +107,32 @@ public class APIManager : MonoBehaviour
             DontDestroyOnLoad(gameObject);
 
             token = PlayerPrefs.GetString("token", "");
+            LoadPendingMinigameSessionCompletions();
         }
         else
         {
             Destroy(gameObject);
+        }
+    }
+
+    private void Start()
+    {
+        StartPendingMinigameSessionCompletionRetries();
+    }
+
+    private void OnApplicationFocus(bool hasFocus)
+    {
+        if (hasFocus)
+        {
+            StartPendingMinigameSessionCompletionRetries();
+        }
+    }
+
+    private void OnApplicationPause(bool pauseStatus)
+    {
+        if (!pauseStatus)
+        {
+            StartPendingMinigameSessionCompletionRetries();
         }
     }
     // 🔥 ENVIAR SCORE
@@ -130,6 +163,7 @@ public class APIManager : MonoBehaviour
     public void SetToken(string newToken)
     {
         token = newToken;
+        StartPendingMinigameSessionCompletionRetries();
     }
 
     // LOGIN
@@ -156,6 +190,7 @@ public class APIManager : MonoBehaviour
             // 🔥 guardar token
             PlayerPrefs.SetString("token", token);
             PlayerPrefs.Save();
+            StartPendingMinigameSessionCompletionRetries();
 
             callback?.Invoke("OK");
         }
@@ -193,6 +228,7 @@ public class APIManager : MonoBehaviour
 
             PlayerPrefs.SetString("token", token);
             PlayerPrefs.Save();
+            StartPendingMinigameSessionCompletionRetries();
 
             callback?.Invoke("OK");
         }
@@ -270,34 +306,96 @@ public class APIManager : MonoBehaviour
             callback?.Invoke("ERROR");
         }
     }
-    // 🔥 SEND DECISION (AQUÍ VA DENTRO)
     public IEnumerator SendDecision(int scenarioId, string choice, int responseTime)
     {
+        yield return StartCoroutine(
+            SendDecision(scenarioId, choice, responseTime, null)
+        );
+    }
+
+    public IEnumerator SendDecision(
+        int scenarioId,
+        string choice,
+        int responseTime,
+        Action<DecisionRequestResult> onComplete
+    )
+    {
         string url = baseUrl + "/decisions/";
+        string endpoint = "/decisions/";
+
+        if (string.IsNullOrEmpty(token))
+        {
+            DecisionRequestResult noTokenResult =
+                DecisionRequestResult.Failure(endpoint, 0, "NO_TOKEN", "");
+            Debug.LogError(
+                "Decision POST failed endpoint="
+                + endpoint
+                + " responseCode=0 error=NO_TOKEN body="
+            );
+            onComplete?.Invoke(noTokenResult);
+            yield break;
+        }
 
         string json = JsonUtility.ToJson(
             new DecisionData(scenarioId, choice, responseTime)
         );
-        Debug.Log("📤 JSON decision: " + json);
-        UnityWebRequest request = new UnityWebRequest(url, "POST");
-        byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
+        Debug.Log("JSON decision: " + json);
+        DecisionRequestResult result;
 
-        request.uploadHandler = new UploadHandlerRaw(bodyRaw);
-        request.downloadHandler = new DownloadHandlerBuffer();
-
-        request.SetRequestHeader("Content-Type", "application/json");
-        request.SetRequestHeader("Authorization", "Bearer " + token);
-
-        yield return request.SendWebRequest();
-
-        if (request.result == UnityWebRequest.Result.Success)
+        using (UnityWebRequest request = new UnityWebRequest(url, "POST"))
         {
-            Debug.Log("✅ Decision enviada al backend");
+            byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
+
+            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.timeout = 20;
+
+            request.SetRequestHeader("Content-Type", "application/json");
+            request.SetRequestHeader("Authorization", "Bearer " + token);
+
+            yield return request.SendWebRequest();
+
+            string responseBody = request.downloadHandler != null
+                ? request.downloadHandler.text
+                : "";
+            string safeBody = SanitizeLogBody(responseBody);
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                result = DecisionRequestResult.Success(
+                    endpoint,
+                    request.responseCode,
+                    safeBody
+                );
+                Debug.Log(
+                    "Decision enviada al backend endpoint="
+                    + endpoint
+                    + " responseCode="
+                    + request.responseCode
+                );
+            }
+            else
+            {
+                result = DecisionRequestResult.Failure(
+                    endpoint,
+                    request.responseCode,
+                    request.error,
+                    safeBody
+                );
+                Debug.LogError(
+                    "Decision POST failed endpoint="
+                    + endpoint
+                    + " responseCode="
+                    + request.responseCode
+                    + " error="
+                    + SafeLogValue(request.error)
+                    + " body="
+                    + safeBody
+                );
+            }
         }
-        else
-        {
-            Debug.LogError("❌ Error al enviar decision: " + request.error);
-        }
+
+        onComplete?.Invoke(result);
     }
     // 🔥 GET WORDS (SOPA DE LETRAS)
     public IEnumerator GetWords(
@@ -482,7 +580,8 @@ public class APIManager : MonoBehaviour
             }
             else
             {
-                error = BuildRequestError(request);
+                string safeBody = SafeResponseBody(request);
+                error = BuildSafeRequestError(request, safeBody);
             }
         }
 
@@ -567,6 +666,12 @@ public class APIManager : MonoBehaviour
             else
             {
                 error = BuildRequestError(request);
+
+                if (request.responseCode == 409 &&
+                    SafeResponseBody(request).Contains("Attempt already exists"))
+                {
+                    error = "";
+                }
             }
         }
 
@@ -574,10 +679,12 @@ public class APIManager : MonoBehaviour
 
         if (string.IsNullOrEmpty(error))
         {
+            failedMinigameAttempts.Remove(requestKey);
             onSuccess?.Invoke(parsedResponse);
         }
         else
         {
+            failedMinigameAttempts[requestKey] = payload;
             onError?.Invoke(error);
         }
     }
@@ -609,6 +716,71 @@ public class APIManager : MonoBehaviour
         return count;
     }
 
+    public bool HasFailedAttemptsForSession(string sessionId)
+    {
+        return GetFailedAttemptsForSession(sessionId).Count > 0;
+    }
+
+    private List<MinigameAttemptRequest> GetFailedAttemptsForSession(
+        string sessionId
+    )
+    {
+        List<MinigameAttemptRequest> attempts =
+            new List<MinigameAttemptRequest>();
+
+        if (string.IsNullOrEmpty(sessionId))
+        {
+            return attempts;
+        }
+
+        string prefix = sessionId + "|";
+
+        foreach (KeyValuePair<string, MinigameAttemptRequest> entry
+            in failedMinigameAttempts)
+        {
+            if (!string.IsNullOrEmpty(entry.Key) &&
+                entry.Key.StartsWith(prefix, StringComparison.Ordinal) &&
+                entry.Value != null)
+            {
+                attempts.Add(entry.Value);
+            }
+        }
+
+        return attempts;
+    }
+
+    private IEnumerator RetryFailedAttemptsForSession(
+        string sessionId,
+        float timeoutSeconds
+    )
+    {
+        float startedAt = Time.realtimeSinceStartup;
+
+        while (HasFailedAttemptsForSession(sessionId))
+        {
+            List<MinigameAttemptRequest> attempts =
+                GetFailedAttemptsForSession(sessionId);
+
+            for (int i = 0; i < attempts.Count; i++)
+            {
+                if (Time.realtimeSinceStartup - startedAt >= timeoutSeconds)
+                {
+                    yield break;
+                }
+
+                yield return StartCoroutine(
+                    RecordMinigameAttempt(
+                        attempts[i],
+                        (_) => { },
+                        (_) => { }
+                    )
+                );
+            }
+
+            yield return null;
+        }
+    }
+
     public IEnumerator CompleteMinigameSessionWhenReady(
         string sessionId,
         float timeoutSeconds,
@@ -616,9 +788,47 @@ public class APIManager : MonoBehaviour
         Action<string> onError
     )
     {
+        yield return StartCoroutine(
+            CompleteMinigameSessionWhenReady(
+                sessionId,
+                timeoutSeconds,
+                (result) =>
+                {
+                    if (result != null && result.success)
+                    {
+                        onSuccess?.Invoke(result.summary);
+                    }
+                    else
+                    {
+                        onError?.Invoke(
+                            result != null
+                                ? result.error
+                                : "Session completion: resultado vacio."
+                        );
+                    }
+                }
+            )
+        );
+    }
+
+    public IEnumerator CompleteMinigameSessionWhenReady(
+        string sessionId,
+        float timeoutSeconds,
+        Action<MinigameSessionCompleteResult> onComplete
+    )
+    {
         if (string.IsNullOrEmpty(sessionId))
         {
-            onError?.Invoke("Session completion: session_id vacio.");
+            MinigameSessionCompleteResult result =
+                BuildMinigameCompleteResult(
+                    sessionId,
+                    false,
+                    0,
+                    "Session completion: session_id vacio.",
+                    ""
+                );
+            LogMinigameCompleteResult(result);
+            onComplete?.Invoke(result);
             yield break;
         }
 
@@ -629,18 +839,48 @@ public class APIManager : MonoBehaviour
         {
             if (Time.realtimeSinceStartup - startedAt >= safeTimeoutSeconds)
             {
-                onError?.Invoke(
-                    "Session completion: timeout esperando intentos pendientes."
-                );
+                MinigameSessionCompleteResult result =
+                    BuildMinigameCompleteResult(
+                        sessionId,
+                        false,
+                        0,
+                        "Session completion: timeout esperando intentos pendientes.",
+                        ""
+                    );
+                LogMinigameCompleteResult(result);
+                onComplete?.Invoke(result);
                 yield break;
             }
 
             yield return null;
         }
 
-        yield return StartCoroutine(
-            CompleteMinigameSession(sessionId, onSuccess, onError)
-        );
+        float remainingSeconds =
+            safeTimeoutSeconds - (Time.realtimeSinceStartup - startedAt);
+
+        if (HasFailedAttemptsForSession(sessionId) && remainingSeconds > 0f)
+        {
+            yield return StartCoroutine(
+                RetryFailedAttemptsForSession(sessionId, remainingSeconds)
+            );
+        }
+
+        if (HasFailedAttemptsForSession(sessionId))
+        {
+            MinigameSessionCompleteResult result =
+                BuildMinigameCompleteResult(
+                    sessionId,
+                    false,
+                    0,
+                    "Session completion: hay intentos sin confirmar.",
+                    ""
+                );
+            LogMinigameCompleteResult(result);
+            onComplete?.Invoke(result);
+            yield break;
+        }
+
+        yield return StartCoroutine(CompleteMinigameSession(sessionId, onComplete));
     }
 
     public IEnumerator CompleteMinigameSession(
@@ -649,31 +889,99 @@ public class APIManager : MonoBehaviour
         Action<string> onError
     )
     {
+        yield return StartCoroutine(
+            CompleteMinigameSession(
+                sessionId,
+                (result) =>
+                {
+                    if (result != null && result.success)
+                    {
+                        onSuccess?.Invoke(result.summary);
+                    }
+                    else
+                    {
+                        onError?.Invoke(
+                            result != null
+                                ? result.error
+                                : "Session completion: resultado vacio."
+                        );
+                    }
+                }
+            )
+        );
+    }
+
+    public IEnumerator CompleteMinigameSession(
+        string sessionId,
+        Action<MinigameSessionCompleteResult> onComplete
+    )
+    {
         if (string.IsNullOrEmpty(sessionId))
         {
-            onError?.Invoke("Session completion: session_id vacio.");
+            MinigameSessionCompleteResult result =
+                BuildMinigameCompleteResult(
+                    sessionId,
+                    false,
+                    0,
+                    "Session completion: session_id vacio.",
+                    ""
+                );
+            LogMinigameCompleteResult(result);
+            onComplete?.Invoke(result);
             yield break;
         }
 
         if (string.IsNullOrEmpty(token))
         {
-            onError?.Invoke("NO_TOKEN");
+            MinigameSessionCompleteResult result =
+                BuildMinigameCompleteResult(
+                    sessionId,
+                    false,
+                    0,
+                    "NO_TOKEN",
+                    "",
+                    queuedForRetry: true
+                );
+            LogMinigameCompleteResult(result);
+            QueueMinigameSessionCompletionRetry(sessionId);
+            onComplete?.Invoke(result);
             yield break;
         }
 
         if (completedSessionIds.Contains(sessionId))
         {
-            Debug.LogWarning(
-                "Session completion: cierre duplicado ignorado id=" + sessionId
-            );
+            bool hasMatchingSummary = MinigameLessonState.HasLastSummary &&
+                ValuesMatch(MinigameLessonState.LastSummary.session_id, sessionId);
+            MinigameSessionCompleteResult result =
+                BuildMinigameCompleteResult(
+                    sessionId,
+                    hasMatchingSummary,
+                    0,
+                    hasMatchingSummary
+                        ? ""
+                        : "Session completion: cierre duplicado sin resumen local.",
+                    "",
+                    summary: hasMatchingSummary
+                        ? MinigameLessonState.LastSummary
+                        : null
+                );
+            LogMinigameCompleteResult(result);
+            onComplete?.Invoke(result);
             yield break;
         }
 
         if (sessionCompletionRequestsInProgress.Contains(sessionId))
         {
-            Debug.LogWarning(
-                "Session completion: cierre en curso ignorado id=" + sessionId
-            );
+            MinigameSessionCompleteResult result =
+                BuildMinigameCompleteResult(
+                    sessionId,
+                    false,
+                    0,
+                    "Session completion: cierre en curso.",
+                    ""
+                );
+            LogMinigameCompleteResult(result);
+            onComplete?.Invoke(result);
             yield break;
         }
 
@@ -681,6 +989,8 @@ public class APIManager : MonoBehaviour
 
         MinigameSessionSummaryResponse parsedResponse = null;
         string error = "";
+        string safeBody = "";
+        long responseCode = 0;
 
         using (UnityWebRequest request =
             new UnityWebRequest(
@@ -698,6 +1008,8 @@ public class APIManager : MonoBehaviour
             );
 
             yield return request.SendWebRequest();
+            responseCode = request.responseCode;
+            safeBody = SafeResponseBody(request);
 
             if (request.result == UnityWebRequest.Result.Success)
             {
@@ -731,11 +1043,23 @@ public class APIManager : MonoBehaviour
 
         sessionCompletionRequestsInProgress.Remove(sessionId);
 
-        if (string.IsNullOrEmpty(error))
+        MinigameSessionCompleteResult completeResult =
+            BuildMinigameCompleteResult(
+                sessionId,
+                string.IsNullOrEmpty(error),
+                responseCode,
+                error,
+                safeBody,
+                summary: parsedResponse
+            );
+        LogMinigameCompleteResult(completeResult);
+
+        if (completeResult.success)
         {
             completedSessionIds.Add(sessionId);
+            RemovePendingMinigameSessionCompletion(sessionId);
             MinigameLessonState.SetLastSummary(parsedResponse);
-            onSuccess?.Invoke(parsedResponse);
+            onComplete?.Invoke(completeResult);
 
             if (ShouldFetchFeedbackForSession(sessionId))
             {
@@ -772,8 +1096,187 @@ public class APIManager : MonoBehaviour
         }
         else
         {
-            onError?.Invoke(error);
+            completeResult.queuedForRetry = true;
+            QueueMinigameSessionCompletionRetry(sessionId);
+            onComplete?.Invoke(completeResult);
         }
+    }
+
+    public bool HasPendingMinigameSessionCompletion(string sessionId)
+    {
+        return !string.IsNullOrEmpty(sessionId) &&
+            pendingSessionCompletionRetries.Contains(sessionId);
+    }
+
+    public void QueueMinigameSessionCompletionRetry(string sessionId)
+    {
+        if (string.IsNullOrEmpty(sessionId))
+        {
+            return;
+        }
+
+        bool added = pendingSessionCompletionRetries.Add(sessionId);
+
+        if (added)
+        {
+            SavePendingMinigameSessionCompletions();
+            Debug.Log(
+                "Session completion: retry encolado id=" + sessionId
+            );
+        }
+
+        StartMinigameSessionCompletionRetry(sessionId);
+    }
+
+    private void StartPendingMinigameSessionCompletionRetries()
+    {
+        if (string.IsNullOrEmpty(token))
+        {
+            return;
+        }
+
+        List<string> pendingIds =
+            new List<string>(pendingSessionCompletionRetries);
+
+        for (int i = 0; i < pendingIds.Count; i++)
+        {
+            StartMinigameSessionCompletionRetry(pendingIds[i]);
+        }
+    }
+
+    private void StartMinigameSessionCompletionRetry(string sessionId)
+    {
+        if (string.IsNullOrEmpty(sessionId) ||
+            string.IsNullOrEmpty(token) ||
+            !pendingSessionCompletionRetries.Contains(sessionId) ||
+            sessionCompletionRetryCoroutines.ContainsKey(sessionId))
+        {
+            return;
+        }
+
+        sessionCompletionRetryCoroutines[sessionId] =
+            StartCoroutine(RetryMinigameSessionCompletion(sessionId));
+    }
+
+    private IEnumerator RetryMinigameSessionCompletion(string sessionId)
+    {
+        for (int i = 0; i < sessionCompletionRetryDelays.Length; i++)
+        {
+            if (string.IsNullOrEmpty(token) ||
+                !pendingSessionCompletionRetries.Contains(sessionId))
+            {
+                break;
+            }
+
+            yield return new WaitForSecondsRealtime(
+                sessionCompletionRetryDelays[i]
+            );
+
+            if (string.IsNullOrEmpty(token) ||
+                !pendingSessionCompletionRetries.Contains(sessionId))
+            {
+                break;
+            }
+
+            MinigameSessionCompleteResult retryResult = null;
+
+            yield return StartCoroutine(
+                CompleteMinigameSession(
+                    sessionId,
+                    (result) =>
+                    {
+                        retryResult = result;
+                    }
+                )
+            );
+
+            if (retryResult != null && retryResult.success)
+            {
+                break;
+            }
+        }
+
+        sessionCompletionRetryCoroutines.Remove(sessionId);
+    }
+
+    private void RemovePendingMinigameSessionCompletion(string sessionId)
+    {
+        if (string.IsNullOrEmpty(sessionId))
+        {
+            return;
+        }
+
+        if (pendingSessionCompletionRetries.Remove(sessionId))
+        {
+            SavePendingMinigameSessionCompletions();
+            Debug.Log(
+                "Session completion: retry resuelto id=" + sessionId
+            );
+        }
+    }
+
+    private void LoadPendingMinigameSessionCompletions()
+    {
+        pendingSessionCompletionRetries.Clear();
+
+        string raw = PlayerPrefs.GetString(
+            PendingSessionCompletionPrefsKey,
+            ""
+        );
+
+        if (string.IsNullOrEmpty(raw))
+        {
+            return;
+        }
+
+        string[] sessionIds = raw.Split(
+            new char[] { ',' },
+            StringSplitOptions.RemoveEmptyEntries
+        );
+
+        for (int i = 0; i < sessionIds.Length; i++)
+        {
+            string sessionId = sessionIds[i].Trim();
+
+            if (!string.IsNullOrEmpty(sessionId))
+            {
+                pendingSessionCompletionRetries.Add(sessionId);
+            }
+        }
+    }
+
+    private void SavePendingMinigameSessionCompletions()
+    {
+        StringBuilder builder = new StringBuilder();
+
+        foreach (string sessionId in pendingSessionCompletionRetries)
+        {
+            if (string.IsNullOrEmpty(sessionId))
+            {
+                continue;
+            }
+
+            if (builder.Length > 0)
+            {
+                builder.Append(",");
+            }
+
+            builder.Append(sessionId);
+        }
+
+        if (builder.Length == 0)
+        {
+            PlayerPrefs.DeleteKey(PendingSessionCompletionPrefsKey);
+        }
+        else
+        {
+            PlayerPrefs.SetString(
+                PendingSessionCompletionPrefsKey,
+                builder.ToString()
+            );
+        }
+
+        PlayerPrefs.Save();
     }
 
     public IEnumerator GetMinigameSessionFeedback(
@@ -1290,6 +1793,154 @@ public class APIManager : MonoBehaviour
         }
     }
 
+    public IEnumerator GetPilotConsent(
+        Action<PilotConsentResponse> onSuccess,
+        Action<string> onError
+    )
+    {
+        yield return StartCoroutine(
+            SendAuthenticatedJsonRequest(
+                "/pilot/consent",
+                "GET",
+                null,
+                onSuccess,
+                onError
+            )
+        );
+    }
+
+    public IEnumerator AcceptPilotConsent(
+        Action<PilotConsentResponse> onSuccess,
+        Action<string> onError
+    )
+    {
+        yield return StartCoroutine(
+            SendAuthenticatedJsonRequest(
+                "/pilot/consent",
+                "POST",
+                new PilotConsentAcceptRequest(),
+                onSuccess,
+                onError
+            )
+        );
+    }
+
+    public IEnumerator RevokePilotConsent(
+        Action<PilotConsentResponse> onSuccess,
+        Action<string> onError
+    )
+    {
+        yield return StartCoroutine(
+            SendAuthenticatedJsonRequest(
+                "/pilot/consent/revoke",
+                "POST",
+                null,
+                onSuccess,
+                onError
+            )
+        );
+    }
+
+    public IEnumerator GetPilotAssessmentStatus(
+        Action<PilotAssessmentStatusResponse> onSuccess,
+        Action<string> onError
+    )
+    {
+        yield return StartCoroutine(
+            SendAuthenticatedJsonRequest(
+                "/pilot/assessment/status",
+                "GET",
+                null,
+                onSuccess,
+                onError
+            )
+        );
+    }
+
+    public IEnumerator StartPilotAssessment(
+        string phase,
+        Action<PilotAssessmentStartResponse> onSuccess,
+        Action<string> onError
+    )
+    {
+        yield return StartCoroutine(
+            SendAuthenticatedJsonRequest(
+                "/pilot/assessment/start",
+                "POST",
+                new PilotAssessmentStartRequest(phase),
+                onSuccess,
+                onError
+            )
+        );
+    }
+
+    public IEnumerator SendPilotAssessmentAnswer(
+        string assessmentId,
+        PilotAssessmentAnswerRequest payload,
+        Action<PilotAssessmentAnswerResponse> onSuccess,
+        Action<string> onError
+    )
+    {
+        if (string.IsNullOrEmpty(assessmentId))
+        {
+            onError?.Invoke("assessment_id vacio.");
+            yield break;
+        }
+
+        yield return StartCoroutine(
+            SendAuthenticatedJsonRequest(
+                "/pilot/assessment/" +
+                UnityWebRequest.EscapeURL(assessmentId) +
+                "/answer",
+                "POST",
+                payload,
+                onSuccess,
+                onError
+            )
+        );
+    }
+
+    public IEnumerator CompletePilotAssessment(
+        string assessmentId,
+        Action<PilotAssessmentResultItem> onSuccess,
+        Action<string> onError
+    )
+    {
+        if (string.IsNullOrEmpty(assessmentId))
+        {
+            onError?.Invoke("assessment_id vacio.");
+            yield break;
+        }
+
+        yield return StartCoroutine(
+            SendAuthenticatedJsonRequest(
+                "/pilot/assessment/" +
+                UnityWebRequest.EscapeURL(assessmentId) +
+                "/complete",
+                "POST",
+                null,
+                onSuccess,
+                onError
+            )
+        );
+    }
+
+    public IEnumerator GetPilotAssessmentResults(
+        Action<PilotAssessmentResultsResponse> onSuccess,
+        Action<string> onError
+    )
+    {
+        yield return StartCoroutine(
+            SendAuthenticatedJsonRequest(
+                "/pilot/assessment/results",
+                "GET",
+                null,
+                onSuccess,
+                onError
+            )
+        );
+    }
+
     private string ValidateMinigameSessionParameters(
         string topic,
         string risk,
@@ -1752,6 +2403,90 @@ public class APIManager : MonoBehaviour
         );
     }
 
+    private MinigameSessionCompleteResult BuildMinigameCompleteResult(
+        string sessionId,
+        bool success,
+        long responseCode,
+        string error,
+        string body,
+        bool queuedForRetry = false,
+        MinigameSessionSummaryResponse summary = null
+    )
+    {
+        return new MinigameSessionCompleteResult
+        {
+            success = success,
+            responseCode = responseCode,
+            error = error ?? "",
+            body = body ?? "",
+            sessionId = sessionId ?? "",
+            queuedForRetry = queuedForRetry,
+            summary = summary
+        };
+    }
+
+    private void LogMinigameCompleteResult(MinigameSessionCompleteResult result)
+    {
+        if (result == null)
+        {
+            Debug.LogWarning("[MINIGAME COMPLETE] result=null");
+            return;
+        }
+
+        Debug.Log(
+            "[MINIGAME COMPLETE] session=" +
+            result.sessionId +
+            " responseCode=" +
+            result.responseCode +
+            " success=" +
+            result.success
+        );
+
+        if (!result.success && !string.IsNullOrEmpty(result.body))
+        {
+            Debug.LogWarning("[MINIGAME COMPLETE] body=" + result.body);
+        }
+    }
+
+    private string SafeResponseBody(UnityWebRequest request)
+    {
+        string body = request != null && request.downloadHandler != null
+            ? request.downloadHandler.text
+            : "";
+
+        if (string.IsNullOrEmpty(body))
+        {
+            return "";
+        }
+
+        const int maxLength = 500;
+        string safeBody = body.Replace("\r", " ").Replace("\n", " ");
+
+        if (safeBody.Length > maxLength)
+        {
+            safeBody = safeBody.Substring(0, maxLength) + "...";
+        }
+
+        return safeBody;
+    }
+
+    private string BuildSafeRequestError(UnityWebRequest request, string safeBody)
+    {
+        long responseCode = request != null ? request.responseCode : 0;
+
+        if (!string.IsNullOrEmpty(safeBody))
+        {
+            return "HTTP_" + responseCode + ": " + safeBody;
+        }
+
+        if (request != null && !string.IsNullOrEmpty(request.error))
+        {
+            return "HTTP_" + responseCode + ": " + request.error;
+        }
+
+        return "HTTP_" + responseCode;
+    }
+
     private string BuildRequestError(UnityWebRequest request)
     {
         string body = request.downloadHandler != null
@@ -1771,9 +2506,156 @@ public class APIManager : MonoBehaviour
         return "HTTP_" + request.responseCode;
     }
 
+    private IEnumerator SendAuthenticatedJsonRequest<T>(
+        string path,
+        string method,
+        object payload,
+        Action<T> onSuccess,
+        Action<string> onError
+    ) where T : class
+    {
+        if (pilotRequestInProgress)
+        {
+            onError?.Invoke("Ya hay una solicitud del piloto en curso.");
+            yield break;
+        }
+
+        if (string.IsNullOrEmpty(token))
+        {
+            onError?.Invoke("NO_TOKEN");
+            yield break;
+        }
+
+        pilotRequestInProgress = true;
+        T parsedResponse = null;
+        string error = "";
+
+        using (UnityWebRequest request =
+            new UnityWebRequest(baseUrl + path, method))
+        {
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.timeout = 20;
+
+            if (payload != null)
+            {
+                string json = JsonUtility.ToJson(payload);
+                byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
+                request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+                request.SetRequestHeader("Content-Type", "application/json");
+            }
+
+            request.SetRequestHeader("Authorization", "Bearer " + token);
+
+            yield return request.SendWebRequest();
+
+            string responseBody = request.downloadHandler != null
+                ? request.downloadHandler.text
+                : "";
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                try
+                {
+                    parsedResponse =
+                        JsonUtility.FromJson<T>(responseBody);
+                    NormalizePilotStatusNulls(responseBody, parsedResponse);
+                }
+                catch (Exception exception)
+                {
+                    error =
+                        "La respuesta del piloto no se pudo leer: " +
+                        exception.Message;
+                }
+            }
+            else
+            {
+                error = BuildRequestError(request);
+            }
+        }
+
+        pilotRequestInProgress = false;
+
+        if (string.IsNullOrEmpty(error))
+        {
+            onSuccess?.Invoke(parsedResponse);
+        }
+        else
+        {
+            onError?.Invoke(error);
+        }
+    }
+
+    private void NormalizePilotStatusNulls<T>(
+        string responseBody,
+        T parsedResponse
+    ) where T : class
+    {
+        PilotAssessmentStatusResponse status =
+            parsedResponse as PilotAssessmentStatusResponse;
+
+        if (status == null || !IsPilotStatusBody(responseBody))
+        {
+            return;
+        }
+
+        if (JsonHasNullField(responseBody, "pre"))
+        {
+            status.pre = null;
+        }
+
+        if (JsonHasNullField(responseBody, "post"))
+        {
+            status.post = null;
+        }
+    }
+
+    private bool IsPilotStatusBody(string responseBody)
+    {
+        return !string.IsNullOrEmpty(responseBody) &&
+            responseBody.IndexOf(
+                "\"intervention_progress\"",
+                StringComparison.Ordinal
+            ) >= 0;
+    }
+
+    private bool JsonHasNullField(string json, string fieldName)
+    {
+        if (string.IsNullOrEmpty(json))
+        {
+            return false;
+        }
+
+        string compact = json
+            .Replace(" ", "")
+            .Replace("\r", "")
+            .Replace("\n", "")
+            .Replace("\t", "");
+        return compact.IndexOf(
+            "\"" + fieldName + "\":null",
+            StringComparison.Ordinal
+        ) >= 0;
+    }
+
     private string SafeLogValue(string value)
     {
         return string.IsNullOrEmpty(value) ? "<vacio>" : value;
+    }
+
+    private string SanitizeLogBody(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return "";
+        }
+
+        string compact = value.Replace("\r", " ").Replace("\n", " ");
+
+        if (compact.Length > 500)
+        {
+            compact = compact.Substring(0, 500) + "...";
+        }
+
+        return compact;
     }
 
     private void FinishMinigameLessonRequest()
@@ -1974,6 +2856,48 @@ public class DecisionData
         scenario_id = id;
         choice = c;
         response_time = time;
+    }
+}
+
+public class DecisionRequestResult
+{
+    public bool success;
+    public long response_code;
+    public string error;
+    public string body;
+    public string endpoint;
+
+    public static DecisionRequestResult Success(
+        string endpoint,
+        long responseCode,
+        string body
+    )
+    {
+        return new DecisionRequestResult
+        {
+            success = true,
+            response_code = responseCode,
+            error = "",
+            body = body,
+            endpoint = endpoint
+        };
+    }
+
+    public static DecisionRequestResult Failure(
+        string endpoint,
+        long responseCode,
+        string error,
+        string body
+    )
+    {
+        return new DecisionRequestResult
+        {
+            success = false,
+            response_code = responseCode,
+            error = error,
+            body = body,
+            endpoint = endpoint
+        };
     }
 }
 [System.Serializable]

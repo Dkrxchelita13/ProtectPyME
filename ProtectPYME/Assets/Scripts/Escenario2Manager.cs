@@ -1,10 +1,14 @@
 using UnityEngine;
 using System.Collections;
 using UnityEngine.SceneManagement;
+using TMPro;
+using UnityEngine.UI;
 
 public class Escenario2Manager : MonoBehaviour
 {
     private float tiempoInicio;
+    private float decisionDisponibleDesde;
+    private int tiempoRespuestaPendiente = -1;
 
     [Header("Paneles de la Historia (Lectura)")]
     [Tooltip("Arrastra aquí en orden: Introducción, Alerta 1, Alerta 2, etc.")]
@@ -38,6 +42,10 @@ public class Escenario2Manager : MonoBehaviour
     public float tiempoVisibilidadTitulo = 3.5f;
 
     private bool yaRespondio = false;
+    private bool enviandoDecision = false;
+    private TextMeshProUGUI mensajeDecision;
+    private const string MensajeErrorDecision =
+        "No fue posible registrar tu decision.\nRevisa tu conexion e intenta nuevamente.";
     private int panelActual = 0; 
 
     void Start()
@@ -98,6 +106,10 @@ public class Escenario2Manager : MonoBehaviour
     {
         ApagarTodosLosPaneles();
         panelDecision.SetActive(true);
+        decisionDisponibleDesde = Time.realtimeSinceStartup;
+        tiempoRespuestaPendiente = -1;
+        LimpiarMensajeDecision();
+        SetDecisionButtonsInteractable(true);
         ReproducirSonido(sonidoDetalle);
         StartCoroutine(ZoomSuave(3.6f));
     }
@@ -160,62 +172,17 @@ public class Escenario2Manager : MonoBehaviour
 
     public void OpcionBuena()
     {
-        if (yaRespondio) return;
-        yaRespondio = true;
-
-        int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
-        StartCoroutine(APIManager.Instance.SendDecision(2, "cambiar_password", tiempoRespuesta));
-
-        if (PlayerPrefs.GetInt("NivelAlcanzado", 1) < 3)
-        {
-            PlayerPrefs.SetInt("NivelAlcanzado", 3);
-            PlayerPrefs.Save();
-        }
-
-        ModificarSeguridadEscenario(3f);
-        GanarVida();
-
-        panelDecision.SetActive(false);
-        panelBueno.SetActive(true);
-        ReproducirSonido(sonidoCorrecto);
-        Invoke(nameof(MostrarRetroCorrecta), 2f);
+        RegistrarDecision("cambiar_password", ContinuarRespuestaBuena);
     }
 
     public void OpcionMala() 
     {
-        if (yaRespondio) return;
-        yaRespondio = true;
-
-        int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
-        StartCoroutine(APIManager.Instance.SendDecision(2, "ignorar_alerta", tiempoRespuesta));
-
-        panelDecision.SetActive(false);
-        panelMalo.SetActive(true);
-        ReproducirSonido(sonidoError);
-
-        Invoke(nameof(MostrarRetroIncorrecta), 2f);
-        ModificarSeguridadEscenario(-3f);
-        PerderVida();
+        RegistrarDecision("ignorar_alerta", ContinuarRespuestaMala);
     }
 
     public void OpcionMedia() 
     {
-        if (yaRespondio) return;
-        yaRespondio = true;
-
-        int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
-        StartCoroutine(APIManager.Instance.SendDecision(2, "posponer_cambio", tiempoRespuesta));
-
-        panelDecision.SetActive(false);
-        
-        // AHORA ENCIENDE EL PANEL MEDIO EN LUGAR DEL MALO
-        if (panelMedio != null) panelMedio.SetActive(true); 
-        
-        ReproducirSonido(sonidoError); 
-
-        Invoke(nameof(MostrarRetroMedio), 2f); 
-        ModificarSeguridadEscenario(-2f);
-        PerderVida();
+        RegistrarDecision("posponer_cambio", ContinuarRespuestaMedia);
     }
 
     public void OtroIntento()
@@ -223,6 +190,11 @@ public class Escenario2Manager : MonoBehaviour
         ApagarTodosLosPaneles();
         panelDecision.SetActive(true);
         yaRespondio = false;
+        enviandoDecision = false;
+        tiempoRespuestaPendiente = -1;
+        decisionDisponibleDesde = Time.realtimeSinceStartup;
+        LimpiarMensajeDecision();
+        SetDecisionButtonsInteractable(true);
     }
 
     // =========================
@@ -310,5 +282,170 @@ public class Escenario2Manager : MonoBehaviour
         {
             tituloEscenario.SetActive(false);
         }
+    }
+
+    private void RegistrarDecision(string choice, System.Action onSuccess)
+    {
+        if (yaRespondio || enviandoDecision) return;
+
+        if (APIManager.Instance == null)
+        {
+            ManejarFalloDecision(null);
+            return;
+        }
+
+        yaRespondio = true;
+        enviandoDecision = true;
+        LimpiarMensajeDecision();
+        SetDecisionButtonsInteractable(false);
+
+        int tiempoRespuesta = ObtenerTiempoRespuestaDecision();
+
+        StartCoroutine(
+            APIManager.Instance.SendDecision(
+                2,
+                choice,
+                tiempoRespuesta,
+                result =>
+                {
+                    if (result != null && result.success)
+                    {
+                        onSuccess?.Invoke();
+                    }
+                    else
+                    {
+                        ManejarFalloDecision(result);
+                    }
+                }
+            )
+        );
+    }
+
+    private int ObtenerTiempoRespuestaDecision()
+    {
+        if (tiempoRespuestaPendiente >= 0)
+        {
+            return tiempoRespuestaPendiente;
+        }
+
+        tiempoRespuestaPendiente = Mathf.Max(
+            0,
+            Mathf.RoundToInt(Time.realtimeSinceStartup - decisionDisponibleDesde)
+        );
+        return tiempoRespuestaPendiente;
+    }
+
+    private void ContinuarRespuestaBuena()
+    {
+        if (PlayerPrefs.GetInt("NivelAlcanzado", 1) < 3)
+        {
+            PlayerPrefs.SetInt("NivelAlcanzado", 3);
+            PlayerPrefs.Save();
+        }
+
+        ModificarSeguridadEscenario(3f);
+        GanarVida();
+
+        panelDecision.SetActive(false);
+        panelBueno.SetActive(true);
+        ReproducirSonido(sonidoCorrecto);
+        Invoke(nameof(MostrarRetroCorrecta), 2f);
+    }
+
+    private void ContinuarRespuestaMala()
+    {
+        panelDecision.SetActive(false);
+        panelMalo.SetActive(true);
+        ReproducirSonido(sonidoError);
+
+        Invoke(nameof(MostrarRetroIncorrecta), 2f);
+        ModificarSeguridadEscenario(-3f);
+        PerderVida();
+    }
+
+    private void ContinuarRespuestaMedia()
+    {
+        panelDecision.SetActive(false);
+
+        if (panelMedio != null) panelMedio.SetActive(true);
+
+        ReproducirSonido(sonidoError);
+
+        Invoke(nameof(MostrarRetroMedio), 2f);
+        ModificarSeguridadEscenario(-2f);
+        PerderVida();
+    }
+
+    private void ManejarFalloDecision(DecisionRequestResult result)
+    {
+        yaRespondio = false;
+        enviandoDecision = false;
+        SetDecisionButtonsInteractable(true);
+        MostrarMensajeDecision();
+        ReproducirSonido(sonidoError);
+
+        if (result != null)
+        {
+            Debug.LogWarning(
+                "Decision no registrada escenario=2 responseCode="
+                + result.response_code
+            );
+        }
+    }
+
+    private void SetDecisionButtonsInteractable(bool interactable)
+    {
+        if (panelDecision == null) return;
+
+        Button[] buttons = panelDecision.GetComponentsInChildren<Button>(true);
+        foreach (Button button in buttons)
+        {
+            button.interactable = interactable;
+        }
+    }
+
+    private void MostrarMensajeDecision()
+    {
+        TextMeshProUGUI label = ObtenerMensajeDecision();
+        if (label != null)
+        {
+            label.text = MensajeErrorDecision;
+        }
+    }
+
+    private void LimpiarMensajeDecision()
+    {
+        if (mensajeDecision != null)
+        {
+            mensajeDecision.text = "";
+        }
+    }
+
+    private TextMeshProUGUI ObtenerMensajeDecision()
+    {
+        if (mensajeDecision != null)
+        {
+            return mensajeDecision;
+        }
+
+        if (panelDecision == null)
+        {
+            return null;
+        }
+
+        GameObject messageObject = new GameObject("DecisionErrorMessage");
+        messageObject.transform.SetParent(panelDecision.transform, false);
+        mensajeDecision = messageObject.AddComponent<TextMeshProUGUI>();
+        mensajeDecision.fontSize = 26;
+        mensajeDecision.alignment = TextAlignmentOptions.Center;
+        mensajeDecision.color = Color.white;
+
+        RectTransform rect = mensajeDecision.rectTransform;
+        rect.anchorMin = new Vector2(0.08f, 0.02f);
+        rect.anchorMax = new Vector2(0.92f, 0.18f);
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        return mensajeDecision;
     }
 }

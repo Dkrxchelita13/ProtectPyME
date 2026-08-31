@@ -8,7 +8,9 @@ public class QuizController : MonoBehaviour
     private float itemStartedAt;
     private bool currentItemAttemptRecorded;
     private bool usingSessionItems;
-    private bool sessionCompletionScheduled;
+    private bool sessionCompletionConfirmed;
+    private bool sessionCompletionInProgress;
+    private bool sessionCompletionQueued;
 
     private bool usandoBackend = false;
 
@@ -398,7 +400,6 @@ public class QuizController : MonoBehaviour
     private IEnumerator TerminarJuegoYSincronizar()
     {
         juegoActivo = false;
-        ScheduleSessionCompletion();
         if (barraTiempo != null && barraTiempo2 != null)
         {
             barraTiempo.fillAmount = 0f;
@@ -434,6 +435,15 @@ public class QuizController : MonoBehaviour
             GameManagerGlobal.instancia.nivelSeguridad = seguridadLocalGanada;
         }
         PlayerPrefs.Save();
+
+        yield return StartCoroutine(EnsureSessionCompletionBeforeFinalUi());
+
+        if (RequiresSessionCompletion() &&
+            !sessionCompletionConfirmed &&
+            !sessionCompletionQueued)
+        {
+            yield break;
+        }
 
         if (APIManager.Instance != null && gamificacion != null)
         {
@@ -620,51 +630,89 @@ public class QuizController : MonoBehaviour
         return gamificacion != null ? gamificacion.ObtenerPuntos() : 0;
     }
 
-    private void ScheduleSessionCompletion()
+    private bool RequiresSessionCompletion()
     {
-        if (sessionCompletionScheduled)
+        return usingSessionItems &&
+            MinigameLessonState.HasValidSession &&
+            IsSessionForMinigame("quiz") &&
+            !string.IsNullOrEmpty(MinigameLessonState.SessionId);
+    }
+
+    private IEnumerator EnsureSessionCompletionBeforeFinalUi()
+    {
+        if (sessionCompletionConfirmed)
         {
-            return;
+            yield break;
         }
 
-        if (!usingSessionItems ||
-            !MinigameLessonState.HasValidSession ||
-            !IsSessionForMinigame("quiz") ||
-            string.IsNullOrEmpty(MinigameLessonState.SessionId))
+        if (!RequiresSessionCompletion())
         {
-            Debug.LogWarning("Session completion: omitido porque el flujo es legacy");
-            return;
+            if (usingSessionItems)
+            {
+                Debug.LogWarning("Session completion: omitido porque el flujo es legacy");
+            }
+            yield break;
         }
 
         if (APIManager.Instance == null)
         {
             Debug.LogWarning("Session completion: APIManager no disponible");
-            return;
+            yield break;
         }
 
-        sessionCompletionScheduled = true;
-        string sessionId = MinigameLessonState.SessionId;
+        if (sessionCompletionInProgress)
+        {
+            yield break;
+        }
 
-        APIManager.Instance.StartCoroutine(
+        sessionCompletionInProgress = true;
+        string sessionId = MinigameLessonState.SessionId;
+        MinigameSessionCompleteResult completionResult = null;
+
+        Coroutine completionCoroutine = APIManager.Instance.StartCoroutine(
             APIManager.Instance.CompleteMinigameSessionWhenReady(
                 sessionId,
                 12f,
-                (summary) =>
+                (result) =>
                 {
-                    Debug.Log(
-                        "Session completada id=" + summary.session_id +
-                        " accuracy=" + summary.accuracy + "% " +
-                        "attempts=" + summary.total_attempts
-                    );
-                },
-                (mensaje) =>
-                {
-                    sessionCompletionScheduled = false;
-                    Debug.LogWarning(
-                        "Session no completada id=" + sessionId + ": " + mensaje
-                    );
+                    completionResult = result;
                 }
             )
+        );
+
+        yield return completionCoroutine;
+        sessionCompletionInProgress = false;
+
+        if (completionResult != null && completionResult.success)
+        {
+            sessionCompletionConfirmed = true;
+            sessionCompletionQueued = false;
+            Debug.Log(
+                "Session completada id=" + completionResult.sessionId +
+                " accuracy=" + completionResult.summary.accuracy + "% " +
+                "attempts=" + completionResult.summary.total_attempts
+            );
+            yield break;
+        }
+
+        Debug.LogWarning(
+            "Session no completada id=" +
+            sessionId +
+            ": " +
+            (completionResult != null ? completionResult.error : "resultado vacio")
+        );
+        if (completionResult != null && completionResult.queuedForRetry)
+        {
+            sessionCompletionQueued = true;
+            ShowSessionCompletionPendingNotice();
+        }
+    }
+
+    private void ShowSessionCompletionPendingNotice()
+    {
+        MinigameCompletionFailureView.ShowSyncPending(
+            transform,
+            "El progreso se sincronizara automaticamente."
         );
     }
 

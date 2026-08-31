@@ -465,10 +465,20 @@ public class MinigameFeedbackPresenter : MonoBehaviour
 
     private void ShowTimeoutState(string sessionId)
     {
-        SetText(titleText, "Resumen guardado");
+        bool completionPending = APIManager.Instance != null &&
+            APIManager.Instance.HasPendingMinigameSessionCompletion(sessionId);
+
+        SetText(
+            titleText,
+            completionPending
+                ? "Sincronizacion pendiente"
+                : "Resumen guardado"
+        );
         SetText(
             messageText,
-            "Tu resumen fue guardado. La recomendacion personalizada estara disponible mas adelante."
+            completionPending
+                ? "Tu progreso se sincronizara automaticamente. La recomendacion personalizada estara disponible despues."
+                : "Tu resumen fue guardado. La recomendacion personalizada estara disponible mas adelante."
         );
 
         SetText(resultText, "");

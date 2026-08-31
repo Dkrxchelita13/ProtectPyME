@@ -19,3 +19,14 @@ public class MinigameSessionSummaryResponse
     public string started_at;
     public string completed_at;
 }
+
+public class MinigameSessionCompleteResult
+{
+    public bool success;
+    public long responseCode;
+    public string error;
+    public string body;
+    public string sessionId;
+    public bool queuedForRetry;
+    public MinigameSessionSummaryResponse summary;
+}

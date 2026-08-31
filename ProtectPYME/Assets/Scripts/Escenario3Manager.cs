@@ -1,10 +1,14 @@
 using UnityEngine;
 using System.Collections;
 using UnityEngine.SceneManagement;
+using TMPro;
+using UnityEngine.UI;
 
 public class Escenario3Manager : MonoBehaviour
 {
     private float tiempoInicio;
+    private float decisionDisponibleDesde;
+    private int tiempoRespuestaPendiente = -1;
 
     [Header("Historia (Arreglo de Paneles)")]
     [Tooltip("Arrastra aquí en orden: Panel 1 (Baiting), Panel 2 (Glosario Malware/Ransomware/Botnet), Panel 3 (Antivirus y Riesgo)")]
@@ -38,6 +42,10 @@ public class Escenario3Manager : MonoBehaviour
     public float tiempoVisibilidadTitulo = 3.5f;
 
     private bool yaRespondio = false;
+    private bool enviandoDecision = false;
+    private TextMeshProUGUI mensajeDecision;
+    private const string MensajeErrorDecision =
+        "No fue posible registrar tu decision.\nRevisa tu conexion e intenta nuevamente.";
     private int indiceHistoriaActual = 0;
 
     void Start()
@@ -105,6 +113,10 @@ public class Escenario3Manager : MonoBehaviour
         }
 
         panelDecision.SetActive(true);
+        decisionDisponibleDesde = Time.realtimeSinceStartup;
+        tiempoRespuestaPendiente = -1;
+        LimpiarMensajeDecision();
+        SetDecisionButtonsInteractable(true);
 
         ReproducirSonido(sonidoDetalle);
         StartCoroutine(ZoomSuave(3.6f));
@@ -166,59 +178,13 @@ public class Escenario3Manager : MonoBehaviour
     // OPCIÓN BUENA: Entregar a Soporte Técnico / TI (O no conectar)
     public void OpcionBuena()
     {
-        if (yaRespondio) return;
-        yaRespondio = true;
-
-        int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
-
-        panelDecision.SetActive(false);
-        if (panelBueno != null) panelBueno.SetActive(true);
-
-        ReproducirSonido(sonidoCorrecto);
-
-        StartCoroutine(
-            APIManager.Instance.SendDecision(
-                3,
-                "no_conectar",
-                tiempoRespuesta
-            )
-        );
-
-        if (PlayerPrefs.GetInt("NivelAlcanzado", 1) < 4)
-        {
-            PlayerPrefs.SetInt("NivelAlcanzado", 4);
-            PlayerPrefs.Save();
-        }
-
-        Invoke(nameof(MostrarRetroCorrecta), 2f);
-        ModificarSeguridadEscenario(3f);
-        GanarVida();
+        RegistrarDecision("no_conectar", ContinuarRespuestaBuena);
     }
 
     // OPCIÓN MALA: Conectar / Abrir el USB
     public void OpcionMala()
     {
-        if (yaRespondio) return;
-        yaRespondio = true;
-
-        int tiempoRespuesta = Mathf.RoundToInt(Time.time - tiempoInicio);
-
-        panelDecision.SetActive(false);
-        if (panelMalo != null) panelMalo.SetActive(true);
-
-        ReproducirSonido(sonidoError);
-
-        StartCoroutine(
-            APIManager.Instance.SendDecision(
-                3,
-                "conectar_usb",
-                tiempoRespuesta
-            )
-        );
-
-        Invoke(nameof(MostrarRetroIncorrecta), 2f);
-        ModificarSeguridadEscenario(-3f);
-        PerderVida();
+        RegistrarDecision("conectar_usb", ContinuarRespuestaMala);
     }
 
     public void OtroIntento()
@@ -231,6 +197,11 @@ public class Escenario3Manager : MonoBehaviour
 
         panelDecision.SetActive(true);
         yaRespondio = false;
+        enviandoDecision = false;
+        tiempoRespuestaPendiente = -1;
+        decisionDisponibleDesde = Time.realtimeSinceStartup;
+        LimpiarMensajeDecision();
+        SetDecisionButtonsInteractable(true);
     }
 
     // =========================
@@ -350,5 +321,159 @@ public class Escenario3Manager : MonoBehaviour
         {
             tituloEscenario.SetActive(false);
         }
+    }
+
+    private void RegistrarDecision(string choice, System.Action onSuccess)
+    {
+        if (yaRespondio || enviandoDecision) return;
+
+        if (APIManager.Instance == null)
+        {
+            ManejarFalloDecision(null);
+            return;
+        }
+
+        yaRespondio = true;
+        enviandoDecision = true;
+        LimpiarMensajeDecision();
+        SetDecisionButtonsInteractable(false);
+
+        int tiempoRespuesta = ObtenerTiempoRespuestaDecision();
+
+        StartCoroutine(
+            APIManager.Instance.SendDecision(
+                3,
+                choice,
+                tiempoRespuesta,
+                result =>
+                {
+                    if (result != null && result.success)
+                    {
+                        onSuccess?.Invoke();
+                    }
+                    else
+                    {
+                        ManejarFalloDecision(result);
+                    }
+                }
+            )
+        );
+    }
+
+    private int ObtenerTiempoRespuestaDecision()
+    {
+        if (tiempoRespuestaPendiente >= 0)
+        {
+            return tiempoRespuestaPendiente;
+        }
+
+        tiempoRespuestaPendiente = Mathf.Max(
+            0,
+            Mathf.RoundToInt(Time.realtimeSinceStartup - decisionDisponibleDesde)
+        );
+        return tiempoRespuestaPendiente;
+    }
+
+    private void ContinuarRespuestaBuena()
+    {
+        panelDecision.SetActive(false);
+        if (panelBueno != null) panelBueno.SetActive(true);
+
+        ReproducirSonido(sonidoCorrecto);
+
+        if (PlayerPrefs.GetInt("NivelAlcanzado", 1) < 4)
+        {
+            PlayerPrefs.SetInt("NivelAlcanzado", 4);
+            PlayerPrefs.Save();
+        }
+
+        Invoke(nameof(MostrarRetroCorrecta), 2f);
+        ModificarSeguridadEscenario(3f);
+        GanarVida();
+    }
+
+    private void ContinuarRespuestaMala()
+    {
+        panelDecision.SetActive(false);
+        if (panelMalo != null) panelMalo.SetActive(true);
+
+        ReproducirSonido(sonidoError);
+
+        Invoke(nameof(MostrarRetroIncorrecta), 2f);
+        ModificarSeguridadEscenario(-3f);
+        PerderVida();
+    }
+
+    private void ManejarFalloDecision(DecisionRequestResult result)
+    {
+        yaRespondio = false;
+        enviandoDecision = false;
+        SetDecisionButtonsInteractable(true);
+        MostrarMensajeDecision();
+        ReproducirSonido(sonidoError);
+
+        if (result != null)
+        {
+            Debug.LogWarning(
+                "Decision no registrada escenario=3 responseCode="
+                + result.response_code
+            );
+        }
+    }
+
+    private void SetDecisionButtonsInteractable(bool interactable)
+    {
+        if (panelDecision == null) return;
+
+        Button[] buttons = panelDecision.GetComponentsInChildren<Button>(true);
+        foreach (Button button in buttons)
+        {
+            button.interactable = interactable;
+        }
+    }
+
+    private void MostrarMensajeDecision()
+    {
+        TextMeshProUGUI label = ObtenerMensajeDecision();
+        if (label != null)
+        {
+            label.text = MensajeErrorDecision;
+        }
+    }
+
+    private void LimpiarMensajeDecision()
+    {
+        if (mensajeDecision != null)
+        {
+            mensajeDecision.text = "";
+        }
+    }
+
+    private TextMeshProUGUI ObtenerMensajeDecision()
+    {
+        if (mensajeDecision != null)
+        {
+            return mensajeDecision;
+        }
+
+        if (panelDecision == null)
+        {
+            return null;
+        }
+
+        GameObject messageObject = new GameObject("DecisionErrorMessage");
+        messageObject.transform.SetParent(panelDecision.transform, false);
+        mensajeDecision = messageObject.AddComponent<TextMeshProUGUI>();
+        mensajeDecision.fontSize = 26;
+        mensajeDecision.alignment = TextAlignmentOptions.Center;
+        mensajeDecision.color = Color.white;
+
+        RectTransform rect = mensajeDecision.rectTransform;
+        rect.anchorMin = new Vector2(0.08f, 0.02f);
+        rect.anchorMax = new Vector2(0.92f, 0.18f);
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        return mensajeDecision;
     }
 }
