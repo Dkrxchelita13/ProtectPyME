@@ -391,11 +391,13 @@ def test_mastery_updates_only_when_session_is_completed_once(db):
 
     complete_session(db, user.id, session.id)
 
-    with pytest.raises(minigame_session_service.MinigameSessionConflictError):
-        complete_session(db, user.id, session.id)
+    second_summary = complete_session(db, user.id, session.id)
 
     record = mastery_record(db, user.id, "passwords.salt")
     assert record.attempt_count == 1
+    assert record.correct_count == 1
+    assert record.evidence_weight == 1.0
+    assert second_summary["status"] == "completed"
 
 
 def test_session_without_attempts_does_not_create_mastery_rows(db):

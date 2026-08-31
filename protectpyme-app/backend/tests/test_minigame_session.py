@@ -979,11 +979,13 @@ def test_complete_session_from_another_user_is_rejected(minigame_client):
     assert response.status_code == 404
 
 
-def test_completed_session_cannot_be_completed_twice(minigame_client):
+def test_completed_session_can_be_completed_twice_idempotently(minigame_client):
     client, _ = minigame_client
     session = create_persisted_session(client)
     first = client.post(f"/minigames/session/{session['session_id']}/complete")
     second = client.post(f"/minigames/session/{session['session_id']}/complete")
 
     assert first.status_code == 200
-    assert second.status_code == 409
+    assert second.status_code == 200
+    assert second.json()["status"] == "completed"
+    assert second.json()["session_id"] == session["session_id"]

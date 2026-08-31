@@ -178,7 +178,15 @@ def complete_minigame_session(db, user_id: int, session_id: str) -> dict:
     session = _get_owned_session(db, user_id, session_id)
 
     if session.status == "completed":
-        raise MinigameSessionConflictError("Minigame session is already completed.")
+        attempts = (
+            db.query(models.MinigameAttempt)
+            .filter(
+                models.MinigameAttempt.session_id == session.id,
+                models.MinigameAttempt.user_id == user_id,
+            )
+            .all()
+        )
+        return _build_session_summary(session, attempts)
 
     if session.status != "started":
         raise MinigameSessionConflictError("Minigame session is not started.")
