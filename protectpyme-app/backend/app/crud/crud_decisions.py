@@ -8,6 +8,8 @@ import logging
 
 logger = logging.getLogger("protectpyme")
 
+MAX_DECISION_RESPONSE_TIME_SECONDS = 3600
+
 
 
 def calculate_level(points: int) -> str:
@@ -41,8 +43,8 @@ def create_decision(db: Session, decision: schemas.DecisionCreate, user: models.
         )
     #  Anti-spam
     check_rate_limit(db, user.id)
-    # Validación de tiempo de respuesta
-    MAX_RESPONSE_TIME = 120
+    # Sanity bound: response_time is measured in seconds from the moment
+    # the decision UI is available, not an expected scenario duration.
 
     if decision.response_time is not None and decision.response_time < 0:
         raise HTTPException(
@@ -50,7 +52,10 @@ def create_decision(db: Session, decision: schemas.DecisionCreate, user: models.
             detail="Invalid response time"
         )
 
-    if decision.response_time is not None and decision.response_time > MAX_RESPONSE_TIME:
+    if (
+        decision.response_time is not None
+        and decision.response_time > MAX_DECISION_RESPONSE_TIME_SECONDS
+    ):
         raise HTTPException(
             status_code=400,
             detail="Response time unrealistic"

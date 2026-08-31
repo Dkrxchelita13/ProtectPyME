@@ -45,6 +45,8 @@ NEW_SCENARIOS = [
     (7, "wifi", "revisar_bloquear", "ignorar_alerta"),
 ]
 
+VALID_RESPONSE_TIMES = [0, 1, 120, 121, 300, 3600]
+
 
 @pytest.fixture()
 def db_session():
@@ -216,3 +218,57 @@ def test_new_scenarios_accept_incorrect_decision_and_keep_category(
 
     scenario_one_decisions = db_session.query(models.Decision).filter_by(scenario_id=1).count()
     assert scenario_one_decisions == 0
+
+
+@pytest.mark.parametrize("response_time", VALID_RESPONSE_TIMES)
+def test_decision_accepts_realistic_response_times_over_120_seconds(
+    client,
+    db_session,
+    response_time,
+):
+    from app import models
+
+    user = create_user(db_session, email=f"time-{response_time}@test.local")
+    create_scenario(db_session, 5, "phishing", "reportar_phishing")
+
+    response = client.post(
+        "/decisions/",
+        json={
+            "scenario_id": 5,
+            "choice": "reportar_phishing",
+            "response_time": response_time,
+        },
+        headers=auth_headers(user),
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+
+    decision = db_session.query(models.Decision).filter_by(id=data["id"]).one()
+    assert decision.response_time == response_time
+    assert decision.scenario_id == 5
+
+
+@pytest.mark.parametrize("response_time", [-1, 3601])
+def test_decision_rejects_impossible_response_times(
+    client,
+    db_session,
+    response_time,
+):
+    from app import models
+
+    user = create_user(db_session, email=f"invalid-time-{response_time}@test.local")
+    create_scenario(db_session, 5, "phishing", "reportar_phishing")
+
+    response = client.post(
+        "/decisions/",
+        json={
+            "scenario_id": 5,
+            "choice": "reportar_phishing",
+            "response_time": response_time,
+        },
+        headers=auth_headers(user),
+    )
+
+    assert response.status_code == 400
+    assert db_session.query(models.Decision).count() == 0
