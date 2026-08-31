@@ -8,6 +8,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -431,6 +432,49 @@ def test_invalid_concept_rolls_back_session_completion(db):
     assert session.status == "started"
     assert session.completed_at is None
     assert db.query(models.UserConceptMastery).count() == 0
+
+
+def test_completion_integrity_error_logs_safe_postgres_details(
+    db,
+    caplog,
+    monkeypatch,
+):
+    class FakeDiag:
+        constraint_name = "uq_user_concept_mastery_user_concept"
+
+    class FakePostgresIntegrityError(Exception):
+        pgcode = "23505"
+        diag = FakeDiag()
+
+    user = create_user(db)
+    session = create_session_record(db, user.id)
+    add_attempt(db, session, user.id)
+
+    def fail_commit():
+        raise IntegrityError(
+            "UPDATE minigame_session_records",
+            {},
+            FakePostgresIntegrityError(),
+        )
+
+    monkeypatch.setattr(db, "commit", fail_commit)
+    caplog.set_level("WARNING", logger="protectpyme")
+
+    with pytest.raises(
+        minigame_session_service.MinigameSessionConflictError
+    ) as exc_info:
+        complete_session(db, user.id, session.id)
+
+    assert str(exc_info.value) == "Minigame session could not be completed."
+    assert "[MINIGAME COMPLETE REJECTED]" in caplog.text
+    assert f"session={session.id}" in caplog.text
+    assert f"user_id={user.id}" in caplog.text
+    assert "status=completed" in caplog.text
+    assert "attempts=1" in caplog.text
+    assert "reason=integrity_error" in caplog.text
+    assert "sqlstate=23505" in caplog.text
+    assert "constraint=uq_user_concept_mastery_user_concept" in caplog.text
+    assert "orig_exception=FakePostgresIntegrityError" in caplog.text
 
 
 def test_complete_response_contract_is_unchanged(db):

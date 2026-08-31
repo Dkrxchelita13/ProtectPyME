@@ -215,6 +215,19 @@ def complete_minigame_session(db, user_id: int, session_id: str) -> dict:
         db.rollback()
         raise MinigameSessionValidationError(str(exc)) from exc
     except IntegrityError as exc:
+        error_details = _extract_integrity_error_details(exc)
+        logger.warning(
+            "[MINIGAME COMPLETE REJECTED] session=%s user_id=%s "
+            "status=%s attempts=%s reason=integrity_error "
+            "sqlstate=%s constraint=%s orig_exception=%s",
+            session.id,
+            user_id,
+            session.status,
+            len(attempts),
+            error_details["sqlstate"],
+            error_details["constraint"],
+            error_details["orig_exception"],
+        )
         db.rollback()
         raise MinigameSessionConflictError(
             "Minigame session could not be completed."
@@ -420,6 +433,30 @@ def _build_session_summary(session, attempts: list) -> dict:
         "total_response_time_ms": total_response_time_ms,
         "started_at": session.started_at,
         "completed_at": session.completed_at,
+    }
+
+
+def _extract_integrity_error_details(exc: IntegrityError) -> dict:
+    orig = getattr(exc, "orig", None)
+    diag = getattr(orig, "diag", None)
+
+    sqlstate = (
+        getattr(orig, "pgcode", None)
+        or getattr(orig, "sqlstate", None)
+        or getattr(diag, "sqlstate", None)
+        or "unknown"
+    )
+    constraint = (
+        getattr(diag, "constraint_name", None)
+        or getattr(orig, "constraint_name", None)
+        or "unknown"
+    )
+    orig_exception = type(orig).__name__ if orig is not None else "unknown"
+
+    return {
+        "sqlstate": str(sqlstate or "unknown"),
+        "constraint": str(constraint or "unknown"),
+        "orig_exception": orig_exception,
     }
 
 
