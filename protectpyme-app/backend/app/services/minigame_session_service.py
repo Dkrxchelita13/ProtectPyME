@@ -202,6 +202,9 @@ def complete_minigame_session(db, user_id: int, session_id: str) -> dict:
 
     session.status = "completed"
     session.completed_at = datetime.utcnow()
+    session_log_id = session.id
+    session_log_status = session.status
+    attempts_count = len(attempts)
 
     try:
         if attempts:
@@ -220,10 +223,10 @@ def complete_minigame_session(db, user_id: int, session_id: str) -> dict:
             "[MINIGAME COMPLETE REJECTED] session=%s user_id=%s "
             "status=%s attempts=%s reason=integrity_error "
             "sqlstate=%s constraint=%s orig_exception=%s",
-            session.id,
+            session_log_id,
             user_id,
-            session.status,
-            len(attempts),
+            session_log_status,
+            attempts_count,
             error_details["sqlstate"],
             error_details["constraint"],
             error_details["orig_exception"],

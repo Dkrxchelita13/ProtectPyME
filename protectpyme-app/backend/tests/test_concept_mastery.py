@@ -373,6 +373,49 @@ def test_multiple_concepts_in_same_attempt_are_updated_independently(db):
     assert hash_record.evidence_weight == 1.25
 
 
+def test_existing_mastery_record_is_reused_for_new_attempts(db):
+    user = create_user(db)
+    existing = models.UserConceptMastery(
+        user_id=user.id,
+        concept_id="passwords.salt",
+        topic="passwords",
+        alpha=2.0,
+        beta=2.0,
+        mastery_score=50.0,
+        attempt_count=0,
+        correct_count=0,
+        incorrect_count=0,
+        evidence_weight=0.0,
+    )
+    db.add(existing)
+    db.commit()
+    session = create_session_record(db, user.id)
+    add_attempt(db, session, user.id, correct=True)
+    add_attempt(
+        db,
+        session,
+        user.id,
+        correct=False,
+        item_id="item-2",
+    )
+
+    complete_session(db, user.id, session.id)
+    record = mastery_record(db, user.id, "passwords.salt")
+
+    assert record.id == existing.id
+    assert db.query(models.UserConceptMastery).filter(
+        models.UserConceptMastery.user_id == user.id,
+        models.UserConceptMastery.concept_id == "passwords.salt",
+    ).count() == 1
+    assert record.alpha == 3.0
+    assert record.beta == 3.0
+    assert record.mastery_score == 50.0
+    assert record.attempt_count == 2
+    assert record.correct_count == 1
+    assert record.incorrect_count == 1
+    assert record.evidence_weight == 2.0
+
+
 def test_mastery_level_thresholds():
     assert concept_mastery_service.get_mastery_level(50, 0) == "sin_datos"
     assert concept_mastery_service.get_mastery_level(49.99, 1) == (
@@ -409,6 +452,108 @@ def test_session_without_attempts_does_not_create_mastery_rows(db):
 
     assert summary["total_attempts"] == 0
     assert db.query(models.UserConceptMastery).count() == 0
+
+
+def test_completion_reuses_pending_mastery_for_repeated_concept_attempts(db):
+    user = create_user(db)
+    session = models.MinigameSessionRecord(
+        id=str(uuid.uuid4()),
+        user_id=user.id,
+        topic="phishing",
+        risk="bajo",
+        minigame="quiz",
+        item_ids=[
+            "phishing_bajo_quiz_spear_contexto_1",
+            "phishing_bajo_quiz_2",
+            "phishing_bajo_quiz_spf_1",
+        ],
+        concept_ids=[
+            "phishing.spear_phishing",
+            "phishing.spf",
+        ],
+        status="started",
+    )
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    add_attempt(
+        db,
+        session,
+        user.id,
+        item_id="phishing_bajo_quiz_spear_contexto_1",
+        concept_ids=["phishing.spear_phishing"],
+        correct=True,
+    )
+    add_attempt(
+        db,
+        session,
+        user.id,
+        item_id="phishing_bajo_quiz_2",
+        concept_ids=["phishing.spear_phishing"],
+        correct=True,
+    )
+    add_attempt(
+        db,
+        session,
+        user.id,
+        item_id="phishing_bajo_quiz_spf_1",
+        concept_ids=["phishing.spf"],
+        correct=True,
+    )
+
+    summary = complete_session(db, user.id, session.id)
+    db.refresh(session)
+    completed_at = session.completed_at
+    rows = (
+        db.query(models.UserConceptMastery)
+        .filter(models.UserConceptMastery.user_id == user.id)
+        .order_by(models.UserConceptMastery.concept_id)
+        .all()
+    )
+
+    assert summary["status"] == "completed"
+    assert session.status == "completed"
+    assert completed_at is not None
+    assert len(rows) == 2
+    assert {row.concept_id for row in rows} == {
+        "phishing.spear_phishing",
+        "phishing.spf",
+    }
+
+    spear = mastery_record(db, user.id, "phishing.spear_phishing")
+    assert spear.alpha == 4.0
+    assert spear.beta == 2.0
+    assert spear.mastery_score == 66.67
+    assert spear.attempt_count == 2
+    assert spear.correct_count == 2
+    assert spear.incorrect_count == 0
+    assert spear.evidence_weight == 2.0
+
+    spf = mastery_record(db, user.id, "phishing.spf")
+    assert spf.alpha == 3.0
+    assert spf.beta == 2.0
+    assert spf.mastery_score == 60.0
+    assert spf.attempt_count == 1
+    assert spf.correct_count == 1
+    assert spf.incorrect_count == 0
+    assert spf.evidence_weight == 1.0
+
+    second_summary = complete_session(db, user.id, session.id)
+    db.refresh(session)
+    db.refresh(spear)
+    db.refresh(spf)
+
+    assert second_summary["status"] == "completed"
+    assert session.completed_at == completed_at
+    assert db.query(models.UserConceptMastery).filter(
+        models.UserConceptMastery.user_id == user.id
+    ).count() == 2
+    assert spear.attempt_count == 2
+    assert spear.correct_count == 2
+    assert spear.evidence_weight == 2.0
+    assert spf.attempt_count == 1
+    assert spf.correct_count == 1
+    assert spf.evidence_weight == 1.0
 
 
 def test_invalid_concept_rolls_back_session_completion(db):

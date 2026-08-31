@@ -46,6 +46,7 @@ def update_user_mastery_from_attempts(db, user_id: int, attempts: list) -> list:
 
     updated_records = []
     updated_at = datetime.utcnow()
+    records_by_concept = {}
 
     for attempt in attempts:
         weight = get_difficulty_weight(attempt.difficulty)
@@ -58,6 +59,7 @@ def update_user_mastery_from_attempts(db, user_id: int, attempts: list) -> list:
                 concept_id=concept_id,
                 topic=concept["topic"],
                 now=updated_at,
+                records_by_concept=records_by_concept,
             )
 
             if attempt.correct:
@@ -134,7 +136,11 @@ def _get_or_create_mastery_record(
     concept_id: str,
     topic: str,
     now: datetime,
+    records_by_concept: dict = None,
 ):
+    if records_by_concept is not None and concept_id in records_by_concept:
+        return records_by_concept[concept_id]
+
     models = _models()
     record = (
         db.query(models.UserConceptMastery)
@@ -146,6 +152,8 @@ def _get_or_create_mastery_record(
     )
 
     if record is not None:
+        if records_by_concept is not None:
+            records_by_concept[concept_id] = record
         return record
 
     record = models.UserConceptMastery(
@@ -163,6 +171,8 @@ def _get_or_create_mastery_record(
         updated_at=now,
     )
     db.add(record)
+    if records_by_concept is not None:
+        records_by_concept[concept_id] = record
     return record
 
 
