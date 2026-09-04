@@ -42,6 +42,9 @@ public class LoginManager : MonoBehaviour
     public TMP_InputField inputPassword;
     public TMP_Text txtStatus;
 
+    [Header("Mensajes de espera")]
+    public LoginWaitPresenter waitPresenter;
+
     [Header("Google Sign-In")]
     public Button botonGoogleLogin;
     public string googleWebClientId;
@@ -83,6 +86,11 @@ public class LoginManager : MonoBehaviour
         }
 
         autenticacionEnProceso = true;
+        if (waitPresenter != null)
+        {
+            waitPresenter.ShowDelayed(waitPresenter.LoginMessage);
+        }
+
         StartCoroutine(Login());
     }
 
@@ -206,21 +214,6 @@ public class LoginManager : MonoBehaviour
 
     private IEnumerator Login()
     {
-        if (imagenRelleno != null)
-        {
-            imagenRelleno.fillAmount = 0f;
-        }
-
-        if (textoPorcentaje != null)
-        {
-            textoPorcentaje.text = "0%";
-        }
-
-        if (objetoBarraRaiz != null)
-        {
-            objetoBarraRaiz.SetActive(true);
-        }
-
         if (botonLogin != null)
         {
             botonLogin.interactable = false;
@@ -242,36 +235,9 @@ public class LoginManager : MonoBehaviour
             request.SetRequestHeader("Content-Type", "application/json");
 
             UnityWebRequestAsyncOperation operation = request.SendWebRequest();
-            float progresoSimulado = 0f;
-
             while (!operation.isDone)
             {
-                if (progresoSimulado < 0.9f)
-                {
-                    progresoSimulado += Time.deltaTime * 0.2f;
-                }
-
-                ActualizarProgresoLogin(progresoSimulado);
                 yield return null;
-            }
-
-            while (progresoSimulado < 1f)
-            {
-                progresoSimulado = Mathf.MoveTowards(
-                    progresoSimulado,
-                    1f,
-                    Time.deltaTime * 3f
-                );
-
-                ActualizarProgresoLogin(progresoSimulado);
-                yield return null;
-            }
-
-            yield return new WaitForSeconds(0.4f);
-
-            if (objetoBarraRaiz != null)
-            {
-                objetoBarraRaiz.SetActive(false);
             }
 
             if (request.result == UnityWebRequest.Result.Success)
@@ -307,6 +273,7 @@ public class LoginManager : MonoBehaviour
             }
             else
             {
+                HideWaitPresenter();
                 autenticacionEnProceso = false;
 
                 if (botonLogin != null)
@@ -343,6 +310,11 @@ public class LoginManager : MonoBehaviour
         if (txtStatus != null)
         {
             txtStatus.text = "Verificando encuesta diagnostica...";
+        }
+
+        if (waitPresenter != null)
+        {
+            waitPresenter.UpdateState(waitPresenter.SurveyMessage);
         }
 
         SurveyStatusResponse surveyStatus = null;
@@ -388,6 +360,7 @@ public class LoginManager : MonoBehaviour
             AIState.SurveyTotalRiskScore = 0;
 
             autenticacionEnProceso = false;
+            HideWaitPresenter();
             SceneManager.LoadScene("MenuPrincipal");
         }
         else
@@ -399,12 +372,15 @@ public class LoginManager : MonoBehaviour
             AIState.SurveyTotalRiskScore = 0;
 
             autenticacionEnProceso = false;
+            HideWaitPresenter();
             SceneManager.LoadScene("Encuesta");
         }
     }
 
     private void MostrarErrorPostAutenticacion(string message)
     {
+        HideWaitPresenter();
+
         if (txtStatus != null)
         {
             txtStatus.text = message;
@@ -422,6 +398,14 @@ public class LoginManager : MonoBehaviour
         if (objetoBarraRaiz != null)
         {
             objetoBarraRaiz.SetActive(false);
+        }
+    }
+
+    private void HideWaitPresenter()
+    {
+        if (waitPresenter != null)
+        {
+            waitPresenter.Hide();
         }
     }
 
@@ -487,6 +471,6 @@ public class LoginManager : MonoBehaviour
             GameManagerGlobal.instancia.CargarDatosUsuarioActual();
         }
 
-        Debug.Log("Sesion iniciada para: " + usuarioActual);
+        Debug.Log("[LOGIN] Preparando sesion limpia.");
     }
 }
