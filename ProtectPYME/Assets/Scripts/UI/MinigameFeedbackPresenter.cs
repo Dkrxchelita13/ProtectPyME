@@ -24,6 +24,7 @@ public class MinigameFeedbackPresenter : MonoBehaviour
     private TextMeshProUGUI resultText;
     private TextMeshProUGUI reinforcementText;
     private TextMeshProUGUI strengthText;
+    private TextMeshProUGUI motivationalText;
     private TextMeshProUGUI nextStepText;
     private TextMeshProUGUI recommendationText;
 
@@ -216,6 +217,14 @@ public class MinigameFeedbackPresenter : MonoBehaviour
         reinforcementText =
             CreateText("Reinforcement", font, textColor, 28f, FontStyles.Normal);
         strengthText = CreateText("Strength", font, textColor, 28f, FontStyles.Normal);
+        motivationalText =
+            CreateText(
+                "MotivationalText",
+                font,
+                new Color(0.82f, 0.90f, 1f, 1f),
+                24f,
+                FontStyles.Italic
+            );
         nextStepText = CreateText("NextStep", font, textColor, 28f, FontStyles.Normal);
         recommendationText =
             CreateText("Recommendation", font, textColor, 28f, FontStyles.Bold);
@@ -456,6 +465,7 @@ public class MinigameFeedbackPresenter : MonoBehaviour
         SetText(resultText, "");
         SetText(reinforcementText, "");
         SetText(strengthText, "");
+        SetText(motivationalText, "");
         SetText(nextStepText, "");
         SetText(recommendationText, "");
 
@@ -484,6 +494,7 @@ public class MinigameFeedbackPresenter : MonoBehaviour
         SetText(resultText, "");
         SetText(reinforcementText, "");
         SetText(strengthText, "");
+        SetText(motivationalText, "");
         SetText(nextStepText, "");
         SetText(recommendationText, "");
 
@@ -517,6 +528,12 @@ public class MinigameFeedbackPresenter : MonoBehaviour
             SetText(resultText, "");
             SetText(reinforcementText, "");
             SetText(strengthText, "");
+            SetText(
+                motivationalText,
+                MotivationalMessageProvider.GetMessage(
+                    ResolveMotivationContext(feedback.performance_level)
+                )
+            );
             SetText(nextStepText, BuildNextStepText(feedback.next_step));
             SetText(recommendationText, "");
         }
@@ -525,6 +542,12 @@ public class MinigameFeedbackPresenter : MonoBehaviour
             SetText(resultText, BuildResultText(feedback));
             SetText(reinforcementText, BuildReinforcementText(reinforcement));
             SetText(strengthText, BuildStrengthText(strength));
+            SetText(
+                motivationalText,
+                MotivationalMessageProvider.GetMessage(
+                    ResolveMotivationContext(feedback.performance_level)
+                )
+            );
             SetText(nextStepText, BuildNextStepText(feedback.next_step));
             SetText(recommendationText, BuildRecommendationText(feedback));
         }
@@ -630,6 +653,17 @@ public class MinigameFeedbackPresenter : MonoBehaviour
         }
 
         return "Siguiente actividad recomendada: " + visibleMinigame;
+    }
+
+    private MotivationContext ResolveMotivationContext(string performanceLevel)
+    {
+        if (ValuesMatch(performanceLevel, "excelente") ||
+            ValuesMatch(performanceLevel, "buen_progreso"))
+        {
+            return MotivationContext.PositiveReinforcement;
+        }
+
+        return MotivationContext.NeedsReinforcement;
     }
 
     private void SetText(TextMeshProUGUI target, string value)
