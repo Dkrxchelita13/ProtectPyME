@@ -91,6 +91,12 @@ public class LoginManager : MonoBehaviour
             waitPresenter.ShowDelayed(waitPresenter.LoginMessage);
         }
 
+        if (objetoBarraRaiz != null) 
+        {
+            objetoBarraRaiz.SetActive(true);
+            ActualizarProgresoLogin(0f); // Reiniciamos la barra a 0
+        }
+
         StartCoroutine(Login());
     }
 
@@ -235,8 +241,21 @@ public class LoginManager : MonoBehaviour
             request.SetRequestHeader("Content-Type", "application/json");
 
             UnityWebRequestAsyncOperation operation = request.SendWebRequest();
+            float progresoVisual = 0f;
+
             while (!operation.isDone)
             {
+                // Mathf.MoveTowards mueve el número suavemente hacia el valor real
+                progresoVisual = Mathf.MoveTowards(progresoVisual, operation.progress, Time.deltaTime * 0.8f);
+                ActualizarProgresoLogin(progresoVisual);
+                yield return null;
+            }
+
+            // Llenar rápido al 100% al terminar
+            while (progresoVisual < 1f) 
+            {
+                progresoVisual = Mathf.MoveTowards(progresoVisual, 1f, Time.deltaTime * 2f);
+                ActualizarProgresoLogin(progresoVisual);
                 yield return null;
             }
 

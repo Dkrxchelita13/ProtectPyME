@@ -2839,8 +2839,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 900a4545e90948668712ae78c4acc2da, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   panelRoot: {fileID: 2099000000}
   statusText: {fileID: 2099000011}
   tipText: {fileID: 2099000015}
@@ -2851,7 +2851,7 @@ MonoBehaviour:
     tip: Estamos preparando tu espacio.
   surveyMessage:
     status: Preparando tu experiencia...
-    tip: Tu progreso está casi listo.
+    tip: "Tu progreso est\xE1 casi listo."
   defaultDelaySeconds: 0.7
 --- !u!1 &2010172392
 GameObject:
@@ -3341,8 +3341,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
   m_Color: {r: 0.055, g: 0.075, b: 0.13, a: 0.72}
   m_RaycastTarget: 0
@@ -3416,8 +3416,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
   m_Color: {r: 0.28, g: 0.86, b: 0.8, a: 1}
   m_RaycastTarget: 0
@@ -3491,8 +3491,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
@@ -3625,8 +3625,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 0.82}
   m_RaycastTarget: 0
