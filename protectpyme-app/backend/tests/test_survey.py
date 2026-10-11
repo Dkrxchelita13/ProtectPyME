@@ -12,6 +12,53 @@ from sqlalchemy.pool import StaticPool
 
 os.environ.setdefault("SECRET_KEY", "test-secret")
 
+_MISSING = object()
+_MANAGED_MODULES = (
+    "app.database",
+    "app.models",
+    "app.schemas",
+    "app.auth",
+    "app.routes.survey",
+    "app.services.survey_service",
+)
+_MANAGED_PACKAGE_ATTRIBUTES = (
+    ("app", ("auth", "database", "models", "schemas")),
+    ("app.routes", ("survey",)),
+    ("app.services", ("survey_service",)),
+)
+
+previous_modules = {
+    module_name: sys.modules.get(module_name)
+    for module_name in _MANAGED_MODULES
+}
+previous_package_attributes = {}
+
+for package_name, attribute_names in _MANAGED_PACKAGE_ATTRIBUTES:
+    package = sys.modules.get(package_name)
+
+    if package is None:
+        continue
+
+    for attribute_name in attribute_names:
+        previous_package_attributes[(package_name, attribute_name)] = getattr(
+            package,
+            attribute_name,
+            _MISSING,
+        )
+
+for module_name in _MANAGED_MODULES:
+    sys.modules.pop(module_name, None)
+
+for package_name, attribute_names in _MANAGED_PACKAGE_ATTRIBUTES:
+    package = sys.modules.get(package_name)
+
+    if package is None:
+        continue
+
+    for attribute_name in attribute_names:
+        if hasattr(package, attribute_name):
+            delattr(package, attribute_name)
+
 TestBase = declarative_base()
 engine = create_engine(
     "sqlite://",
@@ -45,6 +92,30 @@ from app import models, schemas  # noqa: E402
 from app.auth import create_access_token  # noqa: E402
 from app.routes.survey import router  # noqa: E402
 from app.services import survey_service  # noqa: E402
+
+for module_name, module in previous_modules.items():
+    if module is None:
+        sys.modules.pop(module_name, None)
+    else:
+        sys.modules[module_name] = module
+
+for package_name, attribute_names in _MANAGED_PACKAGE_ATTRIBUTES:
+    package = sys.modules.get(package_name)
+
+    if package is None:
+        continue
+
+    for attribute_name in attribute_names:
+        previous_value = previous_package_attributes.get(
+            (package_name, attribute_name),
+            _MISSING,
+        )
+
+        if previous_value is _MISSING:
+            if hasattr(package, attribute_name):
+                delattr(package, attribute_name)
+        else:
+            setattr(package, attribute_name, previous_value)
 
 
 app = FastAPI()
