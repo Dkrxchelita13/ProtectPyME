@@ -376,16 +376,12 @@ public class Escenario3Manager : MonoBehaviour
 
     private void ContinuarRespuestaBuena()
     {
+        ActualizarProgresoNarrativo();
+
         panelDecision.SetActive(false);
         if (panelBueno != null) panelBueno.SetActive(true);
 
         ReproducirSonido(sonidoCorrecto);
-
-        if (PlayerPrefs.GetInt("NivelAlcanzado", 1) < 4)
-        {
-            PlayerPrefs.SetInt("NivelAlcanzado", 4);
-            PlayerPrefs.Save();
-        }
 
         Invoke(nameof(MostrarRetroCorrecta), 2f);
         ModificarSeguridadEscenario(3f);
@@ -394,6 +390,8 @@ public class Escenario3Manager : MonoBehaviour
 
     private void ContinuarRespuestaMala()
     {
+        ActualizarProgresoNarrativo();
+
         panelDecision.SetActive(false);
         if (panelMalo != null) panelMalo.SetActive(true);
 
@@ -402,6 +400,15 @@ public class Escenario3Manager : MonoBehaviour
         Invoke(nameof(MostrarRetroIncorrecta), 2f);
         ModificarSeguridadEscenario(-3f);
         PerderVida();
+    }
+
+    private void ActualizarProgresoNarrativo()
+    {
+        if (PlayerPrefs.GetInt("NivelAlcanzado", 1) < 4)
+        {
+            PlayerPrefs.SetInt("NivelAlcanzado", 4);
+            PlayerPrefs.Save();
+        }
     }
 
     private void ManejarFalloDecision(DecisionRequestResult result)

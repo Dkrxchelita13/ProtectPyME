@@ -373,11 +373,7 @@ public class Escenario1Manager : MonoBehaviour
 
     private void ContinuarRespuestaCorrecta()
     {
-        if (PlayerPrefs.GetInt(claveDeProgreso, 1) < valorDeDesbloqueo)
-        {
-            PlayerPrefs.SetInt(claveDeProgreso, valorDeDesbloqueo);
-            PlayerPrefs.Save();
-        }
+        ActualizarProgresoNarrativo();
 
         ModificarSeguridadEscenario(3f);
         GanarVida();
@@ -389,12 +385,23 @@ public class Escenario1Manager : MonoBehaviour
 
     private void ContinuarRespuestaIncorrecta()
     {
+        ActualizarProgresoNarrativo();
+
         panelDecision.SetActive(false);
         panelMalo.SetActive(true);
         ReproducirSonido(sonidoError);
         Invoke(nameof(MostrarRetroIncorrecta), 2f);
         ModificarSeguridadEscenario(-3f);
         PerderVida();
+    }
+
+    private void ActualizarProgresoNarrativo()
+    {
+        if (PlayerPrefs.GetInt(claveDeProgreso, 1) < valorDeDesbloqueo)
+        {
+            PlayerPrefs.SetInt(claveDeProgreso, valorDeDesbloqueo);
+            PlayerPrefs.Save();
+        }
     }
 
     private void ManejarFalloDecision(DecisionRequestResult result)

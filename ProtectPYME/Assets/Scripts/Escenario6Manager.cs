@@ -368,11 +368,7 @@ public class Escenario6Manager : MonoBehaviour
 
     private void ContinuarRespuestaCorrecta()
     {
-        if (PlayerPrefs.GetInt("ProgresoIntermedio", 1) < 4)
-        {
-            PlayerPrefs.SetInt("ProgresoIntermedio", 4);
-            PlayerPrefs.Save();
-        }
+        ActualizarProgresoNarrativo();
 
         ModificarSeguridadEscenario(3f);
         GanarVida();
@@ -384,12 +380,23 @@ public class Escenario6Manager : MonoBehaviour
 
     private void ContinuarRespuestaIncorrecta()
     {
+        ActualizarProgresoNarrativo();
+
         panelDecision.SetActive(false);
         panelMalo.SetActive(true);
         ReproducirSonido(sonidoError);
         Invoke(nameof(MostrarRetroIncorrecta), 2f);
         ModificarSeguridadEscenario(-3f);
         PerderVida();
+    }
+
+    private void ActualizarProgresoNarrativo()
+    {
+        if (PlayerPrefs.GetInt("ProgresoIntermedio", 1) < 4)
+        {
+            PlayerPrefs.SetInt("ProgresoIntermedio", 4);
+            PlayerPrefs.Save();
+        }
     }
 
     private void ManejarFalloDecision(DecisionRequestResult result)
