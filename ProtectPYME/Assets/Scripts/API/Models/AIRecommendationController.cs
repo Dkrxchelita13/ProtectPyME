@@ -14,6 +14,15 @@ public class AIRecommendationController : MonoBehaviour
 
     public void OnPracticeButton()
     {
+        PilotInterventionGate.TryRun(
+            this,
+            PilotInterventionGate.ScenarioAction,
+            OpenRecommendedScenario
+        );
+    }
+
+    private void OpenRecommendedScenario()
+    {
         switch (recommendedScenario)
         {
             case 1:

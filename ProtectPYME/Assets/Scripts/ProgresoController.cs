@@ -42,6 +42,7 @@ public class ProgresoController : MonoBehaviour
         // 🟢 Cargar vidas correctamente al iniciar la escena
         ActualizarTextoVidas();
         CargarYMostrarProgreso();
+        PilotInterventionGate.RefreshStatusCacheIfPossible(this);
     }
 
     // 🟢 Método auxiliar para obtener y pintar las vidas del usuario actual
@@ -691,8 +692,6 @@ public class ProgresoController : MonoBehaviour
             return;
         }
 
-        AIState.SurveyResultPending = false;
-
         if (!recommendationReady || !AIState.IsValidPracticeScenario(recommendedScenario))
         {
             Debug.LogWarning("Practicar: recomendación todavía no disponible");
@@ -700,7 +699,16 @@ public class ProgresoController : MonoBehaviour
         }
 
         Debug.Log("🚀 Escenario recomendado: " + recommendedScenario);
-        OpenRecommendedScenario(recommendedScenario);
+        int scenarioToOpen = recommendedScenario;
+        PilotInterventionGate.TryRun(
+            this,
+            PilotInterventionGate.ScenarioAction,
+            () =>
+            {
+                AIState.SurveyResultPending = false;
+                OpenRecommendedScenario(scenarioToOpen);
+            }
+        );
     }
 
     private void TryLaunchSurveyRecommendedScenario()
@@ -714,15 +722,34 @@ public class ProgresoController : MonoBehaviour
         }
 
         autoScenarioLaunchInProgress = true;
-        AIState.SurveyResultPending = false;
         SetPracticeButtonInteractable(false);
 
         if (txtEscenarioSugerido != null)
         {
-            txtEscenarioSugerido.text = "ABRIENDO...";
+            txtEscenarioSugerido.text = "VERIFICANDO PILOTO...";
         }
 
-        OpenRecommendedScenario(recommendedScenario);
+        int scenarioToOpen = recommendedScenario;
+        PilotInterventionGate.TryRun(
+            this,
+            PilotInterventionGate.ScenarioAction,
+            () =>
+            {
+                AIState.SurveyResultPending = false;
+
+                if (txtEscenarioSugerido != null)
+                {
+                    txtEscenarioSugerido.text = "ABRIENDO...";
+                }
+
+                OpenRecommendedScenario(scenarioToOpen);
+            },
+            () =>
+            {
+                autoScenarioLaunchInProgress = false;
+                SetPracticeButtonInteractable(recommendationReady);
+            }
+        );
     }
 
     private bool OpenRecommendedScenario(int scenarioId)

@@ -164,6 +164,7 @@ public class PilotController : MonoBehaviour
             yield break;
         }
 
+        PilotInterventionGate.InvalidateCachedStatus();
         StartCoroutine(RefreshPilotFlow());
     }
 
@@ -177,6 +178,7 @@ public class PilotController : MonoBehaviour
             return;
         }
 
+        PilotInterventionGate.CacheStatus(status);
         ShowOnly(statusPanel);
         statusRevokeButton.gameObject.SetActive(true);
 
@@ -229,7 +231,7 @@ public class PilotController : MonoBehaviour
             case PilotStatusViewState.InterventionPending:
                 ConfigureStatus(
                     "Evaluacion inicial completada",
-                    "Continua utilizando ProtectPYME antes de realizar la evaluacion final.",
+                    "Completa 3 escenarios distintos y al menos 1 minijuego antes de realizar la evaluacion final.",
                     BuildInterventionText(status.intervention_progress),
                     "ACTUALIZAR ESTADO",
                     () => StartCoroutine(RefreshPilotFlow())
@@ -507,10 +509,12 @@ public class PilotController : MonoBehaviour
 
         if (IsPostPhase(phase))
         {
+            PilotInterventionGate.InvalidateCachedStatus();
             ShowCompletedPanel();
         }
         else
         {
+            PilotInterventionGate.InvalidateCachedStatus();
             StartCoroutine(RefreshPilotFlow());
         }
     }
@@ -557,6 +561,7 @@ public class PilotController : MonoBehaviour
             yield break;
         }
 
+        PilotInterventionGate.InvalidateCachedStatus();
         StartCoroutine(RefreshPilotFlow());
     }
 
@@ -772,12 +777,12 @@ public class PilotController : MonoBehaviour
             return "";
         }
 
-        return "Requisitos minimos de participacion/exposicion:\n" +
+        return "Progreso del Piloto Academico:\n" +
             "Escenarios distintos realizados: " +
             progress.distinct_scenarios_completed +
             " / " +
             progress.required_distinct_scenarios +
-            "\nCapacitaciones completadas: " +
+            "\nCapacitaciones/minijuegos completados: " +
             progress.completed_minigame_sessions +
             " / " +
             progress.required_minigame_sessions;

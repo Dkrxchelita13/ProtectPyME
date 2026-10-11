@@ -19,6 +19,7 @@ public class MinijuegosMenuUI : MonoBehaviour
         menuButtons = GetComponentsInChildren<Button>(true);
         ActualizarTituloMinijuegos();
         SetLoadingVisible(false);
+        PilotInterventionGate.RefreshStatusCacheIfPossible(this);
     }
 
     public void OpenQuizLesson()
@@ -110,6 +111,15 @@ public class MinijuegosMenuUI : MonoBehaviour
     }
 
     private void OpenLesson(string minigameKey, string targetScene)
+    {
+        PilotInterventionGate.TryRun(
+            this,
+            PilotInterventionGate.MinigameAction,
+            () => OpenLessonAfterGate(minigameKey, targetScene)
+        );
+    }
+
+    private void OpenLessonAfterGate(string minigameKey, string targetScene)
     {
         if (minigameSessionRequestInProgress)
         {

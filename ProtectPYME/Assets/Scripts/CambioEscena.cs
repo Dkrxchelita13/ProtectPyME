@@ -24,6 +24,7 @@ public class CambioEscena : MonoBehaviour
     void Awake()
     {
         TomarFotografia();
+        PilotInterventionGate.RefreshStatusCacheIfPossible(this);
     }
 
     public void TomarFotografia()
@@ -48,7 +49,7 @@ public class CambioEscena : MonoBehaviour
     {
         escenaAnterior = SceneManager.GetActiveScene().name;
         Time.timeScale = 1f;
-        SceneManager.LoadScene(nombreEscena);
+        PilotInterventionGate.TryLoadScene(this, nombreEscena);
     }
 
     public void SalirDelJuego()
@@ -82,7 +83,7 @@ public class CambioEscena : MonoBehaviour
         if (CanvasJuegoTerminado != null) CanvasJuegoTerminado.SetActive(false);
         Time.timeScale = 1f;
         string nombreEscena = SceneManager.GetActiveScene().name;
-        SceneManager.LoadScene(nombreEscena);
+        PilotInterventionGate.TryLoadScene(this, nombreEscena);
     }
 
     // ==========================================
@@ -124,6 +125,6 @@ public class CambioEscena : MonoBehaviour
 
         Time.timeScale = 1f;
         // Cargamos la escena que escribas en el Inspector
-        SceneManager.LoadScene(nombreEscena); 
+        PilotInterventionGate.TryLoadScene(this, nombreEscena);
     }
 }

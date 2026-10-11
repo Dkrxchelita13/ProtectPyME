@@ -125,7 +125,11 @@ public class MinigameLessonController : MonoBehaviour
         }
 
         string targetScene = MinigameLessonState.TargetScene;
-        SceneManager.LoadScene(targetScene);
+        PilotInterventionGate.TryRun(
+            this,
+            PilotInterventionGate.MinigameAction,
+            () => SceneManager.LoadScene(targetScene)
+        );
     }
 
     public void OnRetry()
