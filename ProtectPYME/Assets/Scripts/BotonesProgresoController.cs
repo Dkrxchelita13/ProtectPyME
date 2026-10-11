@@ -1,6 +1,13 @@
 using UnityEngine;
 using UnityEngine.UI;
 
+public enum TipoMenuProgreso
+{
+    Auto,
+    Inicial,
+    Intermedio
+}
+
 public class BotonesProgresoController : MonoBehaviour
 {
     [Header("Botones")]
@@ -22,6 +29,11 @@ public class BotonesProgresoController : MonoBehaviour
     public GameObject candadoEscenario5;
     public GameObject candadoEscenario6;
 
+    [Header("Configuracion")]
+    [SerializeField] private TipoMenuProgreso tipoMenu = TipoMenuProgreso.Auto;
+
+    private string ultimoLogProgreso = "";
+
     void Start()
     {
         ActualizarProgreso();
@@ -37,47 +49,125 @@ public class BotonesProgresoController : MonoBehaviour
     {
         // 1 es el nivel inicial (solo Escenario 1 desbloqueado)
         int nivelAlcanzado = PlayerPrefs.GetInt("NivelAlcanzado", 1);
-
         int progresoIntermedio = PlayerPrefs.GetInt("ProgresoIntermedio", 1);
 
-        // --- ESCENARIO 1 ---
-        // Siempre desbloqueado
-        if (botonEscenario1 != null) botonEscenario1.interactable = true;
+        TipoMenuProgreso menuResuelto = ResolverTipoMenu();
+        bool minijuegosDesbloqueados = menuResuelto == TipoMenuProgreso.Intermedio
+            ? ActualizarNivelIntermedio(nivelAlcanzado, progresoIntermedio)
+            : ActualizarNivelInicial(nivelAlcanzado);
 
-        // --- ESCENARIO 2 ---
+        LogEstadoProgreso(
+            menuResuelto,
+            nivelAlcanzado,
+            progresoIntermedio,
+            minijuegosDesbloqueados
+        );
+    }
+
+    private TipoMenuProgreso ResolverTipoMenu()
+    {
+        if (tipoMenu != TipoMenuProgreso.Auto)
+        {
+            return tipoMenu;
+        }
+
+        bool tieneBotonesIntermedios =
+            botonEscenario4 != null ||
+            botonEscenario5 != null ||
+            botonEscenario6 != null;
+
+        return tieneBotonesIntermedios
+            ? TipoMenuProgreso.Intermedio
+            : TipoMenuProgreso.Inicial;
+    }
+
+    private bool ActualizarNivelInicial(int nivelAlcanzado)
+    {
+        SetButtonInteractable(botonEscenario1, true);
+
         bool desblEscenario2 = nivelAlcanzado >= 2;
-        if (botonEscenario2 != null) botonEscenario2.interactable = desblEscenario2;
-        if (candadoEscenario2 != null) candadoEscenario2.SetActive(!desblEscenario2);
+        SetButtonInteractable(botonEscenario2, desblEscenario2);
+        SetLockActive(candadoEscenario2, !desblEscenario2);
 
-        // --- ESCENARIO 3 ---
         bool desblEscenario3 = nivelAlcanzado >= 3;
-        if (botonEscenario3 != null) botonEscenario3.interactable = desblEscenario3;
-        if (candadoEscenario3 != null) candadoEscenario3.SetActive(!desblEscenario3);
+        SetButtonInteractable(botonEscenario3, desblEscenario3);
+        SetLockActive(candadoEscenario3, !desblEscenario3);
 
-        // --- MINIJUEGOS ---
         bool desblMinijuegos = nivelAlcanzado >= 4;
-        if (botonMinijuegos != null) botonMinijuegos.interactable = desblMinijuegos;
-        if (candadoMinijuegos != null) candadoMinijuegos.SetActive(!desblMinijuegos);
+        SetMinigamesUnlocked(desblMinijuegos);
+        return desblMinijuegos;
+    }
 
+    private bool ActualizarNivelIntermedio(
+        int nivelAlcanzado,
+        int progresoIntermedio
+    )
+    {
+        SetButtonInteractable(botonEscenario4, true);
 
-
-        if (botonEscenario4 != null) botonEscenario4.interactable = true;
-
-        // Escenario 5: Se desbloquea cuando progresoIntermedio sea 2
         bool desblEscenario5 = progresoIntermedio >= 2;
-        if (botonEscenario5 != null) botonEscenario5.interactable = desblEscenario5;
-        if (candadoEscenario5 != null) candadoEscenario5.SetActive(!desblEscenario5);
+        SetButtonInteractable(botonEscenario5, desblEscenario5);
+        SetLockActive(candadoEscenario5, !desblEscenario5);
 
-        // Escenario 6: Se desbloquea cuando progresoIntermedio sea 3
         bool desblEscenario6 = progresoIntermedio >= 3;
-        if (botonEscenario6 != null) botonEscenario6.interactable = desblEscenario6;
-        if (candadoEscenario6 != null) candadoEscenario6.SetActive(!desblEscenario6);
+        SetButtonInteractable(botonEscenario6, desblEscenario6);
+        SetLockActive(candadoEscenario6, !desblEscenario6);
 
-        bool desblMinijuegos2 = progresoIntermedio >= 4;
-        if (botonMinijuegos != null) botonMinijuegos.interactable = desblMinijuegos2;
-        if (candadoMinijuegos != null) candadoMinijuegos.SetActive(!desblMinijuegos2);
+        bool nivelInicialCompleto = nivelAlcanzado >= 4;
+        bool nivelIntermedioCompleto = progresoIntermedio >= 4;
+        bool desblMinijuegos =
+            nivelInicialCompleto || nivelIntermedioCompleto;
 
+        SetMinigamesUnlocked(desblMinijuegos);
+        return desblMinijuegos;
+    }
 
+    private void SetMinigamesUnlocked(bool unlocked)
+    {
+        SetButtonInteractable(botonMinijuegos, unlocked);
+        SetLockActive(candadoMinijuegos, !unlocked);
+    }
+
+    private void SetButtonInteractable(Button button, bool interactable)
+    {
+        if (button != null)
+        {
+            button.interactable = interactable;
+        }
+    }
+
+    private void SetLockActive(GameObject lockObject, bool active)
+    {
+        if (lockObject != null)
+        {
+            lockObject.SetActive(active);
+        }
+    }
+
+    private void LogEstadoProgreso(
+        TipoMenuProgreso menu,
+        int nivelAlcanzado,
+        int progresoIntermedio,
+        bool minijuegosDesbloqueados
+    )
+    {
+        string snapshot =
+            "[Progress] Menu=" +
+            menu +
+            " NivelAlcanzado=" +
+            nivelAlcanzado +
+            " ProgresoIntermedio=" +
+            progresoIntermedio +
+            " Minijuegos=" +
+            minijuegosDesbloqueados;
+
+        if (snapshot == ultimoLogProgreso)
+        {
+            return;
+        }
+
+        ultimoLogProgreso = snapshot;
+        Debug.Log(snapshot);
     }
 
     // Método de prueba/desarrollo para restablecer todo al inicio
