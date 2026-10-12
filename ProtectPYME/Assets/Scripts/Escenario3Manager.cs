@@ -404,11 +404,7 @@ public class Escenario3Manager : MonoBehaviour
 
     private void ActualizarProgresoNarrativo()
     {
-        if (PlayerPrefs.GetInt("NivelAlcanzado", 1) < 4)
-        {
-            PlayerPrefs.SetInt("NivelAlcanzado", 4);
-            PlayerPrefs.Save();
-        }
+        // La progresion narrativa local se actualiza desde /progress/me.
     }
 
     private void ManejarFalloDecision(DecisionRequestResult result)

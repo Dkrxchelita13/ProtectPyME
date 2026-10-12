@@ -397,11 +397,7 @@ public class Escenario1Manager : MonoBehaviour
 
     private void ActualizarProgresoNarrativo()
     {
-        if (PlayerPrefs.GetInt(claveDeProgreso, 1) < valorDeDesbloqueo)
-        {
-            PlayerPrefs.SetInt(claveDeProgreso, valorDeDesbloqueo);
-            PlayerPrefs.Save();
-        }
+        // La progresion narrativa local se actualiza desde /progress/me.
     }
 
     private void ManejarFalloDecision(DecisionRequestResult result)

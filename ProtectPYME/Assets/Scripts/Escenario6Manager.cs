@@ -392,11 +392,7 @@ public class Escenario6Manager : MonoBehaviour
 
     private void ActualizarProgresoNarrativo()
     {
-        if (PlayerPrefs.GetInt("ProgresoIntermedio", 1) < 4)
-        {
-            PlayerPrefs.SetInt("ProgresoIntermedio", 4);
-            PlayerPrefs.Save();
-        }
+        // La progresion narrativa local se actualiza desde /progress/me.
     }
 
     private void ManejarFalloDecision(DecisionRequestResult result)

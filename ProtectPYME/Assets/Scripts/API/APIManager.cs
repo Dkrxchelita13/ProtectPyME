@@ -108,6 +108,7 @@ public class APIManager : MonoBehaviour
             DontDestroyOnLoad(gameObject);
 
             token = PlayerPrefs.GetString("token", "");
+            UserProgressCache.SetActiveUserFromToken(token);
             LoadPendingMinigameSessionCompletions();
         }
         else
@@ -164,7 +165,16 @@ public class APIManager : MonoBehaviour
     public void SetToken(string newToken)
     {
         token = newToken;
+        UserProgressCache.SetActiveUserFromToken(token);
         StartPendingMinigameSessionCompletionRetries();
+    }
+
+    public void ClearAuthenticationState()
+    {
+        token = "";
+        PlayerPrefs.DeleteKey("token");
+        PlayerPrefs.Save();
+        UserProgressCache.ClearActiveUserState();
     }
 
     public IEnumerator GetUserProgress(
@@ -258,36 +268,18 @@ public class APIManager : MonoBehaviour
 
     private void ApplyProgressToLocalCache(UserProgressResponse progress)
     {
-        int initialStage = ClampProgressStage(
-            progress.highest_initial_stage_unlocked
-        );
-        int intermediateStage = ClampProgressStage(
-            progress.highest_intermediate_stage_unlocked
-        );
-
-        PlayerPrefs.SetInt("NivelAlcanzado", initialStage);
-        PlayerPrefs.SetInt("ProgresoIntermedio", intermediateStage);
-        PlayerPrefs.SetInt(
-            "MinigamesUnlocked",
-            progress.minigames_unlocked ? 1 : 0
-        );
-        PlayerPrefs.Save();
+        UserProgressCache.SyncFromBackend(progress);
 
         NotifyProgressControllers();
 
         Debug.Log(
             "[ProgressSync] backend progress applied initial=" +
-            initialStage +
+            UserProgressCache.GetInitialStage() +
             " intermediate=" +
-            intermediateStage +
+            UserProgressCache.GetIntermediateStage() +
             " minigames=" +
-            progress.minigames_unlocked
+            UserProgressCache.GetMinigamesUnlocked()
         );
-    }
-
-    private int ClampProgressStage(int value)
-    {
-        return Mathf.Clamp(value, 1, 4);
     }
 
     private void NotifyProgressControllers()
@@ -320,7 +312,7 @@ public class APIManager : MonoBehaviour
         if (request.result == UnityWebRequest.Result.Success)
         {
             TokenResponse res = JsonUtility.FromJson<TokenResponse>(request.downloadHandler.text);
-            token = res.access_token;
+            SetToken(res.access_token);
 
             // 🔥 guardar token
             PlayerPrefs.SetString("token", token);
@@ -359,7 +351,7 @@ public class APIManager : MonoBehaviour
         if (request.result == UnityWebRequest.Result.Success)
         {
             TokenResponse res = JsonUtility.FromJson<TokenResponse>(request.downloadHandler.text);
-            token = res.access_token;
+            SetToken(res.access_token);
 
             PlayerPrefs.SetString("token", token);
             PlayerPrefs.Save();

@@ -127,8 +127,7 @@ public class RegisterManager : MonoBehaviour
 
     if(txtMensaje != null && txtMensaje.text.Contains("correctamente"))
     {
-        PlayerPrefs.DeleteKey("SeguridadPersistente");
-        PlayerPrefs.SetInt("NivelAlcanzado", 1);
+        UserProgressCache.ClearActiveUserState();
 
         if (GameManagerGlobal.instancia != null)
         {

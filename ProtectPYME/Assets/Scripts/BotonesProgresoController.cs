@@ -48,8 +48,8 @@ public class BotonesProgresoController : MonoBehaviour
     public void ActualizarProgreso()
     {
         // 1 es el nivel inicial (solo Escenario 1 desbloqueado)
-        int nivelAlcanzado = PlayerPrefs.GetInt("NivelAlcanzado", 1);
-        int progresoIntermedio = PlayerPrefs.GetInt("ProgresoIntermedio", 1);
+        int nivelAlcanzado = UserProgressCache.GetInitialStage();
+        int progresoIntermedio = UserProgressCache.GetIntermediateStage();
 
         TipoMenuProgreso menuResuelto = ResolverTipoMenu();
         bool minijuegosDesbloqueados = menuResuelto == TipoMenuProgreso.Intermedio
@@ -174,9 +174,7 @@ public class BotonesProgresoController : MonoBehaviour
     [ContextMenu("Reiniciar Progreso")]
     public void ReiniciarProgreso()
     {
-        PlayerPrefs.DeleteKey("NivelAlcanzado");
-        PlayerPrefs.DeleteKey("ProgresoIntermedio");
-        PlayerPrefs.Save();
+        UserProgressCache.ClearActiveUserProgress();
         ActualizarProgreso();
     }
 }
