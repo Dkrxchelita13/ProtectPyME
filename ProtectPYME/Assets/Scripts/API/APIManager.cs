@@ -16,6 +16,7 @@ public class APIManager : MonoBehaviour
 
     private string baseUrl = "https://protectpyme.onrender.com";
     private string token;
+    private bool progressRequestInProgress;
     private bool surveyStatusRequestInProgress;
     private bool surveySubmitRequestInProgress;
     private bool pilotRequestInProgress;
@@ -164,6 +165,140 @@ public class APIManager : MonoBehaviour
     {
         token = newToken;
         StartPendingMinigameSessionCompletionRetries();
+    }
+
+    public IEnumerator GetUserProgress(
+        Action<UserProgressResponse> onSuccess,
+        Action<string> onError
+    )
+    {
+        if (string.IsNullOrEmpty(token))
+        {
+            onError?.Invoke("NO_TOKEN");
+            yield break;
+        }
+
+        using (UnityWebRequest request =
+            UnityWebRequest.Get(baseUrl + "/progress/me"))
+        {
+            request.timeout = 20;
+            request.SetRequestHeader("Authorization", "Bearer " + token);
+
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                try
+                {
+                    UserProgressResponse progress =
+                        JsonUtility.FromJson<UserProgressResponse>(
+                            request.downloadHandler.text
+                        );
+
+                    if (progress == null)
+                    {
+                        onError?.Invoke("EMPTY_RESPONSE");
+                        yield break;
+                    }
+
+                    onSuccess?.Invoke(progress);
+                }
+                catch (Exception exception)
+                {
+                    onError?.Invoke(
+                        "PARSE_ERROR: " + exception.Message
+                    );
+                }
+            }
+            else
+            {
+                onError?.Invoke(BuildRequestError(request));
+            }
+        }
+    }
+
+    public IEnumerator RefreshProgressFromBackend(
+        Action<UserProgressResponse> onSuccess = null,
+        Action<string> onError = null
+    )
+    {
+        if (progressRequestInProgress)
+        {
+            onError?.Invoke("IN_PROGRESS");
+            yield break;
+        }
+
+        progressRequestInProgress = true;
+        UserProgressResponse progress = null;
+        string error = "";
+
+        yield return StartCoroutine(
+            GetUserProgress(
+                response => progress = response,
+                requestError => error = requestError
+            )
+        );
+
+        progressRequestInProgress = false;
+
+        if (progress != null)
+        {
+            ApplyProgressToLocalCache(progress);
+            onSuccess?.Invoke(progress);
+        }
+        else
+        {
+            Debug.LogWarning(
+                "[ProgressSync] backend unavailable, using cached state: " +
+                error
+            );
+            onError?.Invoke(error);
+        }
+    }
+
+    private void ApplyProgressToLocalCache(UserProgressResponse progress)
+    {
+        int initialStage = ClampProgressStage(
+            progress.highest_initial_stage_unlocked
+        );
+        int intermediateStage = ClampProgressStage(
+            progress.highest_intermediate_stage_unlocked
+        );
+
+        PlayerPrefs.SetInt("NivelAlcanzado", initialStage);
+        PlayerPrefs.SetInt("ProgresoIntermedio", intermediateStage);
+        PlayerPrefs.SetInt(
+            "MinigamesUnlocked",
+            progress.minigames_unlocked ? 1 : 0
+        );
+        PlayerPrefs.Save();
+
+        NotifyProgressControllers();
+
+        Debug.Log(
+            "[ProgressSync] backend progress applied initial=" +
+            initialStage +
+            " intermediate=" +
+            intermediateStage +
+            " minigames=" +
+            progress.minigames_unlocked
+        );
+    }
+
+    private int ClampProgressStage(int value)
+    {
+        return Mathf.Clamp(value, 1, 4);
+    }
+
+    private void NotifyProgressControllers()
+    {
+        BotonesProgresoController[] controllers =
+            FindObjectsOfType<BotonesProgresoController>();
+
+        for (int i = 0; i < controllers.Length; i++)
+        {
+            controllers[i].ActualizarProgreso();
+        }
     }
 
     // LOGIN
@@ -393,6 +528,11 @@ public class APIManager : MonoBehaviour
                     + safeBody
                 );
             }
+        }
+
+        if (result.success)
+        {
+            yield return StartCoroutine(RefreshProgressFromBackend());
         }
 
         onComplete?.Invoke(result);
@@ -2831,6 +2971,16 @@ public class TokenResponse
 {
     public string access_token;
     public string token_type;
+}
+
+[System.Serializable]
+public class UserProgressResponse
+{
+    public int user_id;
+    public int highest_initial_stage_unlocked;
+    public int highest_intermediate_stage_unlocked;
+    public bool minigames_unlocked;
+    public string updated_at;
 }
 
 [System.Serializable]

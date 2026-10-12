@@ -328,6 +328,15 @@ public class LoginManager : MonoBehaviour
 
         if (txtStatus != null)
         {
+            txtStatus.text = "Sincronizando progreso...";
+        }
+
+        yield return StartCoroutine(
+            APIManager.Instance.RefreshProgressFromBackend()
+        );
+
+        if (txtStatus != null)
+        {
             txtStatus.text = "Verificando encuesta diagnostica...";
         }
 

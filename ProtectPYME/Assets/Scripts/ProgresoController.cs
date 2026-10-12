@@ -167,8 +167,6 @@ public class ProgresoController : MonoBehaviour
         botonesNiveles[0].interactable = true;
         SetBotonVisual(botonesNiveles[0], true);
 
-        int nivelAptitud = 1;
-
         // 2. Nivel Intermedio (1)
         if (botonesNiveles.Length > 1)
         {
@@ -177,11 +175,6 @@ public class ProgresoController : MonoBehaviour
 
             botonesNiveles[1].interactable = puedeDesbloquearIntermedio;
             SetBotonVisual(botonesNiveles[1], puedeDesbloquearIntermedio);
-
-            if (puedeDesbloquearIntermedio)
-            {
-                nivelAptitud = 2; // Tiene acceso hasta el nivel 2 o más
-            }
         }
 
         // 3. Resto de niveles bloqueados...
@@ -191,12 +184,10 @@ public class ProgresoController : MonoBehaviour
             SetBotonVisual(botonesNiveles[i], false);
         }
 
-        // 🟢 CLAVE: Guardamos en PlayerPrefs el nivel calculado según sus datos reales del backend
-        int nivelActualGuardado = PlayerPrefs.GetInt("NivelAlcanzado", 1);
-        int nivelDefinitivo = Mathf.Max(nivelActualGuardado, nivelAptitud);
-
-        PlayerPrefs.SetInt("NivelAlcanzado", nivelDefinitivo);
-        PlayerPrefs.Save();
+        // La regla legacy de puntos/seguridad conserva el estado visual de este
+        // panel, pero ya no escribe la progresion narrativa local. Ese cache lo
+        // sincroniza APIManager desde /progress/me para mantener al backend como
+        // autoridad.
 
         // 🟢 Notificamos al controlador de botones y candados que se actualice
         BotonesProgresoController controladorBotones = FindObjectOfType<BotonesProgresoController>();

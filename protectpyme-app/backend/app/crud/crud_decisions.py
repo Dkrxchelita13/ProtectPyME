@@ -3,6 +3,7 @@ from fastapi import HTTPException
 from app.models import Badge, UserBadge
 from app import models, schemas
 from app.ai.rules import evaluate_decision
+from app.services import progress_service
 from datetime import datetime, timedelta
 import logging
 
@@ -130,6 +131,11 @@ def create_decision(db: Session, decision: schemas.DecisionCreate, user: models.
             user.id,
             scenario.category,
             evaluation["points_awarded"]
+        )
+        progress_service.apply_scenario_completion(
+            db,
+            user.id,
+            decision.scenario_id
         )
 
         db.commit()

@@ -49,6 +49,32 @@ class User(Base):
     correct_decisions = Column(Integer, default=0)
 
     role = Column(String, default="user")
+
+
+class UserProgress(Base):
+    __tablename__ = "user_progress"
+
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        primary_key=True,
+        index=True
+    )
+    highest_initial_stage_unlocked = Column(Integer, nullable=False, default=1)
+    highest_intermediate_stage_unlocked = Column(
+        Integer,
+        nullable=False,
+        default=1
+    )
+    minigames_unlocked = Column(Boolean, nullable=False, default=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )
+
+
 # -------- SCENARIOS --------
 class Scenario(Base):
     __tablename__ = "scenarios"

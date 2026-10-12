@@ -169,6 +169,18 @@ class DecisionOut(BaseModel):
         #orm_mode = True
         from_attributes = True
 
+
+class UserProgressResponse(BaseModel):
+    user_id: int
+    highest_initial_stage_unlocked: int
+    highest_intermediate_stage_unlocked: int
+    minigames_unlocked: bool
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 from datetime import datetime
 from pydantic import BaseModel
 
